@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="27mm" viewBox="0 0 80 27">
+  <g style="font-size:3.9px;font-family:'Fira Sans';text-align:center;text-anchor:middle;fill:#bf3959;">
+    <text x="13" y="9.3">A (front)</text>
+    <text x="49.311" y="9.3">B</text>
+    <text x="13" y="24.5">D</text>
+    <text x="69.803" y="9.3">C</text>
+    <text x="33" y="9.3">E</text>
+    <text x="33" y="20">F</text>
+  </g>
+</svg>

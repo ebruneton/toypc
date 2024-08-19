@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>ToyPC Emulator</title>
+  <link rel='stylesheet' type='text/css'
+    href='https://framework.web.cern.ch/framework/2.0/fonts/PTSansWeb/PTSansWeb.css' />
+  <link rel="stylesheet" type="text/css" href="style.css" />
+  <link rel="stylesheet" type="text/css" href="emulator.css" />
+  <script src="screen.js"></script>
+  <script src="keyboard.js"></script>
+  <script src="terminal.js"></script>
+  <script src="main.js"></script>
+</head>
+
+<body>
+  <div class="column">
+    <div id="panic" class="panic">
+      <div>An error occured:</div>
+      <div id="panic-message" class="panic-message"></div>
+      <div>Reload the page to restart the emulator.</div>
+    </div>
+    <h1>ToyPC Emulator</h1>
+    <p>This page provides a (partial) emulator of the toy computer described in the book <a href="toypc.pdf">Programming
+        a toy computer from scratch</a>. The emulator starts with the toy computer's initial state, once fully
+      assembled, but before any program is installed. To do anything useful with it you need to program it first, as
+      described in the book. You can also install already existing programs, with the Load button (see the <a
+        href="index.html">supplementary material</a> of each chapter of the book for more details).
+
+    <p>The black area emulates the screen of the toy computer (this requires WebGL2). The green part below it represents
+      the Arduino Due board, with its L LED, and its RESET button. There is no ERASE button since you can simply reload
+      this page to restart from a blank initial state. The <a href="#host">Host</a> section simulates a terminal on a
+      host computer connected to the Arduino with a USB cable. It can be used install programs on the (emulated) Arduino
+      (as described in the book).
+
+    <p><em>This emulator emulates only a very small subset</em> of the Arduino Due's microcontroller (an Atmel SAM3XE),
+      and of the ARM Cortex M3 microprocessor it contains. Likewise, it only emulates a small subset of the RAiO RA8875
+      chip used to drive the LCD. These subsets only provide the features which are used in the book. Another important
+      limitation is that, in case of a Hard Fault, the emulator stops with an error message, instead of executing the
+      Hard Fault handler. In this case you need to reload the page to restart it.
+
+  </div>
+  <div class="emulator">
+    <h2 id="toypc">ToyPC</h2>
+    <canvas id="screen" width="800" height="480" title="Emulates the LCD screen of the toy computer."></canvas>
+    <div class="arduino">
+      <span id="led" class="led on" title="Emulates the L LED on the Arduino board."></span>
+      <button id="reset" title="Emulates the RESET button of the Arduino board.">RESET</button>
+      <button id="load" style="margin-left: auto"
+        title="Loads and executes a list of commands with the flash_helper.py utility. The Arduino must be currently running the Boot Assistant.">Load</button>
+      <button id="save" style="margin-left: 8px"
+        title="Saves the current content of the Arduino's flash memory, into a file which can later be loaded with the 'Load' button.">Save</button>
+    </div>
+    <h2 id="host">Host</h2>
+    <div id="terminal" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="terminal"
+      style='display:none' title="Emulates a terminal on a host computer connected to the Arduino with a USB cable.">
+      <div id="input-line"><span><span class="user-name">user@host</span>:<span class="user-dir">~</span>$
+        </span><span id="user-input" contenteditable="true" class="user-input"></span><span
+          style='visibility:hidden;'>.</span>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

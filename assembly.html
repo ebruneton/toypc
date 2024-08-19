@@ -1,0 +1,103 @@
+<html>
+
+<head>
+  <title>Programming a toy computer from scratch</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel='stylesheet' type='text/css'
+    href='https://framework.web.cern.ch/framework/2.0/fonts/PTSansWeb/PTSansWeb.css' />
+  <link rel="stylesheet" type="text/css" href="style.css" />
+  </meta>
+</head>
+
+<body>
+  <div class="column">
+    <h1>Assembly instructions</h1>
+
+    <p>This page explains how to assemble the hardware components of the toy computer described in the book "<a
+        href="toypc.pdf">Programming a toy computer from scratch</a>".
+
+    <h2>Soldering</h2>
+
+    <p>In order to use the Adafruit RA8875 driver board (hereafter called the "graphics card") you need to solder the
+      header pins provided with it. Likewise, you need to solder the header pins provided with the level converter,
+      which is required to connect the PS/2 keyboard. For this the easiest is to use a breadboard, and to plug the
+      header pins in it first:
+
+      <a href="figures/breadboard.jpg"><img src="figures/breadboard.jpg" class="figure"></a>
+
+    <p>Use 15 pins for the graphics card, and two 6-pins rows for the level converter. The graphics card has pins on
+      only
+      one side. To provide support on the other side, plug two header pins with their top part cut, as shown above. Then
+      put the cards on these pins, and solder them in place. If you have never done any soldering before, watch
+      tutorials online, and practice with an empty perfboard first. To avoid having to buy a soldering station, go to a
+      makerspace if you can. You can also get some advice there.
+
+    <h2>Connections to the Arduino</h2>
+
+    <p>Once the graphics card and the level converter are in place and soldered, connect them to the Arduino with jumper
+      wires as described in the book (in Figures 10.6 and 11.4), and as illustrated in the following photos.
+
+    <ul>
+      <li>Overview of the connections between the Arduino (top) and the graphics card (bottom left) and the level
+        converter (bottom right):
+        <a href="figures/overview.jpg"><img src="figures/overview.jpg" class="figure"></a>
+      </li>
+      <li>The connections on the Arduino side:
+        <a href="figures/arduino.jpg"><img src="figures/arduino.jpg" class="figure"></a>
+      </li>
+      <li>The connections on the graphics card (left) and level converter (right) side:
+        <a href="figures/ra8875.jpg"><img src="figures/ra8875.jpg" class="figure"></a>
+      </li>
+      <li>A side view of the graphics card, showing the two partially cut header pins (right) used to maintain it
+        parallel to the breadboard:
+        <a href="figures/ra8875-side.jpg"><img src="figures/ra8875-side.jpg" class="figure"></a>
+      </li>
+    </ul>
+
+    <h2>Connections to the screen</h2>
+
+    <p>Connect the 40-pin connector of the LCD panel to the graphics card as illustrated below (notice the "1" and "40"
+      numbers). For this, slide out the black "ears" on each side of the white connector, insert the flat cable, and
+      slide the ears back in.
+
+      <a href="figures/ra8875.jpg"><img src="figures/ra8875.jpg" class="figure"></a>
+
+    <h2>Connections to the keyboard</h2>
+
+    <p>To connect the keyboard, use male-female jumper wires to connect the level converter to the PS/2 side of the
+      USB to PS/2 plug adapter provided with the keyboard, as shown in Figure 11.4 in the book.
+
+      <a href="figures/level-adapter.jpg"><img src="figures/level-adapter.jpg" class="figure"></a>
+
+    <p>The PS/2 pins are too close to connect them all with jumper wires. To solve this, remove the black plastic
+      case around one of the wires (here the brown one, connected to the DATA pin; the black, red and orange wires are
+      connected to the GND, +5V, and CLK pins, respectively):
+
+      <a href="figures/mini-din-6.jpg"><img src="figures/mini-din-6.jpg" class="figure"></a>
+
+    <h2>Computer Case (optional)</h2>
+
+    <p>To make your toy computer easier to use it is recommended to attach the above components to a single support. One
+      possibility is to use the following blueprint. It is designed to be cut in a panel whose thickness is 5mm. If you
+      have access to a laser cutting machine, you can use a poplar plywood panel for that.
+
+      <a href="figures/case.svg" class="figure" style="padding: 0; position: relative">
+        <img src="figures/case.svg" style="width: 100%">
+        <img src="figures/case-overlay.svg" style="position: absolute; z-index: 1; top: 0; left: 0; width: 100%">
+      </a>
+      <center>The blueprint for the computer case shown on the front and back covers of the book.</center>
+
+    <p>Attach the Arduino and the breadboard on the back of (A), put (B) on the front, with the screen inside it, and
+      pass the 40-pin flat cable from the LCD through the hole in (A).
+
+      <a href="figures/lcd.jpg"><img src="figures/lcd.jpg" class="figure"></a>
+
+    <p>Then put (C) on top of (B). Finally, use (D), (E), and (F) as a tilted support for these assembled components.
+      Use the remaining parts to attach the PS/2 to USB adapter on (E), with the USB port on the outside:
+
+      <a href="figures/usb-a.jpg"><img src="figures/usb-a.jpg" class="figure"></a>
+
+  </div>
+</body>
+
+</html>

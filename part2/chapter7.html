@@ -1,0 +1,37 @@
+<html>
+
+<head>
+  <title>Chapter 7. First Steps with the Cortex M3</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel='stylesheet' type='text/css'
+    href='https://framework.web.cern.ch/framework/2.0/fonts/PTSansWeb/PTSansWeb.css' />
+  <link rel="stylesheet" type="text/css" href="../style.css" />
+  </meta>
+</head>
+
+<body>
+  <div class="column">
+    <h1>Chapter 7. First Steps with the Cortex M3</h1>
+
+    <h3>7.5.3 Run from RAM</h3>
+
+    <p>To do these experiments with the emulator, <a href="../emulator.html#host">open it</a> and then follow the
+      instructions (in the "Host" panel).
+
+    <p><b>Note:</b> due to the differences between the emulator and the real Arduino, the LED should stop blinking at
+      some point (the simulated Boot Assistant's <code>G</code> command stops after a fixed number of instructions have
+      been executed).
+
+    <h3>7.5.4 Run from flash</h3>
+
+    <p>To do these experiments with the emulator, <a href="../emulator.html#host">open it</a> and then follow the
+      instructions (in the "Host" panel).
+
+    <p><b>Note:</b> due to the differences between the emulator and the real Arduino, all blinks should have the same
+      duration. This is because the emulator does not simulate the Watchdog Timer. The blink rate is also not
+      the same as on the real Arduino (it depends on the performance of the computer running the emulator).
+
+  </div>
+</body>
+
+</html>

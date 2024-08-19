@@ -1,0 +1,71 @@
+.emulator {
+  width: 800px;
+}
+
+.terminal {
+  background: #FAFAFA;
+  border: 1px solid black;
+  box-sizing: border-box;
+  font-family: monospace;
+  height: 240px;
+  overflow-y: auto;
+  width: 800px;
+  word-break: break-all;
+}
+
+.user-name {
+  color: green;
+  font-weight: bold;
+}
+
+.user-dir {
+  color: blue;
+  font-weight: bold;
+}
+
+.user-input {
+  outline: none;
+}
+
+.inline {
+  display: inline;
+}
+
+.arduino {
+  align-items: center;
+  background: darkgreen;
+  box-sizing: border-box;
+  display: flex;
+  max-width: 800px;
+  padding: 8px;
+}
+
+.led {
+  background: black;
+  border-radius: 50%;
+  display: inline-block;
+  height: 16px;
+  margin-right: 16px;
+  width: 16px;
+}
+
+.led.on {
+  background: orange;
+}
+
+.panic {
+  background: red;
+  color: white;
+  display: none;
+  left: 0;
+  margin: 16px;
+  padding: 8px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 1;
+}
+
+.panic-message {
+  margin-left: 16px;
+}
