@@ -1,0 +1,1293 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter6}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "keyboard_driver.txt")?;
+}
+
+\chapter{Keyboard Driver}\label{chapter:keyboard}
+
+In this chapter we continue to assemble our toy computer by connecting a
+keyboard to the Arduino, and by writing a program to use it. We first present
+how keyboards work, how they communicate with computers, and how programs can
+use them. We then write such a program, called the keyboard driver. Finally, we
+test it with a small application displaying on the screen all the keys typed on
+the keyboard.
+
+\section{Keyboard}
+
+A computer needs to know which keys of a keyboard are pressed at any given time
+(several keys can be pressed simultaneously). If the keyboard had only one key,
+this would be very easy to do. Indeed, one could then use a push button switch
+connected on one end to VCC and on the other to an input pin of the
+microprocessor. A program running on the microprocessor could then read the
+value $v$ of this input pin to know whether the key is pressed ($v=1$) or not
+($v=0$). However, keyboards usually have about 100 keys. With this simple
+method, one would need about 100 input pins on the microprocessor to know which
+keys are pressed or not.
+
+A solution to this problem is to still use one push button switch per key, but
+to connect them to a grid of wires as shown in \cref{fig:keyboard-structure}.
+In this design, each column wire is connected to an output pin, and each row
+wire is connected to an input pin. To know which keys are pressed, one can set
+each output pin to 1, {\em one by one}, and then read the values of the input
+pins. Indeed, the key at row $y$ and column $x$ is pressed if and only if row
+$y$ is 1 when column $x$ is 1. With this method, only 20 pins are needed for
+100 keys (10 column output pins and 10 row input pins). The drawback is that
+columns must be {\em scanned} one by one. This scan could be done by the
+computer, but this would require a keyboard plug with at least 20 pins. To
+avoid this, the following method can be used:
+\begin{itemize}
+  \item Continuously scan the grid as described above with a small chip {\em
+  inside} the keyboard. This requires about 20 pins but this is fine, since
+  they are internal.
+
+  \item When the state of a key has changed since the last scan, send some data
+  to the computer indicating which key is concerned, and whether it became
+  pressed or released. This data can be sent one bit at a time over a {\em
+  single} pin.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter6/keyboard-structure.tex}
+
+  \caption{A schematic view of a possible keyboard circuit. Each key is a push
+  button switch connected to a grid of wires. Setting exactly one column to VCC
+  (in red) sets the rows of the pressed keys (in gray) in this column to VCC
+  too. Diodes prevent {\em ghosting}: without them, if ``I'' was pressed too,
+  ``J'' would incorrectly be considered as pressed because row $y+1$ would be
+  at VCC too (via the dotted path).}\label{fig:keyboard-structure}
+\end{Figure}
+
+\noindent In fact this is what PS/2 (for Personal System/2) keyboards do. Since
+this method is much simpler than the one used by USB keyboards, we use such a
+keyboard for our toy computer, namely a MCSaite model (see \cref{table:bom}).
+{\em Any other keyboard might not work with our driver}\footnote{Especially
+USB-only keyboards, even with the USB to PS/2 plug adapter provided with the
+MCSaite. This adapter works with the MCSaite because this keyboard supports
+both protocols.}.
+
+\subsection{Scancodes}\label{subsection:scancodes}
+
+When a key is pressed or released, a PS/2 keyboard sends to the computer one or
+more bytes, called {\em scancodes}. There are several standardized sets of
+scancodes. The one used by the MCSaite keyboard is IBM PC ``set 2'' (see
+\cref{appendix:scancodes}). With this standard, most keys emit a single
+scancode when pressed. For instance, pressing the ``A'' key emits
+the scancode \hexa{1C}. These keys emit the same scancode when they are
+released, preceded by \hexa{F0}. For instance, releasing the ``A'' key emits
+\hexa{F0}, \hexa{1C}.
+
+A few other keys emit two scancodes when pressed, with the first one always
+equal to \hexa{E0}. For instance, pressing the ``PageUp'' key emits \hexa{E0},
+\hexa{7D}. When released, these keys emit the same last scancode, preceded by
+\hexa{E0}, \hexa{F0}. For instance, releasing the ``PageUp'' key emits
+\hexa{E0}, \hexa{F0}, \hexa{7D}.
+
+Finally, two keys are exceptions to these rules. ``PrintScreen'' emits 4
+scancodes when pressed (\hexa{E0}, \hexa{12}, \hexa{E0}, \hexa{7C}), and 6 when
+released (\hexa{E0}, \hexa{F0}, \hexa{7C}, \hexa{E0}, \hexa{F0}, \hexa{12}).
+``Pause'' emits 8 scancodes when pressed (\hexa{E1}, \hexa{14}, \hexa{77},
+\hexa{E1}, \hexa{F0}, \hexa{14}, \hexa{F0}, \hexa{77}), and no scancodes when
+released.
+
+Note that scancodes are different from ASCII codes. One reason is that some
+keys do not have any equivalent ASCII code, such as the ``PageUp'' key. Another
+reason is that some keys have two corresponding ASCII codes, such as the ``A''
+key (one for ``a'', and one for ``A''). However, most programs need ASCII codes
+instead of scancodes. For instance, an ASCII code is needed to draw a character
+on the screen. A small program is thus needed to convert scancodes to ASCII
+codes.
+
+\subsection{Communication protocol}\label{subsection:ps2}
+
+A PS/2 keyboard uses a 6-pin mini-DIN connector to send the above scancodes to
+the computer. Two pins are unused. Two other pins, GND and VCC, are inputs
+provided by the computer to power the keyboard. One pin, named CLOCK, is a
+clock signal generated by the keyboard. Finally, the last pin, named DATA, is
+used to actually send data. Each scancode is sent separately, one bit $b_i$ at
+each clock cycle, as shown in \cref{fig:ps2-signals}. These 8 bits are preceded
+by a ``start'' bit and followed by a ``parity'' bit and a ``stop'' bit. The
+parity bit $p$ is computed so that $b_0+b_1+\ldots+b_7+p$ is odd (this is
+called {\em odd parity}). It is used to detect transmission errors (if the
+previous sum, computed by the receiver, is even, then at least one received bit
+is incorrect).
+
+This communication protocol is qualified as {\em serial} and {\em synchronous}.
+Serial means that one bit is transmitted at a time. The opposite, \ie,
+transmitting several bits at a time, like a 40-pin LCD connector does, is
+called {\em parallel} transmission. Synchronous means that a separate clock
+signal is used, indicating when the data signal can be read (depending on the
+protocol, this can be when the clock signal is 0, when it is rising, when it is
+falling, etc). The opposite, \ie, not using any clock signal, is called {\em
+asynchronous} transmission. In this case the receiver and the transmitter must
+agree on a bit rate beforehand.
+
+\begin{Figure}
+  \input{figures/chapter6/ps2-signals.tex}
+
+  \caption{The signals output by a PS/2 keyboard. Each scancode is sent on the
+  DATA pin, one bit per CLOCK cycle, starting with the least significant. It is
+  preceded by a ``start'' bit (always 0) and followed by a ``parity'' bit and a
+  ``stop'' bit (always 1).}\label{fig:ps2-signals}
+\end{Figure}
+
+\section[Universal Synchronous Asynchronous Receiver Transmitter]
+        {Universal Synchronous Asynchronous\\
+         Receiver Transmitter}\label{section:usart}
+
+At this stage, ``all we have left to do'' is to write a program to read the
+above signals, recover the corresponding scancodes, and then the corresponding
+ASCII codes. This could be done with the PIO controller, but there is a much
+simpler method. Indeed, the Arduino microcontroller has a dedicated component
+to interact with almost any device using a serial communication method, be it
+synchronous or asynchronous. It is called the Universal Synchronous
+Asynchronous Receiver Transmitter (USART) component. This section gives an
+overview of this component and explains how to use it. A complete description
+can be found in Chapter 35 of \cite{SAM3X8E}.
+
+The core part of the USART component is similar to the SPI component (see
+\cref{section:spi}). Indeed, this component is a hardware circuit which can
+receive serial data on an input pin called RXD, and transmit data on an output
+pin called TXD, synchronously or not with a clock signal on a SCK pin (see
+\cref{fig:usart}). This is similar to the MISO, MOSI, and SCK pins of the SPI
+component, respectively. This component is also based on 3 main registers,
+similar to the SPI Transmit Data, SPI Receive Data, and SPI Channel Registers
+(see \cref{table:usart-registers}):
+\begin{itemize}
+  \item The Transmit Holding Register. Writing a value in this register sends
+  it on the TXD pin.
+
+  \item The Receive Holding Register. Values received on the RXD pin are stored
+  in this register.
+
+  \item The Channel Status Register. This read-only register has the following
+  binary format (we show only the bits that we use):
+
+  \rs{USART_CSR.bit_pattern(true)}
+
+  where $s_t$ is 0 while a value is being sent (and 1 when this is done), and
+  $s_r$ is 1 iff a new value has been received since the last read of the
+  Receive Holding register.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter6/usart.tex}
+
+  \caption{A simplified representation of the Universal Synchronous
+  Asynchronous Receiver Transmitter (USART) circuit and registers (in
+  gray).}\label{fig:usart}
+\end{Figure}
+
+\begin{Table}
+  \begin{tabular}{|l|l|l|}\hline
+    \makecell{\thead{Name}} & \thead{Type} & \thead{Address} \\ \hline
+    \makecell{Control Register} & Write-Only & \rs{hex(USART_CR.address)} \\
+    \makecell{Mode Register} & Read-Write & \rs{hex(USART_MR.address)} \\
+    \makecell{Interrupt Enable Register} & Write-Only &
+    \rs{hex(USART_IER.address)} \\
+    \makecell{Channel Status Register} & Read-Only &
+    \rs{hex(USART_CSR.address)} \\
+    \makecell{Receiver Holding Register} & Read-Only &
+    \rs{hex(USART_RHR.address)}  \\
+    \hline
+  \end{tabular}
+  \caption{The Universal Synchronous Asynchronous Receiver Transmitter
+  registers used in this book.}\label{table:usart-registers}
+\end{Table}
+
+The USART component must also be configured before being used, as the SPI
+component. The main register which can be used to do this is the Mode Register,
+similar to the SPI Channel Select Register. Indeed this register has the
+following binary format (we show only the bits that we use):
+
+\begin{flushright}
+  \rs{USART_MR.bit_pattern(false)}
+\end{flushright}
+
+\begin{itemize}
+  \item The $clk$ field indicates which clock signal to use for SCK. One option
+  is to use the Peripheral Clock provided by the PMC. Another option,
+  corresponding to $clk=3$, is to use the signal provided by the external
+  device (in our case the beyboard).
+
+  \item The $bits$ field indicates that $bits+5$ bits are sent or received at a
+  time.
+
+  \item The $s$ field indicates if the component should operate in synchronous
+  mode ($s=1$) or in asynchronous mode ($s=0$).
+
+  \item The $parity$ field indicates how the parity bit $p$ is computed (see
+  \cref{subsection:ps2}). Odd parity corresponds to $parity=1$.
+
+  \item The $stop$ field indicates how many stop bits are used. $stop=0$
+  corresponds to one stop bit, while $stop=2$ corresponds to two stop bits.
+
+  \item The $o$ field indicates if least significant bit is sent first
+  ($o=0$), or if the most significant bit is sent first ($o=1$).
+\end{itemize}
+
+In our case we need $clk=3$, $bits=3$, $s=1$, $parity=1$, $stop=0$ and $o=0$
+(see \cref{fig:usart}). We thus need to set the Mode Register to \hexa{3F0}.
+Another configuration register is the Interrupt Enable Register. This register
+has the following binary format (we show only the bits that we use):
+
+\begin{flushright}
+  \rs{USART_IER.bit_pattern(false)}
+\end{flushright}
+
+\noindent Setting $i_r=1$ (resp. $i_t=1$) means that an interrupt (see
+\cref{section:cortex-m3,section:vector-table}) should be triggered when the
+Channel Status $s_r$ bit (resp. $s_t$ bit) is 1 (setting $i_r$ or $i_t$ to 0
+has no effect). This process is explained in more details in the next section.
+
+Finally, in order to be used, the USART component must be enabled. This can be
+done with the Control Register, which has the following binary format (we show
+only the bits that we use):
+
+\begin{flushright}
+  \rs{USART_CR.bit_pattern(false)}
+\end{flushright}
+
+\noindent Setting $e_r=1$ enables the receiver part, while setting $e_t=1$
+enables the transmitter part (in our case we just need the receiver part). The
+USART internal clock, the Peripheral Clock 17 (see \cref{fig:usart}), must also
+be enabled (even if an external SCK is used). This can be done by writing the
+value $2^{17}$ in the PMC Peripheral Clock Enable Register (see Section
+\cref{section:pmc}). Last but not least, the RXD and SCK pins must be
+configured as input pins (we don't need to configure the TXD pin since we don't
+use it). This can be done by setting the corresponding bits to 1 in the PIO
+Status Register and to 0 in the PIO Output Status Register (see
+\cref{section:pio}). In fact the default value of the PIO Output Status
+Register is 0, so we just need to configure the PIO Status Register. Since the
+RXD and SCK pins correspond to PA10 and PA17 (see \cref{fig:usart}), this can
+be done by writing the value $2^{10}+2^{17}$ in the PIO A Enable Register.
+
+\section{Nested Vector Interrupt Controller}\label{section:nvic}
+
+Thanks to the USART component, a program could periodically read the Channel
+Status register to check if a new scancode has been received from the keyboard.
+If so, it could then read it in the Receive Holding register. However, this
+method has an important drawback: if two or more scancodes are received since
+the last check, only the last one is available in the Receive Holding register
+(new values override previous ones). Some keys typed during this time could
+thus be missed. Even worse, some keys could be interpreted incorrectly. For
+instance, if the ``PageUp'' key is pressed, which emits \hexa{E0}, \hexa{7D},
+and if \hexa{E0} is missed, the above program would just get \hexa{7D}, which
+is the scancode emitted by the ``9'' key on the numeric pad. It would thus
+consider that this key was pressed, which is wrong.
+
+In order to solve this problem we must make sure to not miss any scancode. This
+can be done with an interrupt, triggered each time a new value is received by
+the USART component. Recall that when an interrupt is triggered, execution
+jumps to an {\em interrupt handler}, at an address given by the Vector Table
+(see \cref{section:cortex-m3,section:vector-table}). In our case, this handler
+could read the scancode, store it in an unused memory location, and return to
+the main program. This takes much less time than the reception of a scancode
+(the CLOCK frequency is at most 16.7kHz). Thus, provided there is enough
+unused memory to store received scancodes that have not yet been read by the
+main program, no scancode would be missed.
+
+\subsection{Interrupt status}
+
+In order to use interrupts, one must enable them first. The USART component can
+trigger an interrupt when a new value is received, when a value has been
+transmitted, etc. The first step is to choose which event(s) should trigger an
+interrupt. This is done with the USART Interrupt Enable Register presented in
+the previous section. The second step is to enable these interrupts in the
+Nested Vector Interrupt Controller (NVIC). This component provides two main
+registers to enable or disable the interrupts triggered by each peripheral (see
+\cref{table:nvic-registers}):
+\begin{itemize}
+  \item The Interrupt Set-Enable Register. Setting the bit $i$ of this
+  register to 1 enables the interrupts from peripheral number $i$ (recall that
+  peripherals are numbered, \eg, 17 for USART, 24 for SPI, etc -- see
+  \cref{fig:sam3x8e}). Setting a bit to 0 has no effect.
+
+  \item The Interrupt Clear-Enable Register. Setting the bit $i$ of this
+  register to 1 disables the interrupts from peripheral number $i$. Setting a
+  bit to 0 has no effect.
+\end{itemize}
+
+Note that if a scancode is received while the USART interrupt is disabled in
+the NVIC (but not at the USART level), its handler is not executed, but the
+interrupt becomes {\em pending}. When a pending interrupt is enabled, it
+becomes {\em active}, \ie, its handler is executed. It is thus possible to
+temporarily disable the USART interrupt, without loosing any scancode, provided
+that the interrupt is not disabled for too long (\ie, such that at most one
+scancode can be received during this time).
+
+\begin{Table}
+  \begin{tabular}{|l|l|l|}\hline
+    \makecell{\thead{Name}} & \thead{Type} & \thead{Address} \\ \hline
+    \makecell{Interrupt Set-Enable Register} & Read-Write &
+    \rs{hex(NVIC_ISER0)} \\
+    \makecell{Interrupt Clear-Enable Register} & Read-Write &
+    \rs{hex(NVIC_ICER0)} \\
+    \hline
+  \end{tabular}
+  \caption{The Nested Vector Interrupt Controller registers used in this
+    chapter.}\label{table:nvic-registers}
+\end{Table}
+
+\subsection{Interrupt handler entry and return}%
+\label{subsection:interrupt-entry-return}
+
+When an interrupt from peripheral number $i$ becomes active, execution jumps
+to the interworking address stored in the $(16+i)^{th}$ entry of the Vector
+Table, \ie, at offset $4(16+i)$ from the beginning of this table. Thus, for
+instance, when the USART interrupt becomes active, execution jumps to the
+interworking address at offset \hexa{84}.
+
+Before this, however, the microprocessor pushes on the stack the address of the
+instruction to return to when the handler terminates. It also pushes on the
+stack the current value of some registers, including R0, R1, R2, R3, and the
+Link Register (LR). Finally, the microprocessor sets the LR to a special value,
+called EXC\_RETURN, and starts executing the interrupt handler by moving its
+interworking address into the Program Counter (\cref{chapter:processes} gives
+more details about this).
+
+The interrupt handler can return and resume execution in the interrupted
+program by copying this EXC\_RETURN value into the PC. When this happens, the
+microprocessor pops the values pushed above to restore the register values as
+they were before the interrupt. An interrupt handler can thus simply push the
+LR on the stack when it starts, and finally pop it into the PC to resume
+execution of the interrupted program.
+
+\section{Keyboard driver}
+
+We now have everything we need to write our keyboard driver. We start with a
+presentation of its goal and of the method used to achieve it. We then provide
+the corresponding implementation.
+
+\subsection{Design}\label{subsection:keyboard-driver-design}
+
+The main goal of the keyboard, for our basic input output system, is to input
+data without needing an external computer. Any data can be represented with 0s
+and 1s and thus, in theory, we just need two keys, or even just one. But this
+would not be very practical. On the other hand, we don't need to handle all
+keys, nor all combinations of keys (such as Ctrl+C, Ctrl+V, etc). In order to
+get a practical but simple driver we thus make the following choices. First,
+the driver should not output anything when a key is released. Second, when a
+key is pressed, the driver should output the corresponding ASCII code if there
+is one. If there are two, it should output one or the other, depending on
+whether the Shift key is pressed or not. If there are none, it should output
+{\em some} code between 128 and 255 (ASCII codes are between 0 and 127
+included).
+
+\subsubsection{Finite State Machine}
+
+In the following we call {\em character} a byte value which is either an ASCII
+code or, if larger than 128, some value representing a key without ASCII code.
+The main goal of our driver is thus to transform the sequence of scancodes into
+a sequence of characters. As explained in \cref{subsection:scancodes}, besides
+two exceptions, this sequence is made of subsequences of the form ($x$),
+(\hexa{F0}, $x$), (\hexa{E0}, $x$), or (\hexa{E0}, \hexa{F0}, $x$). The driver
+should thus react differently when a scancode $x_t$ is received, depending on
+the previous scancode $x_{t-1}$ (we ignore the exceptions and the Shift key for
+now):
+
+\begin{itemize}
+  \item if $x_{t-1} = \hexa{F0}$, do nothing since (\ldots, \hexa{F0}, $x_t$)
+  corresponds to a key release,
+
+  \item if $x_{t-1} = \hexa{E0}$ and $x_t \ne \hexa{F0}$, output the character
+  corresponding to (\hexa{E0}, $x_t$),
+
+  \item if $x_{t-1} = \hexa{E0}$ and $x_t = \hexa{F0}$, do nothing,
+
+  \item otherwise, if $x_t \notin \{\hexa{F0}, \hexa{E0}\}$, output the
+  character corresponding to ($x_t$).
+\end{itemize}
+
+Said otherwise, at any time $t$, the driver can be in 3 different {\em states}
+$S_t$, which can be noted 1 for $x_{t-1}=\hexa{F0}$, 2 for $x_{t-1}=\hexa{E0}$,
+and 0 for all other cases. Each input $x_t$ triggers an {\em action} $A$
+(output a character or do nothing) which depends on $S_t$ and $x_t$. It also
+makes the driver {\em transition} to a new state $S_{t+1}$, depending on $x_t$.
+This can be summarized in a {\em transition table}, or represented in a
+diagram, as follows:
+
+\begin{center}
+\input{figures/chapter6/automaton.tex}\hspace{3mm}
+\begin{tabular}[b]{|c|c|c|c|c|c|c|}
+  \cline{1-6}
+  \multicolumn{2}{|c|}{\makecell[c]{$x_t = \hexa{F0}$}} &
+  \multicolumn{2}{c|}{$x_t = \hexa{E0}$} &
+  \multicolumn{2}{c|}{otherwise} &
+  \multicolumn{1}{c}{} \\ \hline
+
+  $S_{t+1}$ & $A$ & $S_{t+1}$ & $A$ & $S_{t+1}$ & $A$ & \makecell[c]{$S_t$} \\
+  \hline
+
+  1 & $\emptyset$ & 2 & $\emptyset$ & 0 & $c(x_t)$ & \makecell[c]{0} \\ \hline
+  -- & -- & -- & -- & 0 & $\emptyset$ & \makecell[c]{1} \\ \hline
+
+  1 & $\emptyset$ & -- & -- & 0 & $e(x_t)$ & \makecell[c]{2} \\ \hline
+\end{tabular}
+\end{center}
+
+\noindent where $\emptyset$ means ``do nothing'', $c(x)$ and $e(x)$ mean
+``output the character corresponding to ($x$) and (\hexa{E0}, $x$)'',
+respectively, and ``--'' are cases which cannot happen. Such a system is called
+a {\em finite state automaton} or {\em finite state machine}.
+
+To handle the Shift key\footnote{The MCSaite keyboard has only a left Shift
+key. We thus ignore the right Shift key (which emits \hexa{59}).} we can use a
+bit $s$ set to 1 when this key is pressed (which emits \hexa{12}) and reset to
+0 when it is released (which emits \hexa{F0}, \hexa{12}). This adds a new
+column and two actions in the transition table (an alternative is to duplicate
+each state, but this gives a larger transition table):
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+  \cline{1-8}
+  \multicolumn{2}{|c|}{\makecell[c]{$x_t = \hexa{12}$}} &
+  \multicolumn{2}{c|}{$x_t = \hexa{F0}$} &
+  \multicolumn{2}{c|}{$x_t = \hexa{E0}$} &
+  \multicolumn{2}{c|}{otherwise} &
+  \multicolumn{1}{c}{} \\ \hline
+
+  0 & $s \leftarrow 1$ & 1 & $\emptyset$ & 2 & $\emptyset$ & 0 & $c(x_t,s)$ &
+  \makecell[c]{$S_t=0$} \\ \hline
+
+  0 & $s \leftarrow 0$ & -- & -- & -- & -- & 0 & $\emptyset$ &
+  \makecell[c]{$S_t=1$} \\ \hline
+
+  -- & -- & 1 & $\emptyset$ & -- & -- & 0 & $e(x_t,s)$ & \makecell[c]{$S_t=2$}
+  \\ \hline
+\end{tabular}
+\end{center}
+
+\noindent where $c(x_t,s)$ and $e(x_t,s)$ are now extended to output one
+character or another, depending on the Shift key state $s$.
+
+The exception sequence (\hexa{E1}, \hexa{14}, \hexa{77}, \hexa{E1}, \hexa{F0},
+\hexa{14}, \hexa{F0}, \hexa{77}) for the ``Pause'' key can be seen as 3
+sequences (\hexa{E1}, \hexa{14}, \hexa{77}), (\hexa{E1}, \hexa{F0}, \hexa{14}),
+and (\hexa{F0}, \hexa{77}). The last one is already handled. The first two can
+be managed with a new state $S=3$, a transition from $S=0$ to $S=3$ when
+$x_t=\hexa{E1}$, and from $S=3$ to $S=1$ for any scancode. Indeed, with the
+next transition from $S=1$ to $S=0$, this reads 3 scancodes. To simplify we use
+empty actions for these transitions, \ie, we do nothing when ``Pause'' is
+pressed.
+
+Finally, the exception sequence (\hexa{E0}, \hexa{12}, \hexa{E0}, \hexa{7C})
+emitted by ``PrintScreen'' can be seen as two normal sequences. We can then do
+nothing for the first, and associate the second with ``PrintScreen''. One issue
+is that releasing this key emits (\ldots, \hexa{E0}, \hexa{F0}, \hexa{12}).
+With the above transition table, this is interpreted as releasing the Shift
+key, which is wrong. To detect this case we introduce a fifth state, $S=4$.
+This leads to our final transition table:
+
+\begin{center}
+  \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
+    \cline{1-10}
+    \multicolumn{2}{|c|}{\makecell[c]{$x_t = \hexa{12}$}} &
+    \multicolumn{2}{c|}{$x_t = \hexa{F0}$} &
+    \multicolumn{2}{c|}{$x_t = \hexa{E0}$} &
+    \multicolumn{2}{c|}{$x_t = \hexa{E1}$} &
+    \multicolumn{2}{c|}{otherwise} &
+    \multicolumn{1}{c}{} \\ \hline
+
+    0 & $s \leftarrow 1$ & 1 & $\emptyset$ & 2 & $\emptyset$ & 3 & $\emptyset$
+    & 0 & $c(x_t,s)$ & \makecell[c]{$S_t=0$} \\ \hline
+
+    0 & $s \leftarrow 0$ & -- & -- & -- & -- & -- & -- & 0 & $\emptyset$ &
+    \makecell[c]{$S_t=1$} \\ \hline
+
+    0 & $\emptyset$ & 4 & $\emptyset$ & -- & -- & -- & -- & 0 & $e(x_t,s)$ &
+    \makecell[c]{$S_t=2$} \\ \hline
+
+    -- & -- & 1 & $\emptyset$ & -- & -- & -- & -- & 1 & $\emptyset$ &
+    \makecell[c]{$S_t=3$} \\ \hline
+
+    0 & $\emptyset$ & -- & -- & -- & -- & -- & -- & 0 & $\emptyset$ &
+    \makecell[c]{$S_t=4$} \\ \hline
+  \end{tabular}
+\end{center}
+
+\subsubsection{Character queue}
+
+Some actions of the above finite state machine ``output a character'', but what
+does this mean exactly? For the reasons explained in \cref{section:nvic}, we
+want to implement this machine in an interrupt handler. The output characters
+should thus be stored somewhere in memory, where the main program can later
+read them. To simplify, we use a single byte storage $b$, at a fixed memory
+address, and use $b=0$ to represent an empty storage (this value cannot
+be output by any key). The action ``output a character $c$'' can then be
+specified as follows:
+
+\begin{flushleft}
+  $\mathbf{put\_char}(c)$: if $b=0$ store $c$ in $b$, otherwise do nothing
+  (\ie, drop $c$).
+\end{flushleft}
+
+The main program could then read a character with the following function, which
+returns a character $c$ if there is one in storage, or 0 otherwise:
+
+\begin{flushleft}
+  $\mathbf{get\_char}()$: copy $b$ in $c$, then store 0 in $b$, then return
+  $c$.
+\end{flushleft}
+
+In fact this function has a bug. Indeed, it can be interrupted at any time. The
+put\_char function might therefore be called at any time, for instance between
+the first and second steps of get\_char. The following scenario could then
+happen: $b$ is currently 0, the first step stores 0 into $c$, put\_char($d$)
+runs and stores $d$ in $b$, get\_char resumes, stores $0$ in $b$ and returns 0.
+The end result is that $d$ is lost! To avoid this, a solution is to disable the
+USART interrupt at the beginning of get\_char, and to re-enable it at the end
+(before the return). This ensures a {\em mutual exclusion} of the instructions
+using the shared storage $b$, via their {\em atomicity} (\ie, the fact that
+they can't be interrupted).
+
+Note that characters could still be dropped, in put\_char, if they are typed
+faster than they are read. To avoid this more memory could be used to store
+them in a {\em queue}, until they are read. A queue is a ``First In, First
+Out'' (FIFO) data structure. It is a bit more complex to implement than a stack
+-- a ``Last In, First Out'' (LIFO) data structure, which is why we use a single
+byte storage instead.
+
+\subsubsection{Character tables}
+
+To complete our design we need to specify the above $c(x,s)$ and $e(x,s)$
+functions. The latter corresponds to keys which don't have ASCII codes (except
+the numeric pad ``/'' and ``Enter'' keys). We can thus choose $e(x,s)$ as we
+want in $[128,255]$. Note also that $x<128$ in (\hexa{E0},$x$) sequences (see
+\cref{appendix:scancodes}). Hence, and since Shift has no effect on these keys,
+we can simply use $e(x,s)=x+128$.
+
+The $c(x,s)$ function can be obtained by combining the tables in
+\cref{appendix:ascii,appendix:scancodes}. For instance, $c(\hexa{1C},s)$ is
+obtained by looking up the key corresponding to (\hexa{1C}), namely ``a / A'',
+and then by looking up the ASCII codes for ``a'' and ``A'', namely \hexa{61}
+and \hexa{41}. This gives $c(\hexa{1C},0)=\hexa{61}$ and
+$c(\hexa{1C},1)=\hexa{41}$. Some ($x$) sequences do not have any associated
+ASCII code, such as \hexa{01}. In such cases we can set $c(x,s)$ to any value
+in $[128,255]$ not already used. Finally, we can use $c(x,s)=0$ for cases which
+cannot happen, such as $x=\hexa{00}$. By doing this for all scancodes, and with
+the choices listed in \cref{table:code_tables_choices}, we get the following
+character tables for $s=0$ and $s=1$, each with 132 elements (listed from right
+to left):
+
+\begin{flushright}
+  \tt \small \rs{keyboard::code_tables_listing()}
+\end{flushright}
+
+\begin{Table}
+\begin{tabular}{|ll|ll|ll|ll|} \hline
+  \makecell{\thead{Key}} & \thead{Char} &
+  \thead{Key} & \thead{Char} &
+  \thead{Key} & \thead{Char} &
+  \thead{Key} & \thead{Char} \\ \hline
+
+  \rs{keyboard::code_tables_choices()} \\ \hline
+ \end{tabular}
+
+  \caption{The characters chosen for keys without ASCII
+  code.}\label{table:code_tables_choices}
+\end{Table}
+
+\subsection{Implementation}\label{subsection:keyboard-driver-impl}
+
+\rust{
+  let driver_address = context.memory_region("graphics_card_driver").end();
+  let mut b = BytecodeAssembler::new(RegionKind::Default, driver_address);
+  b.import_labels(context.memory_region("graphics_card_driver"));
+
+  const KEYBOARD_HANDLER_STATE: u32 = 0x400E1A90;
+  const KEYBOARD_HANDLER_SHIFT: u32 = 0x400E1A94;
+  const KEYBOARD_HANDLER_CHAR: u32 = 0x400E1A98;
+
+  b.label("ASCII_CODES");
+  for ascii_code in keyboard::code_tables() {
+    b.u8_data(ascii_code);
+  }
+  b.write("part2/generated/chapter6/ignored.tex", "binary");
+}
+
+We can finally implement our keyboard driver. We start by storing the above
+tables just after the graphics card driver, \ie, at address
+\rs{hex(driver_address)}. The value $c(x,s)$ is then given by the byte at
+offset $x+132s$ from this address. We continue with a function to initialize
+the driver state ($S$, $s$, and $b$) and the USART component:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("keyboard_init", &[], "", &[])}
+
+Initialize $S$, $s$, and $b$ to 0. Each could be stored in one byte but, in
+order to simplify the code, we use one word for each, at addresses
+\rs{hex(KEYBOARD_HANDLER_STATE)}, \rs{hex(KEYBOARD_HANDLER_SHIFT)}, and
+\rs{hex(KEYBOARD_HANDLER_CHAR)}, respectively. These are some ``General Purpose
+Backup Registers'' in the ``Controllers'' memory region (see
+\cref{fig:boot-memory-map} and Chapter 17 in \cite{SAM3X8E}).
+
+\bytecode[switchcolumn]{
+  b.cst(KEYBOARD_HANDLER_STATE);
+  b.cst_0();
+  b.store();
+  b.cst(KEYBOARD_HANDLER_SHIFT);
+  b.cst_0();
+  b.store();
+  b.cst(KEYBOARD_HANDLER_CHAR);
+  b.cst_0();
+  b.store();
+}
+
+Configure the PA10 and PA17 pins as inputs with the PIO A Enable Register.
+
+\bytecode[switchcolumn]{
+  b.cst(PIOA_PER);
+  b.cst(0x20400);
+  b.store();
+}
+
+Enable the USART component clock (Peripheral clock 17) with the Peripheral
+Clock Enable Register.
+
+\bytecode[switchcolumn]{
+  b.cst(PMC_PCER0);
+  b.cst(0x20000);
+  b.store();
+}
+
+Configure the USART component for the PS/2 signals with the USART Mode Register
+(see \cref{section:usart}).
+
+\bytecode[switchcolumn]{
+  b.cst(USART_MR.address);
+  b.cst(0x3F0);
+  b.store();
+}
+
+Configure the USART component to trigger an interrupt when a scancode is
+received, with the USART Interrupt Enable Register.
+
+\bytecode[switchcolumn]{
+  b.cst(USART_IER.address);
+  b.cst_1();
+  b.store();
+}
+
+Enable the USART interrupt with the NVIC Interrupt Set-Enable Register.
+
+\bytecode[switchcolumn]{
+  b.cst(NVIC_ISER0);
+  b.cst(0x20000);
+  b.store();
+}
+
+Enable the USART receiver with the USART Control Register and return.
+
+\bytecode[switchcolumn]{
+  b.cst(USART_CR.address);
+  b.cst8(16);
+  b.store();
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+We then implement the put\_char and get\_char functions, as well as a
+wait\_char function which repeatedly calls get\_char until it returns a
+non-zero value:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("keyboard_put_char", &["c"], "", &["private"])}
+
+If $b \ne 0$ go to the end of the function (the character queue is full, drop
+$c$).
+
+\bytecode[switchcolumn]{
+  b.cst(KEYBOARD_HANDLER_CHAR);
+  b.load();
+  b.cst_0();
+  b.ifne("put_char_full");
+}
+
+Store $c$ (the function's $0^{th}$ argument) in $b$.
+
+\bytecode[switchcolumn]{
+  b.cst(KEYBOARD_HANDLER_CHAR);
+  b.get("c");
+  b.store();
+}
+
+Return.
+
+\bytecode[switchcolumn]{
+  b.label("put_char_full");
+  b.ret();
+}
+
+\switchcolumn
+~
+\switchcolumn*
+
+\rs{b.func("keyboard_get_char", &[], "c", &[])}
+
+Disable the USART interrupt with the NVIC Interrupt Clear-Enable Register.
+
+\bytecode[switchcolumn]{
+  b.cst(NVIC_ICER0);
+  b.cst(0x20000);
+  b.store();
+}
+
+Push $b$ on the stack. This is the value returned by the \insn{retv}
+instruction below.
+
+\bytecode[switchcolumn]{
+  b.cst(KEYBOARD_HANDLER_CHAR);
+  b.load();
+}
+
+Store 0 in $b$.
+
+\bytecode[switchcolumn]{
+  b.cst(KEYBOARD_HANDLER_CHAR);
+  b.cst_0();
+  b.store();
+}
+
+Re-enable the USART interrupt with the NVIC Interrupt Set-Enable Register.
+
+\bytecode[switchcolumn]{
+  b.cst(NVIC_ISER0);
+  b.cst(0x20000);
+  b.store();
+}
+
+Return the top stack value.
+
+\bytecode[switchcolumn]{
+  b.retv();
+}
+
+\switchcolumn
+~
+\switchcolumn*
+
+\rs{b.func("keyboard_wait_char", &[], "c", &[])}
+
+Initialize $c$ to 0.
+
+\bytecode[switchcolumn]{
+  b.cst_0();
+  b.def("c");
+}
+
+Call {\tt keyboard\_get\_char} and store the result in $c$.
+
+\bytecode[switchcolumn]{
+  b.label("loop");
+  b.call("keyboard_get_char");
+  b.set("c");
+}
+
+If $c$ is 0 go back above to try again.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst_0();
+  b.ifeq("loop");
+}
+
+Otherwise return $c$, the top stack value.
+
+\bytecode[switchcolumn]{
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+The put\_char function allows us to implement the actions of our Finite State
+Machine. We use one function per action, for the ``do nothing'', ``s
+$\leftarrow$ 0'', ``s $\leftarrow$ 1'', ``output $e(x,s)$'' and ``output
+$c(x,s)$'' actions, respectively:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("keyboard_skip_code", &["scancode"], "", &["private"])}
+
+Do nothing.
+
+\bytecode[switchcolumn]{
+  b.ret();
+}
+
+\rs{b.func("keyboard_release_shift", &["scancode"], "", &["private"])}
+
+Set $s$ to $0$.
+
+\bytecode[switchcolumn]{
+  b.cst(KEYBOARD_HANDLER_SHIFT);
+  b.cst_0();
+  b.store();
+  b.ret();
+}
+
+\rs{b.func("keyboard_press_shift", &["scancode"], "", &["private"])}
+
+Set $s$ to $132$. We premultiply $s$ by 132 to simplify the
+\verb!keyboard_put_code! function below.
+
+\bytecode[switchcolumn]{
+  b.cst(KEYBOARD_HANDLER_SHIFT);
+  b.cst8(132);
+  b.store();
+  b.ret();
+}
+
+\rs{b.func("keyboard_put_extended_code", &["scancode"], "", &["private"])}
+
+Output $e(scancode,s)=scancode+128$ with the \verb!keyboard_put_char! function.
+
+\bytecode[switchcolumn]{
+  b.get("scancode");
+  b.cst8(128);
+  b.add();
+  b.call("keyboard_put_char");
+  b.ret();
+}
+
+\rs{b.func("keyboard_put_code", &["scancode"], "", &["private"])}
+
+Compute the address of the byte containing $c(scancode,s)$, namely
+\rs{hex(b.label_address("ASCII_CODES"))} + $scancode$ + $s$ ($s$ is
+premultiplied by 132, see above).
+
+\bytecode[switchcolumn]{
+  b.cst(b.label_address("ASCII_CODES"));
+  b.get("scancode");
+  b.add();
+  b.cst(KEYBOARD_HANDLER_SHIFT);
+  b.load();
+  b.add();
+}
+
+Call \verb!load_byte! to load the byte at this address, output it with
+\verb!keyboard_put_char!.
+
+\bytecode[switchcolumn]{
+  b.call("load_byte");
+  b.call("keyboard_put_char");
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+In turn, these functions allow us to implement the transition table of the
+Finite State Machine. We represent it with one byte per cell, from right to
+left and top to bottom. We store in each ``action'' cell the address of the
+corresponding function (minus the address of \verb!keyboard_skip_code! so that
+the result fits in one byte). We also premultiply the ``next state'' cell
+values by 10, the number of columns, so that a state value directly gives the
+offset of the beginning of its row in the transition table. The end result, with
+0s for the ``cannot happen'' cases, is the following data, stored just after the
+above functions:
+
+\bytecode[binary]{
+  let action_base = b.label_offset("keyboard_skip_code");
+  let skip = 0u8;
+  let put_code = u8::try_from(
+    b.label_offset("keyboard_put_code") - action_base).unwrap();
+  let put_extended_code = u8::try_from(
+    b.label_offset("keyboard_put_extended_code") - action_base).unwrap();
+  let press_shift = u8::try_from(
+    b.label_offset("keyboard_press_shift") - action_base).unwrap();
+  let release_shift = u8::try_from(
+    b.label_offset("keyboard_release_shift") - action_base).unwrap();
+  let mut automaton = Vec::<u8>::new();
+  automaton.extend([
+    put_code, 0, skip, 30, skip, 20, skip, 10, press_shift, 0]);
+  automaton.extend([
+    skip, 0, skip, 0, skip, 0, skip, 0, release_shift, 0]);
+  automaton.extend([
+    put_extended_code, 0, skip, 0, skip, 0, skip, 40, skip, 0]);
+  automaton.extend([
+    skip, 10, skip, 0, skip, 0, skip, 10, skip, 0]);
+  automaton.extend([
+    skip, 0, skip, 0, skip, 0, skip, 0, skip, 0]);
+  b.label("AUTOMATON");
+  for value in automaton {
+    b.u8_data(value);
+  }
+}
+
+In order to read the action and next state corresponding to a scancode in this
+table, it is useful to have a function returning its ``action column'' index
+(numbered from right to left):
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("keyboard_action_column", &["scancode"], "c", &["private"])}
+
+If $scancode \ne \hexa{12}$, skip the next two instructions.
+
+\bytecode[switchcolumn]{
+  b.get("scancode");
+  b.cst8(0x12);
+  b.ifne("not_0x12");
+}
+
+Otherwise ($scancode = \hexa{12}$) return 8.
+
+\bytecode[switchcolumn]{
+  b.cst8(8); // if = 0x12
+  b.retv();
+}
+
+If $scancode \ge 132$, skip the next two instructions.
+
+\bytecode[switchcolumn]{
+  b.label("not_0x12");
+  b.get("scancode");
+  b.cst8(132);
+  b.ifge("greater_132");
+}
+
+Otherwise ($scancode < 132$) return 0.
+
+\bytecode[switchcolumn]{
+  b.cst_0(); // if < 0x12
+  b.retv();
+}
+
+If $scancode \ne \hexa{E0}$, skip the next two instructions.
+
+\bytecode[switchcolumn]{
+  b.label("greater_132");
+  b.get("scancode");
+  b.cst8(0xE0);
+  b.ifne("not_0xE0");
+}
+
+Otherwise ($scancode = \hexa{E0}$) return 4.
+
+\bytecode[switchcolumn]{
+  b.cst8(4); // if = 0xE0
+  b.retv();
+}
+
+If $scancode \ne \hexa{F0}$, skip the next two instructions.
+
+\bytecode[switchcolumn]{
+  b.label("not_0xE0");
+  b.get("scancode");
+  b.cst8(0xF0);
+  b.ifne("not_0xF0");
+}
+
+Otherwise ($scancode = \hexa{F0}$) return 6.
+
+\bytecode[switchcolumn]{
+  b.cst8(6); // if = 0xF0
+  b.retv();
+}
+
+In any other case return 2 ($scancode$ is necessarily equal to \hexa{E1}).
+
+\bytecode[switchcolumn]{
+  b.label("not_0xF0");
+  b.cst8(2); // if = 0xE1
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+With this we can finally implement the interrupt handler. This function reads a
+scancode and executes the corresponding Finite State Machine transition:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("keyboard_handler", &[], "", &[])}
+
+Read the newly received scancode $x$ in the USART Receive Holding Register.
+
+\bytecode[switchcolumn]{
+  b.cst(USART_RHR.address);
+  b.load();
+  b.def("x");
+}
+
+Compute the address $a$ of the transition table row corresponding to the
+current state (\rs{hex(b.label_address("AUTOMATON"))} + $S$, since state values
+are premultiplied by 10).
+
+\bytecode[switchcolumn]{
+  b.cst(b.label_address("AUTOMATON"));
+  b.cst(KEYBOARD_HANDLER_STATE);
+  b.load();
+  b.add();
+  b.def("a");
+}
+
+Add the action column index of $x$ (available in the $4^{th}$ stack frame slot)
+to $a$, with the help of \verb!keyboard_action_column!.
+
+\bytecode[switchcolumn]{
+  b.get("x");
+  b.call("keyboard_action_column");
+  b.add();
+}
+
+Push $x$ on the stack.
+
+\bytecode[switchcolumn]{
+  b.get("x");
+}
+
+Compute the address of the action function
+\rs{hex(b.label_address("keyboard_skip_code"))} + \verb!load_byte!($a$) ($a$ is
+in the $5^{th}$ stack frame slot).
+
+\bytecode[switchcolumn]{
+  b.cst(b.label_address("keyboard_skip_code"));
+  b.get("a");
+  b.call("load_byte");
+  b.add();
+}
+
+Call this function on $x$ (pushed above).
+
+\bytecode[switchcolumn]{
+  b.calld();
+}
+
+Update $S$ to the next state value, given by \verb!load_byte!($a+1$), and
+return.
+
+\bytecode[switchcolumn]{
+  b.cst(KEYBOARD_HANDLER_STATE);
+  b.get("a");
+  b.cst_1();
+  b.add();
+  b.call("load_byte");
+  b.store();
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+In summary, the most important functions provided by our keyboard driver are
+those in \cref{table:keyboard_driver_functions} and its full code and data
+(besides the two 132 characters tables) is:
+
+\rs{b.get_bytecode_listing(2 * 132..b.get_instruction_count() as usize, false)}
+
+\begin{Table}
+  \begin{tabular}{|l|l|} \hline
+    \makecell{\thead{Function}} & \thead{Address} \\ \hline
+    \rs{MemoryRegion::labels_table_rows(vec![&b.memory_region()])} \\ \hline
+  \end{tabular}
+
+  \caption{The most important keyboard driver
+  functions.}\label{table:keyboard_driver_functions}
+\end{Table}
+
+\rust{
+  let usart0_handler_base = context.memory_region("hard_fault_handler").end();
+}
+
+The last piece that we need is to configure the Vector Table entry for the
+USART interrupt to call our \verb!keyboard_handler!. Since this handler is
+using bytecode instructions, we actually need to call our bytecode interpreter,
+with the \verb!keyboard_handler! address as initial Instruction Counter. We
+also need to save and restore the [R0-R6] registers, used by the interpreter,
+before and after this call. In fact we can save only [R4-R6] since the
+microprocessor already saves and restores [R0-R3] on interrupt entry and
+return. This gives the following Cortex M3 instructions, which we put after the
+Hard Fault handler (\ie, starting at \rs{hex(usart0_handler_base)}):
+
+\rust{
+  let mut a = Assembler::new(usart0_handler_base);
+  a.ldr_rt_pc_imm8(2, "bytecode handler program");
+  a.ldr_rt_pc_imm8(0, "interpreter");
+  a.push_list(&[4, 5, 6], true);
+  a.blx_rm(0);
+  a.pop_list(&[4, 5, 6], true);
+  a.u16_data(0, "padding, unused");
+  a.label("bytecode handler program");
+  a.u32_data(
+    b.label_address("keyboard_handler"),
+    "address of keyboard\\_handler function");
+  a.label("interpreter");
+  a.u32_data(
+    context.memory_region("interpreter").start + 1,
+    "interworking address of interpreter");
+}
+\rs{a.get_listing(0..a.get_instruction_count() as usize)}
+
+\noindent where POP moves the LR saved by PUSH into the PC, in order to resume
+the execution of the interrupted program. Finally, we need to store the
+interworking address of this USART handler at offset \hexa{84} in the Vector
+Table. The boot assistant commands to do this, and to flash the keyboard driver
+and the above instructions are provided in \verb!part2/keyboard_driver.txt!.
+Run them with:
+
+\rust{
+  const VECTOR_TABLE: u32 = 0x80000;
+  const USART0_ID: u32 = 17;
+
+  let mut commands = Vec::new();
+  commands.extend(b.boot_assistant_commands());
+  commands.extend(a.boot_assistant_commands());
+  commands.push(format!(
+    "W{:X},{:08X}#",
+    VECTOR_TABLE + (16 + USART0_ID) * 4,
+    usart0_handler_base | 1
+  ));
+  commands.push(String::from("flash#"));
+  write_lines("website/part2", "keyboard_driver.txt", &commands)?;
+  context.add_memory_region("keyboard_driver", b.memory_region());
+  context.add_memory_region("usart0_handler", a.memory_region());
+  let mut flash_helper = FlashHelper::from_file(
+    context.micro_controller(), "website/", "part2/keyboard_driver.txt")?;
+}
+\rs{host_log(&flash_helper.read())}
+
+\section{Experiments}
+
+\begin{Figure}
+  \input{figures/chapter6/connections.tex}
+
+  \caption{How to connect the Arduino Due and the keyboard, via a level
+    converter.}\label{fig:keyboard-connection}
+\end{Figure}
+
+In order to test our driver we can try to display on the screen each key typed
+on the keyboard. First of all, we need to connect the keyboard to the Arduino.
+PS/2 keyboards need a 5V power source and generate 5V CLOCK and DATA signals.
+The Arduino Due has a 5V output pin, but only supports 3.3V inputs. To connect
+the two we thus need an adapter, called a {\em level converter}. This component
+is essentially a switch on a 3.3V circuit, controlled by a 5V input (see
+\cref{fig:level-converter}). The 4 channel Logic Level Converter listed in
+\cref{table:bom} provides 4 such switches. To use this small board you need to
+solder header pins on it. For this the easiest is to plug the header pins on
+the breadboard as shown in \cref{fig:keyboard-connection}, place the board on
+top of them, and solder the pins in place (see more detailed instructions at
+\toypcurl{assembly.html}). Then, using jumper wires, connect:
+\begin{itemize}
+  \item the GND, LV, and HV pins to the Arduino’s GND, 3.3V, and 5V pins,
+
+  \item the GND and HV pins to the GND and VCC pins of the mini-DIN connector,
+
+  \item the CLOCK pin of the mini-DIN connector to the Arduino pin SDA1
+  (corresponding to PA17, see \cref{fig:arduino-due}), via the LV4 / HV4 pins
+  of the Level Converter,
+
+  \item the DATA pin of the mini-DIN connector to the Arduino pin 19
+  (corresponding to PA10, see \cref{fig:arduino-due}), via the LV3 / HV3 pins
+  of the Level Converter.
+\end{itemize}
+
+We can then write a main function, at its expected address
+\rs{hex(STARTUP_PROGRAM)} (see \cref{fig:bios-memory-map}), to display on the
+screen each key typed on the keyboard. We start the main function with calls to
+\verb!boot_mode_select_rom!, \verb!clock_init!, \verb!gpu_init!, and
+\verb!keyboard_init! (see \cref{table:clock_driver_functions,%
+table:gpu_driver_functions,table:keyboard_driver_functions}). We then set the
+foreground color to green $(0, 7, 0)$:
+
+\rust{
+  const STARTUP_PROGRAM: u32 = 0xC2000;
+  let mut b = BytecodeAssembler::new(RegionKind::Default, STARTUP_PROGRAM);
+  b.import_labels(context.memory_region("clock_driver"));
+  b.import_labels(context.memory_region("foundations"));
+  b.import_labels(context.memory_region("graphics_card_driver"));
+  b.import_labels(context.memory_region("keyboard_driver"));
+}
+\begin{TwoColumns}
+\bytecode{
+  b.func("main", &[], "", &[]);
+  b.call("boot_mode_select_rom");
+  b.call("clock_init");
+  b.call("gpu_init");
+  b.call("keyboard_init");
+  b.cst_0();
+  b.cst8(7);
+  b.cst_0();
+  b.call("gpu_set_color");
+}
+\end{TwoColumns}
+
+Finally, we draw each character read from the keyboard, in an
+endless loop:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+Read a character.
+
+\bytecode[switchcolumn]{
+  b.label("infinite_loop");
+  b.call("keyboard_wait_char");
+}
+
+Draw it on the screen.
+
+\bytecode[switchcolumn]{
+  b.call("gpu_draw_char");
+}
+
+Repeat.
+
+\bytecode[switchcolumn]{
+  b.goto("infinite_loop");
+}
+\end{paracol}
+\end{Paragraph}
+
+To run this main function we need to store it in flash memory and to restart
+the Arduino with the boot mode selection set to boot from flash. We provide the
+necessary boot assistant commands in {\tt part2/keyboard\_driver\_test.txt}.
+Run them with:
+
+\rust{
+  let mut lines = Vec::new();
+  lines.extend(b.boot_assistant_commands());
+  lines.push(String::from("flash#"));
+  lines.push(String::from("reset#"));
+  write_lines("website/part2", "keyboard_driver_test.txt", &lines)?;
+  let mut flash_helper = FlashHelper::from_file(
+    context.micro_controller(),
+    "website/","part2/keyboard_driver_test.txt")?;
+}
+\rs{host_log(&flash_helper.read())}
+
+If all goes well, you should see a black screen with a blinking cursor on the
+top left corner. More importantly, if you type something on the keyboard, you
+should see it on the screen. You can test that the Shift key works as expected,
+that ``Pause'' does nothing, etc. Note that non character keys, such as the
+arrow keys, F1, F2, etc, still draw characters on the screen. This is because
+the graphics card font has characters for all values in [0-255], including
+those of the Latin-1 character set (ISO 8859-1). Thus, for instance, pressing
+the ``Delete'' key, which emits the scancodes (\hexa{E0},\hexa{71}), draws
+\~{n} because \hexa{F1} = \hexa{71} + 128 corresponds to \~{n} in Latin-1. When
+you are done testing the keyboard, turn off the Arduino.
+
+\rust{
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+
+  context.run_until_get_char();
+  context.type_keys(vec!["M", "Shift", "M", "~Shift", "H"]);
+
+  assert_eq!(display.borrow().get_text(), "mMh");
+  context.micro_controller().borrow_mut().reset();
+}
+
+\begin{Figure}
+  \input{figures/chapter6/level-converter.tex}
+
+  \caption{A schematic diagram of the level converter between the keyboard and
+  the Arduino (actually built with transistors instead of
+  relays).}\label{fig:level-converter}
+\end{Figure}

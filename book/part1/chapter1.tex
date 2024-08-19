@@ -1,0 +1,503 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter{Binary Numbers}\label{chapter:binary-numbers}
+
+As its name implies, a computer performs computations, on numbers. A number is
+an abstract concept which can be represented in many different concrete ways.
+For example, the number of days in a week can be represented with ``seven'',
+``7'', ``VII'', etc. Some representation methods, also called numeral systems,
+are more practical than others to perform computations. For instance, doing
+additions and multiplications is easier in the arabic numeral system than in
+the roman one. In fact they are even easier to do in the so called {\em binary
+numeral system}. Computers use it for this reason. In order to understand how
+they work it is thus necessary to know first what binary numbers are, and how
+to compute with them. This is the goal of this chapter.
+
+\section{Binary numbers}
+
+An arabic number such as 237 represents 2 times 100, plus 3 times 10, plus 7
+times 1. In mathematical notation this gives
+$$237 = 2*100+3*10+7*1 = 2*10^2+3*10^1+7*10^0$$
+where $x^n$ denotes 1 if $n=0$, or $x * x * \ldots\,x$ ($n$ times) otherwise.
+In other words, an arabic number is a sequence of digits between 0 and 9, where
+the $i^{th}$ digit from the right (counting from 0) represents a quantity of
+$10^i$.
+
+A binary number is similar but uses two digits instead of ten, namely 0 and 1,
+called {\em bits}. It is thus a sequence of bits, where the $i^{th}$ bit from
+the right (counting from 0) represents a quantity of $2^i$. For example
+$$101_2 = 1*2^2+0*2^1+1*2^0 = 1*4+0*2+1*1 = 5$$
+where the subscript 2 indicates a binary number (to avoid confusions with
+arabic numbers; $101_2 = 5 \ne 101$ = ``one hundred one''). Another example is
+\begin{align*}
+11101101_2 &= 1*2^7+1*2^6+1*2^5+0*2^4+1*2^3+1*2^2+0*2^1+1*2^0\\
+  &=1*128+1*64+1*32+0*16+1*8+1*4+0*2+1*1\\
+  &=237
+\end{align*}
+
+The leftmost bit of a binary number is called its {\em most significant} bit.
+Conversely, the rightmost bit is called the {\em least significant}. The
+$i^{th}$ bit from the right (counting from 0), is called bit number $i$, or
+simply bit $i$.
+
+Some numbers have a very simple binary representation and are frequently used.
+For instance, $2^n$ is a one followed by $n$ zeros in binary, like $10^n$ in
+arabic notation. Another example is $2^n-1$, which is simply $n$ ones (like
+$10^n-1$ is $n$ nines in arabic). \cref{table:powers-of-two} gives some
+examples of these numbers.
+
+\begin{Table}
+  \begin{tabular}{|r|r|r|r|r|}\hline
+    \makecell{\thead[r]{n}} &
+      \thead[r]{$2^n$} & \thead[r]{$2^n$} &
+      \thead[r]{$2^n-1$} & \thead[r]{$2^n-1$} \\ \hline
+    \makecell[r]{$0$} & $1$ & $1_2$ & $0$ & $0$ \\
+    \makecell[r]{$1$} & $2$ & $10_2$ & $1$ & $1$ \\
+    \makecell[r]{$2$} & $4$ & $100_2$ & $3$ & $11_2$ \\
+    \makecell[r]{$3$} & $8$ & $1000_2$ & $7$ & $111_2$ \\
+    \makecell[r]{$4$} & $16$ & $10000_2$ & $15$ & $1111_2$ \\
+    \makecell[r]{$5$} & $32$ & $100000_2$ & $31$ & $11111_2$ \\
+    \makecell[r]{$6$} & $64$ & $1000000_2$ & $63$ & $111111_2$ \\
+    \makecell[r]{$7$} & $128$ & $10000000_2$ & $127$ & $1111111_2$ \\
+    \makecell[r]{$8$} & $256$ & $100000000_2$ & $255$ & $11111111_2$ \\
+    \makecell[r]{$16$} & $65536$ & $10000000000000000_2$
+      & $65535$ & $1111111111111111_2$ \\ \hline
+  \end{tabular}
+  \caption{Some frequently used powers of 2, in arabic and binary
+  notation.}\label{table:powers-of-two}
+\end{Table}
+
+\section{Arithmetic operations}
+
+\subsection{Addition}\label{subsection:binary-add}
+
+Adding two binary numbers can be done as with arabic numbers. Namely one column
+at a time, from right to left. For instance, adding $1101010_2$ and $101110_2$
+can be done as follows:
+
+\newlength{\defaulttabcolsep}
+\setlength{\defaulttabcolsep}{\tabcolsep}
+\newcommand*{\carry}[2]{\color{red0} \overset{#1}{\textcolor{black}{#2}}}
+\newcommand*{\borrow}[2]{\color{red0} \underset{#1}{\textcolor{black}{#2}}}
+
+\setlength{\tabcolsep}{1pt}
+\begin{center}
+\begin{tabular}{rrrrrrrrr}
+  & $\carry{1}{\phantom{0}}$ & $\carry{1}{1}$ & $1$ & $\carry{1}{0}$ &
+                 $\carry{1}{1}$ & $\carry{1}{0}$ & $1$ & $0$ \\
+$+$ &              &     & $1$ & $0$ & $1$ & $1$ & $1$ & $0$ \\
+\hline \makecell{~}
+             & $1$ & $0$ & $0$ & $1$ & $1$ & $0$ & $0$ & $0$
+\end{tabular}
+\hspace{16mm}
+\begin{tabular}{rrrr}
+    & $1$ & $\carry{1}{0}$ & $6$ \\
+$+$ &                & $4$ & $6$ \\
+\hline \makecell{~}
+               & $1$ & $5$ & $2$
+\end{tabular}
+\end{center}
+\setlength{\tabcolsep}{\defaulttabcolsep}
+
+\noindent Starting from the right, we add $0$ and $0$, which gives $0$. We then
+add $1$ and $1$, which gives $2 = 10_2$. Since this is more than one bit, we
+put the least significant one, here $0$, in the current column, and we {\em
+carry} the most significant one, here $1$, in the column on the left (shown in
+red). This is similar to the addition of the equivalent arabic numbers, shown
+on the right, where $6 + 6$ gives $12$, leading to a carry of $1$.
+
+We continue by adding $0$ and $1$, plus the carry from the previous column,
+which gives $2$ again. In the next step we add $1$ and $1$, plus the carry from
+the previous column, which gives $3 = 11_2$. We thus put $1$ at the bottom of
+this column, and carry $1$ in the next one. And so on for the remaining columns.
+
+Although the overall process is the same for binary and arabic numbers, adding
+binary numbers is much easier, as stated above. Indeed, there are only $2*2=4$
+possible cases when adding two bits, but $10*10=100$ cases when adding two
+decimal digits. These four cases are summarized in \cref{table:addition-table}.
+
+\begin{Table}
+  \begin{tabular}{r|r|r|r|} \cline{2-4} result bit:
+    & \makecell{\thead[r]{a}} & \thead[r]{b} & \thead[r]{a+b} \\ \cline{2-4}
+    & \makecell{0} & 0 & 0 \\
+    & \makecell{0} & 1 & 1 \\
+    & \makecell{1} & 0 & 1 \\
+    & \makecell{1} & 1 & 0 \\ \cline{2-4}
+  \end{tabular}
+  \hspace{8mm}
+  \begin{tabular}{r|r|r|r|} \cline{2-4} carry bit:
+    & \makecell{\thead[r]{a}} & \thead[r]{b} & \thead[r]{a+b} \\ \cline{2-4}
+    & \makecell{0} & 0 & 0 \\
+    & \makecell{0} & 1 & 0 \\
+    & \makecell{1} & 0 & 0 \\
+    & \makecell{1} & 1 & 1 \\ \cline{2-4}
+  \end{tabular}
+  \caption{The binary addition tables.}\label{table:addition-table}
+\end{Table}
+
+\subsection{Subtraction}
+
+Similarly, subtracting two binary numbers can be done as with arabic numbers.
+For instance, subtracting $101110_2$ from $1101010_2$ can be done as follows:
+
+\setlength{\tabcolsep}{1pt}
+\begin{center}
+\begin{tabular}{rrrrrrrr}
+             & $1$ & $1$ & $0$ & $1$ & $0$ & $1$ & $0$ \\
+$-$ & $\borrow{1}{\phantom{0}}$ & $\borrow{1}{1}$ &
+   $\borrow{1}{0}$ & $\borrow{1}{1}$ & $1$ & $1$ & $0$ \\
+\hline \makecell{~}
+             & $0$ & $1$ & $1$ & $1$ & $1$ & $0$ & $0$
+\end{tabular}
+\hspace{16mm}
+\begin{tabular}{rrrr}
+    &                       $1$ & $0$ & $6$ \\
+$-$ & $\borrow{1}{\phantom{0}}$ & $4$ & $6$ \\
+\hline \makecell{~}
+                          & $0$ & $6$ & $0$
+\end{tabular}
+\end{center}
+\setlength{\tabcolsep}{\defaulttabcolsep}
+
+Starting from the right, we subtract $0$ from $0$, and then $1$ from $1$, which
+gives $0$ in both cases. In the next step, since we cannot subtract $1$ from
+$0$, we subtract it from $10_2=2$ instead, which gives $1$. We thus put a $1$
+in the current column, and a carry of $1$ in the subtrahend on the left column
+(shown in red). This is similar to the subtraction of the equivalent arabic
+numbers, shown on the right, where $0 - 4$ is replaced with $10 - 4$, yielding
+the result $6$ and the carry $1$.
+
+We continue by subtracting $1$, plus the carry from the previous column (\ie, a
+total of $2$), from $1$. Since this is not possible we subtract them from
+$11_2=3$ instead, which gives the result $1$ and the carry $1$. And so on for
+the remaining columns.
+
+As with additions, there are only four possible cases when subtracting two
+bits, which is much simpler than the hundred possible cases for decimal
+digits. These four cases are summarized in \cref{table:subtraction-table}.
+
+\begin{Table}
+  \begin{tabular}{r|r|r|r|} \cline{2-4} result bit:
+    & \makecell{\thead[r]{a}} & \thead[r]{b} & \thead[r]{a-b} \\ \cline{2-4}
+    & \makecell{0} & 0 & 0 \\
+    & \makecell{0} & 1 & 1 \\
+    & \makecell{1} & 0 & 1 \\
+    & \makecell{1} & 1 & 0 \\ \cline{2-4}
+  \end{tabular}
+  \hspace{8mm}
+  \begin{tabular}{r|r|r|r|} \cline{2-4} carry bit:
+    & \makecell{\thead[r]{a}} & \thead[r]{b} & \thead[r]{a-b} \\ \cline{2-4}
+    & \makecell{0} & 0 & 0 \\
+    & \makecell{0} & 1 & 1 \\
+    & \makecell{1} & 0 & 0 \\
+    & \makecell{1} & 1 & 0 \\ \cline{2-4}
+  \end{tabular}
+  \caption{The binary subtraction tables.}\label{table:subtraction-table}
+\end{Table}
+
+\subsection{Multiplication}\label{subsection:binary-mult}
+
+Multiplying two binary numbers can also be done as with arabic numbers. Namely
+by multiplying the first by each bit / digit of the second. And by adding the
+results, each shifted by one bit / digit to the left from the previous one. For
+instance, multiplying $1101010_2$ by $101110_2$ can be done as follows:
+
+\setlength{\tabcolsep}{1pt}
+\begin{center}
+  \begin{tabular}{rrrrrrrrrrrrrr}
+                        & & & & & & & $1$ & $1$ & $0$ & $1$ & $0$ & $1$ & $0$ \\
+                        & $*$ & & & & & & & $1$ & $0$ & $1$ & $1$ & $1$ & $0$ \\
+\cline{2-14} \makecell{~}
+                        & & & & & & & $0$ & $0$ & $0$ & $0$ & $0$ & $0$ & $0$ \\
+                    & & & & & & $1$ & $1$ & $0$ & $1$ & $0$ & $1$ & $0$ & \\
+                & & & & & $1$ & $1$ & $0$ & $1$ & $0$ & $1$ & $0$ & & \\
+            & & & & $1$ & $1$ & $0$ & $1$ & $0$ & $1$ & $0$ & & & \\
+        & & & $0$ & $0$ & $0$ & $0$ & $0$ & $0$ & $0$ & & & & \\
+    & & $1$ & $1$ & $0$ & $1$ & $0$ & $1$ & $0$ & & & & & \\
+\cline{2-14} \makecell{~}
+& $1$ & $0$ & $0$ & $1$ & $1$ & $0$ & $0$ & $0$ & $0$ & $1$ & $1$ & $0$ & $0$
+  \end{tabular}
+  \hspace{16mm}
+  \begin{tabular}{rrrrr}
+ &     & $1$ & $0$ & $6$ \\
+ & $*$ &     & $4$ & $6$ \\
+\cline{2-5} \makecell{~}
+ &     & $6$ & $3$ & $6$ \\
+ & $4$ & $2$ & $4$ &     \\
+\cline{2-5} \makecell{~}
+ & $4$ & $8$ & $7$ & $6$
+  \end{tabular}
+\end{center}
+\setlength{\tabcolsep}{\defaulttabcolsep}
+
+Here again, although the process is the same, multiplying binary numbers is
+much easier than arabic numbers. Indeed, multiplying the first number by each
+bit of the second boils down to multiplications by $0$ or $1$, which are
+trivial. By contrast, multiplying an arabic number by a decimal digit requires
+using a multiplication table with 100 possible cases. It also involves carries.
+
+Some multiplications are even easier to do than with the general method
+described above. In particular, multiplying $x$ by $2^n$ can be done by simply
+shifting $x$ by $n$ bits to the left, \ie, by adding $n$ zeros on the right.
+For instance, $1101010_2=106$ multiplied by $2^3=8$ is simply
+$1101010\mathbf{000}_2=848$. This is similar to multiplications by $10^n$ in
+arabic notation (for example, $46$ times $10^3=1000$ is $46\mathbf{000}$).
+Shifting a binary number $x$ by $n$ bits to the left is noted $x \ll n$.
+
+The opposite operation, shifting $x$ by $n$ bits to the right, \ie, dropping
+the $n$ least significant bits, is noted $x \gg n$. It corresponds to dividing
+$x$ by $2^n$. For instance, shifting $1101010_2=106$ by 3 bits to the right
+gives $1101_2=13=\lfloor 106 / 2^3 \rfloor$\footnote{The $\lfloor x \rfloor$
+notation designates the integer part of $x$. For instance, $106 / 8 = 13.25$
+and $\lfloor 13.25 \rfloor = 13$.}. This is similar to dropping the $n$ least
+significant digits of an arabic number, which divide it by $10^n$ (for example,
+$4876$ shifted to the right by 2 digits is $48=\lfloor 4876 / 100 \rfloor$).
+Dividing arbitrary binary numbers can be done as with arabic numbers, but is
+not presented here.
+
+\subsection{Conversions}
+
+Computers do all their computations with binary numbers because, as shown
+above, this is much easier to do than with arabic numbers. However, humans
+prefer to specify inputs with arabic numbers, and to get results in arabic too.
+This requires converting arabic numbers to binary ones, and vice versa.
+
+One method to convert an arabic number to binary is to convert each digit from
+left to right, and to multiply the result by $10$ before adding the next digit.
+For instance, to convert $46$ to binary, we start by converting $4$, which
+gives $100_2$. We multiply this by $10=8+2$, which can be done by shifting
+$100_2$ by $3$ bits and by $1$ bit to the left, and by adding the results:
+$100\mathbf{000}_2+100\mathbf{0}_2=101000_2$. Finally we convert $6$, which
+gives $110_2$ and we add this to the previous result, yielding $101110_2$. This
+method is well suited for computers since it only involves computations on
+binary numbers (plus a small conversion table for each digit from $0$ to $9$).
+
+Another method consists in dividing the arabic number by 2 repeatedly. The
+remainders give the bits of the equivalent binary number, from right to left.
+For instance, dividing $46$ by $2$ repeatedly gives $23$ (remainder $0$), $11$
+(remainder $1$), $5$ (remainder $1$), $2$ (remainder $1$), $1$ (remainder $0$),
+and $0$ (remainder $1$). The corresponding binary number is thus $101110_2$.
+Since this method involves divisions on arabic numbers, it is more adapted for
+humans than for computers.
+
+Similarly, one method to convert a binary number to arabic is to ``convert''
+each bit from left to right, and to multiply the result by $2$ before adding
+the next bit. For instance, converting $101110_2$ gives successively $1$,
+$1*2+0=2$, $2*2+1=5$, $5*2+1=11$, $11*2+1=23$, and $23*2+0=46$. Since this
+method involves multiplications of arabic numbers, it is more adapted for
+humans. But it can also be used on computers, if necessary.
+
+Another method to convert a binary number is to divide it by 10 repeatedly. The
+remainders, converted to arabic, give the digits of the equivalent arabic
+number, from right to left. It is well suited for computers since it only
+involves computations on binary numbers (plus a small conversion table for each
+binary number from $0$ to $1001_2=9$).
+
+\section{Logical operations}
+
+Binary numbers can also be used to perform {\em logical operations}, unlike
+arabic numbers. A logical operation computes whether some {\em proposition} is
+true of false, depending on the status of one or more other propositions. A
+proposition is a statement which is either true or false.
+
+Consider for example a keyboard. A proposition might be ``the E key is
+currently pressed'', ``the left Shift key is currently released'', or ``the e
+letter is currently pressed''. They are either true or false, depending on the
+current state of the keyboard. These propositions, noted
+$\mathrm{KeyPressed}(k)$, $\mathrm{KeyReleased}(k)$, and
+$\mathrm{LetterPressed}(l)$, are not completely independent. Some can be
+computed from the others. For example, we can compute $\mathrm{KeyReleased}(k)$
+as the opposite of $\mathrm{KeyPressed}(k)$. This logical operation is
+the {\em negation}, also called {\em not}, and is noted $\neg$:
+\begin{equation*}
+  \mathrm{KeyReleased}(k) = \neg \mathrm{KeyPressed}(k)
+\end{equation*}
+
+We can also compute whether the proposition ``a Shift key is pressed'' is true
+from the above propositions. Indeed, this is the case if at least one of the
+two Shift keys is pressed. This logical operation is the {\em disjunction},
+also called {\em or}, and is noted $\vee$:
+\begin{equation*}
+  \mathrm{ShiftPressed} = \mathrm{KeyPressed}(\mathrm{LeftShift}) \vee
+    \mathrm{KeyPressed}(\mathrm{RightShift})
+\end{equation*}
+
+The keyboard is in ``uppercase mode'' if a Shift key is currently pressed, or
+if caps are locked, but not both (a Shift key reverses the effect of
+CapsLock). This logical operation is the {\em exclusive disjunction},
+also called {\em exclusive or}, and is noted $\oplus$:
+\begin{equation*}
+  \mathrm{UppercaseMode} = \mathrm{ShiftPressed} \oplus \mathrm{CapsLocked}
+\end{equation*}
+
+As a last example, we can also compute whether
+$\mathrm{LetterPressed}(\mathrm{E})$ is true from
+$\mathrm{KeyPressed}(\mathrm{E})$ and $\mathrm{UppercaseMode}$. Indeed, this is
+the case if both are true. This logical operation is the {\em conjunction},
+also called {\em and}, and is noted $\wedge$:
+\begin{align*}
+  \mathrm{LetterPressed}(\mathrm{E}) &=
+    \mathrm{KeyPressed}(\mathrm{E}) \wedge \mathrm{UppercaseMode} \\
+  \mathrm{LetterPressed}(\mathrm{e}) &=
+    \mathrm{KeyPressed}(\mathrm{E}) \wedge \neg \mathrm{UppercaseMode}
+\end{align*}
+
+The above logical operations do not depend on the meaning of the propositions,
+but only on whether they are true or false. And their result is either true or
+false. For instance, $\neg$ true is false, $p \wedge q$ is true if and only if
+both $p$ and $q$ are true, $p \vee q$ is true if at least one of $p$ and $q$ is
+true, etc. By representing true with 1 and false with 0, they can be seen as
+operations on individual bits. This gives, for example, $\neg 1 = 0$, $1 \wedge
+0 = 0$, $1 \wedge 1 = 1$, etc. By doing this for all possible cases we get the
+{\em truth table} of each operation, represented in
+\cref{table:logical-tables}. Note that the truth tables of $\oplus$ and
+$\wedge$ are identical to those giving the result and carry bit of $a+b$,
+respectively (see \cref{table:addition-table}). The result bit of $a-b$ is also
+equal to $a \oplus b$, and the carry bit is $b \wedge \neg a$ (see
+\cref{table:subtraction-table}). Hence, it suffice to know how to implement
+these logical operations with electric circuits, or other technologies, in
+order to be able to implement arithmetic circuits.
+
+\begin{Table}
+  \begin{tabular}[t]{|c|c|} \hline
+    \makecell{\thead[c]{p}} & \thead[c]{$\neg p$} \\ \hline
+    \makecell{0} & 1 \\
+    \makecell{1} & 0 \\ \hline
+  \end{tabular}
+  \hspace{8mm}
+  \begin{tabular}[t]{|c|c|c|} \hline
+    \makecell{\thead[c]{p}} & \thead[c]{q} & \thead[c]{$p \wedge q$} \\ \hline
+    \makecell{0} & 0 & 0 \\
+    \makecell{0} & 1 & 0 \\
+    \makecell{1} & 0 & 0 \\
+    \makecell{1} & 1 & 1 \\ \hline
+  \end{tabular}
+  \hspace{8mm}
+  \begin{tabular}[t]{|c|c|c|} \hline
+    \makecell{\thead[c]{p}} & \thead[c]{q} & \thead[c]{$p \vee q$} \\ \hline
+    \makecell{0} & 0 & 0 \\
+    \makecell{0} & 1 & 1 \\
+    \makecell{1} & 0 & 1 \\
+    \makecell{1} & 1 & 1 \\ \hline
+  \end{tabular}
+  \hspace{8mm}
+  \begin{tabular}[t]{|c|c|c|} \hline
+    \makecell{\thead[c]{p}} & \thead[c]{q} & \thead[c]{$p \oplus q$} \\ \hline
+    \makecell{0} & 0 & 0 \\
+    \makecell{0} & 1 & 1 \\
+    \makecell{1} & 0 & 1 \\
+    \makecell{1} & 1 & 0 \\ \hline
+  \end{tabular}
+  \caption{The truth tables of not ($\neg$), and ($\wedge$), or ($\vee$), and
+  exclusive or ($\oplus$).}\label{table:logical-tables}
+\end{Table}
+
+We can then generalize these logical operations from individual bits to whole
+binary numbers. By definition, a {\em bitwise} logical operation on two binary
+numbers is done by applying it on each bit separately, column by column. Thus,
+for instance:
+
+\setlength{\tabcolsep}{1pt}
+\begin{center}
+  \begin{tabular}{rrrrr}
+             & $1$ & $1$ & $0$ & $0$ \\
+    $\wedge$ & $1$ & $0$ & $1$ & $0$ \\
+    \hline \makecell{~}
+             & $1$ & $0$ & $0$ & $0$
+  \end{tabular}
+  \hspace{16mm}
+  \begin{tabular}{rrrrr}
+             & $1$ & $1$ & $0$ & $0$ \\
+      $\vee$ & $1$ & $0$ & $1$ & $0$ \\
+    \hline \makecell{~}
+             & $1$ & $1$ & $1$ & $0$
+  \end{tabular}
+  \hspace{16mm}
+  \begin{tabular}{rrrrr}
+             & $1$ & $1$ & $0$ & $0$ \\
+    $\oplus$ & $1$ & $0$ & $1$ & $0$ \\
+    \hline \makecell{~}
+             & $0$ & $1$ & $1$ & $0$
+  \end{tabular}
+\end{center}
+\setlength{\tabcolsep}{\defaulttabcolsep}
+
+This can be used to perform several logical operations in parallel (since there
+is no carry each column can be computed independently of the others, possibly
+at the same time). For instance, we can represent the current state of a 100
+keys keyboard with a 100 bits binary number $S$, using one bit per key. We can
+then do the following operations, which are commonly used in many similar
+contexts:
+\begin{itemize}
+  \item to check whether at least one letter key is pressed, we can compute $S
+  \wedge L$, where $L$ is the binary number whose $i^{th}$ bit is $1$ if and
+  only if the $i^{th}$ key is a letter. If the result is $0$ no letter key is
+  pressed, otherwise at least one is pressed.
+
+  \item if a new set of keys if pressed, we can compute the representation of
+  the new keyboard state with $S' = S \vee P$, where $P$ represents the newly
+  pressed keys. For instance, if the $0^{th}$ and $3^{rd}$ keys are currently
+  pressed, and if the user presses the $0^{th}$ and $2^{nd}$ keys\footnote{A
+  pressed key can be ``pressed'' again due to autorepeat.}, we get $S=1001_2$,
+  $P=101_2$ and $S'=1101_2$. This correctly represents the fact that the
+  $0^{th}$, $2^{nd}$, and $3^{rd}$ keys are now pressed.
+
+  \item if a new set of keys if released, we can compute the representation of
+  the new keyboard state with $S' = S \wedge \neg R$, where $R$ represents the
+  newly released keys. For instance, if the $0^{th}$ and $3^{rd}$ keys are
+  currently pressed, and if the user releases the third, we get $S=1001_2$,
+  $R=1000_2$ and $S'=1$. This correctly represents the fact that only the
+  $0^{th}$ key remains pressed.
+\end{itemize}
+
+\section{Hexadecimal numbers}
+
+Binary numbers are very practical to perform computations, but are not very
+compact. Arabic numbers are much more compact (a given number has about $3.3$
+less digits than bits on average), but converting between binary and arabic is
+not so easy. To solve these issues {\em hexadecimal} numbers are commonly used.
+
+Hexadecimal numbers are like arabic numbers, but use 16 digits instead of 10.
+They are called hex digits and are noted $0$, $1$, $2$, $3$, $4$, $5$, $6$,
+$7$, $8$, $9$, $A$ ($=10$), $B$ ($=11$), $C$ ($=12$), $D$ ($=13$), $E$ ($=14$),
+and $F$ ($=15$). An hexadecimal number is thus a sequence of hex digits, where
+the $i^{th}$ hex digit from the right (counting from 0) represents a quantity
+of $16^i$. For instance
+$$ED_{16} = E_{16}*16^1+D_{16}*16^0 = 14*16+13 = 237$$
+where the subscript 16 indicates an hexadecimal number (to avoid confusions with
+words or arabic numbers; $10_{16} = 16 \ne 10$ = ``ten'').
+
+\begin{Table}
+  \begin{tabular}{|r|r|r|r|r|r|r|r|} \hline
+    \makecell{\thead[r]{binary}} & \thead[r]{hex} &
+    \makecell{\thead[r]{binary}} & \thead[r]{hex} &
+    \makecell{\thead[r]{binary}} & \thead[r]{hex} &
+    \makecell{\thead[r]{binary}} & \thead[r]{hex} \\ \hline
+    \makecell[r]{0000} & 0 & 0100 & 4 & 1000 & 8 & 1100 & C \\
+    \makecell[r]{0001} & 1 & 0101 & 5 & 1001 & 9 & 1101 & D \\
+    \makecell[r]{0010} & 2 & 0110 & 6 & 1010 & A & 1110 & E \\
+    \makecell[r]{0011} & 3 & 0111 & 7 & 1011 & B & 1111 & F \\ \hline
+  \end{tabular}
+  \caption{Conversion between binary and
+  hexadecimal.}\label{table:hex-binary-conversion}
+\end{Table}
+
+Each hex digit can be represented with up to 4 bits, and each group of 4 bits
+can be represented with an hex digit, as shown in
+\cref{table:hex-binary-conversion}. It is thus very easy to convert a binary
+number to hexadecimal: simply convert each group of 4 bits independently, with
+\cref{table:hex-binary-conversion}. For instance, to convert $11101101_2$, we
+convert $1110_2$ ($E_{16}$), $1101_2$ ($D_{16}$), and concatenate the results,
+yielding $ED_{16}$. Conversely, to convert $ED_{16}$ to binary we simply
+concatenate the conversions of $E_{16}$ ($1110_2$) and $D_{16}$ ($1101_2$),
+yielding $11101101_2$.
+
+Hexadecimal numbers are thus compact (a given number has about 4 times less hex
+digits and bits) and easy to convert to and from binary, which solves the above
+issues. On the other hand, doing arithmetic computations with them is harder
+than with arabic numbers (this involves tables with $16*16=256$ entries). But
+this is not necessary since we can convert them to binary, do computations in
+binary, and convert the result back to hexadecimal.
+

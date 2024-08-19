@@ -1,0 +1,865 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter1}
+\setcounter{rustid}{0}
+
+\chapter{First Steps with the Arduino Due}\label{chapter:arduino-due}
+
+This chapter gives a short overview of the Arduino Due board. We use this at
+the end to control a LED with commands sent ``manually'' to the Arduino.
+
+But first, why do we use an Arduino Due? The short answer is that it is well
+suited for our purpose. A longer answer is the following. First of all, desktop
+and laptop computers already include a Basic Input Output System (the BIOS),
+using the keyboard and the screen. We do not have to use it, but since our goal
+is to program a toy computer from scratch, it is better if we really have to
+implement a BIOS.
+
+Single board computers, such as Raspberry Pi boards, are complete computers on
+a single printed circuit board. They can run usual operating systems such as
+Windows or Linux. They generally do not have a BIOS but, at least for Raspberry
+Pi boards, they have a complex boot process which makes it hard to start
+completely from scratch, with a few hand-written machine code instructions.
+
+Single board {\em microcontrollers} are even simpler than single board
+computers. As their name suggest, they provide two things:
+\begin{itemize}
+  \item a microcontroller. This is a single chip which contains everything we
+  need for a toy computer: a microprocessor, volatile and non-volatile memory,
+  and dedicated circuits to control external devices in a simple way.
+
+  \item a printed circuit board on which the microcontroller is soldered. A
+  microcontroller alone is just a chip, which would be hard to use directly.
+  Its pins are very small, yet they need to be connected to a power source, to
+  external devices which have ``large'' connectors, etc. The board makes this
+  easy to do.
+\end{itemize}
+
+Single board microcontrollers do not have a BIOS and generally have a simpler
+boot process than single board computers. We therefore chose such a board to
+build our toy computer. More specifically, we chose the Arduino Due board
+because it is easy to use completely from scratch. And also because Arduino is
+a very popular platform for makers. In this way, after having built your toy
+computer with it, you will have everything you might need to reuse the Arduino
+Due for other purposes.
+
+\section{Overview of the Arduino Due}\label{section:overview-due}
+
+The Arduino Due board is based on the SAM3X8E microcontroller from Atmel, which
+is presented in the next section. This microcontroller is soldered on a printed
+circuit board (see \cref{fig:arduino-due}), which connects its 144 pins -- 36
+on each side of the chip -- to several other components on this board,
+including:
+\begin{itemize}
+	\item 86 female header pins on 3 sides of the board. These pins provide a
+	convenient way to connect wires to the otherwise very tiny pins of the
+	microcontroller itself. Each board pin has a number and/or a name printed
+	next to it (some of them are shown, in white, in \cref{fig:arduino-due}).
+	Most of these board pins are directly connected to the SAM3X8E pins, whose
+	names are shown in yellow in the figure. For instance, pin 19 is connected to
+	the PA10 pin of the microcontroller, pin 13 is connected to the PB27 pin,
+	etc. Likewise, the ``GND'' (ground) and ``3.3V'' pins are connected to the
+	USB ports, which provide power, and to the microcontroller. They can be used
+	to power external devices which require a 3.3V power source. As an exception,
+	the ``5V'' pin is {\em not} connected to the microcontroller. It can be used
+	to power external devices which require a 5V power source, such as PS/2
+	keyboards. {\em All the other pins of the board output 3.3V, and only support
+	up to 3.3V inputs}.
+
+	\item A few male header pins, including 6 very close to the microcontroller,
+	labeled ``SPI''. These male pins are also directly connected to corresponding
+	pins of the microcontroller, including the PA25, PA26 and PA27 pins (see
+	\cref{fig:arduino-due}).
+
+	\item A few built-in LEDs. A green one, labeled ``ON'' indicates when the
+	card is powered. The one next to it, orange and labeled ``L'', is connected
+	to the PB27 pin of the microcontroller. It can be turned on and off by
+	programs running on the microcontroller.
+
+	\item Two micro-USB ports. They can be used to power the card. At the same
+	time, they can also be used by the microcontroller's {\em boot assistant}, a
+	program which can read and execute other programs sent by an external
+	computer. Finally, the ``native'' port can be used to plug USB devices, for
+	instance a keyboard, to be used by applications running on the
+	microcontroller. However, doing so requires a USB driver program, and writing
+	one from scratch is not a trivial task.
+
+	\item A ``RESET'' button, in a corner of the board. Pushing this button is
+	equivalent to turning off and on again the whole card. In particular, it
+	erases the content of the volatile memory, and restarts the microcontroller
+	from a well defined initial state.
+
+	\item An ``ERASE'' button. Pushing this button while the card is powered
+	erases the content of the {\em non-volatile} memory. This is equivalent to
+	erasing the content of the hard drive of a desktop or laptop computer.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter1/due.tex}
+
+  \caption{The components of the Arduino Due
+    board~\cite{ArduinoDueFullPinout,ArduinoDueSchematics} used in this
+    book.}\label{fig:arduino-due}
+\end{Figure}
+
+The components and connections of the Arduino Due which are used in the rest of
+this book are shown in \cref{fig:arduino-due}. If you want to know more, the
+full list can be found on the Arduino Due web page at
+\url{https://store.arduino.cc/products/arduino-due}. This page links to
+specifications of the full mapping between the board pin names and the
+microcontroller pin names~\cite{ArduinoDueFullPinout}, and of all the board
+components and connections~\cite{ArduinoDueSchematics}.
+
+At this stage we can do our first tests with the Arduino. First, connect one of
+its USB ports to your computer with a USB cable, or directly to an outlet with
+a USB phone charger. The ``ON'' and ``L'' LEDs should be on. As shown in
+\cref{fig:arduino-due}, the ``L'' LED is connected on one end to pin PB27,
+which is also connected to pin 13. The other end is connected to the ground.
+With a male-male wire, connect the ``GND'' and 13 pins. What happens? The LED
+turns off because it is no longer powered. Finally, remove the wire and unplug
+the Arduino.
+
+\section{Overview of the Atmel SAM3X8E}\label{section:overview-sam3x8e}
+
+As indicated above, the Arduino Due is based on the Atmel SAM3X8E
+~\cite{SAM3X8E}. This section gives a brief overview of the main
+internal components of this microcontroller, ignoring those we don't need in
+our toy computer. The next sections and chapters give more details about each
+of them. These components are the following (see \cref{fig:sam3x8e}):
+\begin{itemize}
+	\item an ARM Cortex-M3 microprocessor, which has a 32-bit architecture and
+	can execute up to 84 million instructions per second. It contains sub
+	components such as a System Timer (SysTick) and a Memory Protection Unit
+	(MPU). See \cref{section:cortex-m3}.
+
+  \item 512~KB of non-volatile flash memory, split in two memory banks of
+  256~KB, each with its own controller (to erase data, {\em flash} new data,
+  etc). See \cref{section:flash-controller}.
+
+  \item 16~KB of ROM, providing a boot assistant. As explained earlier, this
+  program can read and execute other programs sent by an external computer. See
+  \cref{section:boot-assistant}.
+
+	\item 96~KB of volatile RAM, split in one bank of 64~KB and one bank of 32~KB.
+
+  \item 4 Parallel Input Output (PIO) controllers, named A, B, C and D. Each
+	controller manages up to 32 pins of the microcontroller. For instance,
+	controller A manages the 30 pins named PA0 to PA29, while controller D
+	manages only 10 pins named PD0 to PD9. Each pin can be configured as an input
+	or as an output. See \cref{section:pio}.
+
+  \item Many {\em peripheral controllers} to communicate with a large variety
+	of external devices. These include a Serial Peripheral Interface (SPI)
+	controller to interact with devices supporting the SPI protocol (see
+	\cref{section:spi}), and a Universal Synchronous Asynchronous Receiver
+	Transmitter (USART) for external devices using a serial connection (\ie,
+	transmitting one bit at a time -- see \cref{section:usart}). There is also a
+	Pulse Width Modulation (PWM) controller (which can be used to control motors,
+	loud speakers, etc), an Analog to Digital converter, etc. The peripheral
+	controllers do not interact with the microcontroller pins directly, but
+	instead go through the PIO controllers (see \cref{fig:sam3x8e}).
+
+  \item A Power Management Controller (PMC), connected to an external crystal
+	oscillator. This component provides clock signals (in green in
+	\cref{fig:sam3x8e}) to the other components, including the microprocessor and
+	the peripheral controllers. It can generate clock signals at various
+	frequencies. See \cref{section:pmc}.
+
+  \item A Reset Controller (RSTC), which resets all the components to their
+	initial state when the RESET button, connected to the ``NRST'' pin of the
+	microcontroller, is pushed on the Arduino board.
+
+  \item A Watchdog Timer (WDT), which also resets all the components to their
+	initial state (via the Reset Controller) when the timer expires. To avoid
+	being reset, the program running on the microcontroller must periodically
+	reset this timer (or disable it).
+
+  \item A memory bus interconnecting all these components, thus allowing the
+	microprocessor to use them. See
+	\cref{section:memory-bus}.
+\end{itemize}
+
+\begin{Figure}[ht]
+  \input{figures/chapter1/sam3x8e.tex}
+
+  \caption{The components of the SAM3X8E microcontroller~\cite{SAM3X8E} used in
+    this book.}\label{fig:sam3x8e}
+\end{Figure}
+
+The SAM3X8E microcontroller contains many other components, not shown in
+\cref{fig:sam3x8e}. A more complete diagram can be found in Figure 2-3 at page
+6 of the SAM3X/3A Series Datasheet~\cite{SAM3X8E}. This very long reference
+manual (1459 pages!) gives an exhaustive description of all the components,
+except the microprocessor itself (described in other reference manuals,
+including the 858 pages long Armv7-M Architecture Reference
+Manual~\cite{ARMv7}). The next sections and chapters give a summary of the
+parts of these manuals that we need to program our toy computer.
+
+\section{Memory bus}\label{section:memory-bus}
+
+Each component inside the microcontroller, except the memory banks, contains
+one or more 32-bit ``registers'' which allow the microprocessor to interact
+with it. For instance, the Parallel Input Output A controller has a 32-bit
+register whose bits reflect the input voltage of the pins connected to it. For
+instance, if the pins PA2 and PA5 are at 3.3V and if all the other PA pins are
+at 0V, then all the bits of this register are 0, except bits 2 and 5 (\ie, the
+value of the register is \bina{100100} = 36). Another register of this
+controller allows the microprocessor to set the voltage of the desired pins to
+3.3V. For example, writing the value 17 = \bina{10001} in this register, sets
+pins PA0 and PA4 to 3.3V, and leaves the other pins unchanged.
+
+These registers must not be confused with the microprocessor registers. The
+latter can be used directly by arithmetic instructions, such as ``add the value
+of register number 1 to the value of register number 3 and store the result in
+register number 4''. This is not the case of the former. Instead, each
+microcontroller register has a predefined memory address, and can only be used
+by reading or writing values in memory, at this address. For example, the
+Parallel Input Output A controller registers mentioned above have the addresses
+\rs{hex(PIOA_SODR)} and \rs{hex(PIO_PDSR)}. If the only PA pins at 3.3V are PA2
+and PA5, then the value in memory at address \rs{hex(PIOA_SODR)} is 36.
+Similarly, writing the value 17 at memory address \rs{hex(PIO_PDSR)} sets the
+pins PA0 and PA4 to 3.3V\footnote{Provided a few other registers of this
+controller are set up correctly, see \cref{section:pio}.}.
+
+The role of the memory bus is to send each memory access request to the
+component or memory bank which is responsible for it. In the previous example,
+the bus sends the load request for address \rs{hex(PIOA_SODR)} to the PIO A
+controller, because this is the component responsible for this address. It does
+the same with the store request for address \rs{hex(PIO_PDSR)}, for the same
+reason.
+
+\begin{Figure}
+  \input{figures/chapter1/boot-address-space.tex}
+  \caption{The memory map after a full erase, showing how memory banks and
+  microcontroller registers (bottom) are mapped to memory addresses
+  (top).}\label{fig:boot-memory-map}
+\end{Figure}
+
+In order to do this, the bus must have a ``map'' of the memory, indicating
+which component ``lives'' at which address(es). After a full erase, with the
+ERASE button, this {\em memory map} is the one illustrated in
+\cref{fig:boot-memory-map}. An important thing to note is that different
+addresses can map to the same physical location (just as a building at the
+intersection between two roads could have two addresses, one per road):
+\begin{itemize}
+  \item The 16~KB the ROM memory bank are mapped to the addresses in
+  [0,\hexa{4000}[ (\hexa{4000}=16~KB), but also to the addresses in
+  [\hexa{4000},\hexa{8000}[, and so on up to [\hexa{7C000},\hexa{80000}[. In
+  total, this physical memory region is mapped 32 times in the 512~KB ``Boot''
+  region in \cref{fig:boot-memory-map}. It is also mapped 64 more times in the
+  1~MB ``ROM'' region, between addresses \hexa{100000} and \hexa{200000}
+  (excluded).
+
+  \item The 64~KB of the RAM0 memory bank are mapped 8 times in the first 512~KB
+  of the ``RAM'' region, between addresses \hexa{20000000} and \hexa{20080000}
+  (excluded).
+
+  \item The 32~KB of the RAM1 memory bank are mapped 16 times in the second
+  512~KB of the ``RAM'' region, between addresses \hexa{20080000} and
+  \hexa{20100000} (excluded).
+\end{itemize}
+
+Another thing to note is that most memory addresses are not mapped to anything.
+This is the case, for instance, of the 510~MB between the ``ROM'' and ``RAM''
+regions, and of a 1~GB range before the ``System'' region (see
+\cref{fig:boot-memory-map}). These regions are ``reserved'' for future versions
+and should not be used.
+
+The registers of the microcontroller components are mapped in the
+``Controllers'' region, a 1~MB region starting at address \hexa{40000000}. This
+includes the Parallel Input Output controllers, the Serial Peripheral Interface
+controller, the Power Management Controller, etc. Some details of this region
+are presented in the next sections and chapters, for the registers we need (a
+full description of the whole memory map can be found in chapter 7
+of~\cite{SAM3X8E}, which refines the map defined in chapter 4
+of~\cite{CortexM3RerefenceManual}).
+
+Finally, as illustrated in \cref{fig:boot-memory-map}, the registers of the
+microprocessor's internal components, such as the System Timer and the Memory
+Protection Unit, are mapped in the last part of the memory, starting at address
+\hexa{E0000000} (only a few kilobytes inside this 1~GB region are actually
+used).
+
+In the following we do not use the whole RAM region, but only its central part,
+in [\hexa{20070000},\hexa{20088000}[ (see \cref{fig:boot-memory-map}). This is
+the only part where the two RAM banks are seen as a contiguous sequence of
+$96*1024$ bytes, without repetition.
+
+\section{Boot assistant}\label{section:boot-assistant}
+
+When it is reset after a full erase, the Arduino Due runs its {\em boot
+assistant} program, stored in ROM (like the boot program of
+\cref{subsection:toy-boot-program}). As said earlier, this program can read and
+execute other programs, sent by an external computer. This section explains
+how. We use this at the end to explore the Arduino's memory.
+
+\subsection{User interface}
+
+The boot assistant, in an endless loop, waits a for request sent by an external
+computer, executes it, and returns a response. A request is a sequence of
+characters ending with a sharp (\code{\#}). The boot assistant supports 12
+types of requests. The main ones are the following:
+\begin{itemize}
+  \item \code{w}{\em address}\code{,\#} reads a 32-bit word in memory at
+  {\em address}, and returns the result (both in hexadecimal). For
+  example,
+  \code{w2008000C,\#} returns the word at address \hexa{2008000C}.
+
+  \item \code{W}{\em address}\code{,}{\em value}\code{\#} writes the 32-bit
+  hexadecimal {\em value} in memory, at {\em address}. For example,
+  \code{W2008000C,1234ABCD\#} writes \hexa{1234ABCD} at address \hexa{2008000C}.
+
+  \item \code{h}{\em address}\code{,\#} and \code{H}{\em address}\code{,}{\em
+  value}\code{\#} do the same thing, but for 16-bit half words.
+
+  \item \code{o}{\em address}\code{,\#} and \code{O}{\em address}\code{,}{\em
+  value}\code{\#} do the same thing, but for bytes.
+
+  \item \code{G}{\em address}\code{\#} runs the program starting at {\em
+  address}. More precisely, it runs the program starting at the address stored
+  in memory at $address+4$. This command is explained in more details in
+  \cref{subsection:blink-led-boot-assistant}.
+
+  \item \code{V\#} returns the boot assistant's version number.
+\end{itemize}
+
+Using these requests, an external computer can send a program to the Arduino,
+word by word (or byte by byte), and can then run it on the Arduino.
+
+\subsection{Communication protocol}
+
+The above requests must be sent character by character, by using the {\em ASCII
+code} \cite{ASCII}. This American Standard Code for Information Interchange
+assigns a number to each letter. For instance, \code{\#} is represented with
+$35=00100011_2$. Thus, to send a \code{\#}, the external computer must send the
+byte \bina{00100011} to the Arduino, one bit at a time, starting with the least
+significant one. This can be done in 3 different ways:
+\begin{itemize}
+  \item via the pin 0 / RX0 on the Arduino board. In this case each byte must
+  be sent at 115,200 {\em bauds}, \ie, bits per second. Responses from the boot
+  assistant are sent in the same format on pin 1 / TX0. As said in introduction
+  of \cref{part:computer}, this method could {\em theoretically} be used to
+  program the Arduino without any external computer.
+
+  \item via the USB ``programming port'' (see \cref{fig:arduino-due}). This
+  port is connected, via a small chip, to the above RX0 and TX0 pins. This
+  small chip (an ATmega16U2 microcontroller, with only 512 {\em bytes} of RAM)
+  converts the USB signals into the above format.
+
+  \item via the USB ``native port'' (see \cref{fig:arduino-due}). This port is
+  directly connected to an USB controller component in the SAM3X8E (not shown
+  in \cref{fig:sam3x8e}).
+\end{itemize}
+
+\subsection{Experiments}\label{section:boot-assistant-first-steps}
+
+Lets put what we learned so far into practice. For this you need a small
+program on your computer to send requests to the Arduino, via a USB cable.
+Download \toypcurl{scripts.zip}, unzip it, and follow the installation
+instructions in its \code{README} file. Open a terminal on your computer,
+hereafter called the ``host'', and go to the directory containing the unzipped
+files. Then, connect the Arduino Due's {\em native} port to your computer with
+a USB cable. Press the ERASE button for about 2 seconds, then press the RESET
+button. At this stage the boot assistant is running on the Arduino and is
+waiting for requests.
+
+In the host terminal, type \code{python3 boot\_helper.py} to connect to the
+Arduino (for completeness, this script is also given in
+\cref{appendix:python-scripts}). You should see a prompt \code{>}. Type
+\code{V\#} and press Enter to check that everything works fine. You should see
+the boot assistant's version number (which might differ from the one shown
+here):
+
+\rust{
+  let micro_controller = RefCell::new(MicroController::default());
+  let mut boot_helper = BootHelper::new(&micro_controller);
+  boot_helper.write("V#");
+}
+\rs{host_log(&boot_helper.read())}
+
+Lets read some words in the ``Boot'' region (see \cref{fig:boot-memory-map}).
+Type the following requests, and observe the responses:
+
+\rust{
+  boot_helper.write("w10,#");
+  boot_helper.write("w4010,#");
+  boot_helper.write("w8010,#");
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent This shows that the ROM is indeed mapped several times in this region
+(the \code{0x} prefix means that the following value is in hexadecimal; it is
+not part of the value itself). We could also check that it is mapped several
+times in the ``ROM'' region too (try reading the values at \hexa{100010} or
+\hexa{104010}). A look at the ``Flash'' region shows that all its bits have
+been erased to 1s:
+
+\rust{
+  boot_helper.write("w100010,#");
+  boot_helper.write("w104010,#");
+  assert_eq!(
+    boot_helper.read(),
+    ">w100010,#\n0x001000C7\n>w104010,#\n0x001000C7");
+  boot_helper.write("w80000,#");
+  boot_helper.write("w80004,#");
+}
+\rs{host_log(&boot_helper.read())}
+
+Lets now try to write some words in memory. We can first check that the ROM is
+really read-only, by trying to write in it:
+
+\rust{
+  boot_helper.write("W10,12345678#");
+  boot_helper.write("w10,#");
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent The write has no effect, as expected. Writes in ``Flash'' have no
+effect either:
+
+\rust{
+  boot_helper.write("W80000,12345678#");
+  boot_helper.write("w80000,#");
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent In fact it is possible to write in flash memory, but this requires a
+more complex process, explained in \cref{section:flash-controller}. Lets now
+try to write some value in the ``RAM'' region. The first 4~KB of RAM are used
+by the boot assistant, and we don't want to change them. Lets use the first
+word after this:
+
+\rust{
+  boot_helper.write("W20071000,12345678#");
+  boot_helper.write("w20071000,#");
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent It works! Here we could check again that the RAM0 bank is mapped
+several times in the ``RAM'' region (try reading the value at \hexa{20081000}).
+A more interesting test is to read the 4 bytes starting at \hexa{20071000}:
+
+\rust{
+  boot_helper.write("o20071000,#");
+  boot_helper.write("o20071001,#");
+  boot_helper.write("o20071002,#");
+  boot_helper.write("o20071003,#");
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent We see that the least significant byte of \hexa{12345678}, namely
+\hexa{78}, is stored at address \hexa{20071000}. The most significant one,
+\hexa{12}, is stored at address \hexa{20071003}. This is called the {\em little
+endian} order. The opposite -- least significant byte at \hexa{20071003} and
+most significant at \hexa{20071000} -- is called the {\em big endian} order.
+
+Finally, lets see what happens if we try to read a value in the ``reserved''
+region after the ``ROM'' region:
+
+\rust{
+  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    boot_helper.write("w200000,#");
+  }));
+  assert!(result.is_err());
+}
+\rs{host_log(">w200000,#\nERROR: no response from device.")}
+
+\noindent You should see nothing during 5s, then the host program exits with an
+error message. This is because the boot assistant crashed while trying to read
+a reserved memory address! In such cases you can restart it by pressing the
+RESET button on the Arduino. You can then restart the \code{boot\_helper.py}
+program. To exit it normally, type \code{exit\#} (this command is not sent to
+the Arduino; instead the host program stops itself).
+
+\section{Flash controller}\label{section:flash-controller}
+
+Flash memory has the advantage of being non-volatile. Unfortunately, this comes
+with a cost: the memory must be erased before it can be written, and erasing it
+is slow (a few milliseconds, whatever the number of bytes erased). It is thus
+impractical to write into it word by word (this is why, as we saw above,
+writing values directly in flash memory has no effect). Instead, to amortize
+this cost, flash memory is divided into {\em pages} of 256 bytes (or 64 words),
+and is erased and written one page at a time. This process is controlled by an
+Enhanced Embedded Flash Controller (EEFC), one per flash memory bank (see
+\cref{fig:sam3x8e}). This section presents these controllers, and shows how
+they can be used via the boot assistant.
+
+\subsection{Memory pages}\label{subsection:page-write}
+
+Erasing and writing a page into flash memory requires the following process:
+\begin{enumerate}
+  \item Write the 64 words of the page into 64 internal ``registers'', shared
+  between the two flash controllers. {\em All the registers must be written
+  to}, even if we only care about some of them (otherwise the next step does
+  not work).
+
+  \item Ask the flash memory bank's controller to write the content of these
+  registers into a specific page, which is erased first. The page is identified
+  by its index, from 0 to 1023 (included).
+
+  \item Wait a few milliseconds until the flash controller is done writing the
+  registers in memory. During this time the flash memory bank cannot be used,
+  and the above registers must not be modified.
+\end{enumerate}
+
+The first step of the above process is simple, because the above 64 internal
+registers are mapped repeatedly (2048 times) inside the 512~KB ``Flash'' region.
+This means that writing a word in this memory region writes a value in one of
+these registers\footnote{In this region, writing a word at an address which is
+not a multiple of 4 is not supported. Writing half words or bytes is not
+supported either.}. Note that these registers are only used for writes. Reading
+a value in this region reads the flash memory, not these internal registers.
+
+The second step is done by writing a specific value in the Command Register of
+the memory bank's controller (see \cref{table:eefc-registers}). This 32-bit
+value must have the following binary form, where $password=5A_{16}$,
+$command=3$ (which means ``erase and write page''), and $argument$ is the page
+index:
+
+\begin{flushright}
+\rs{EEFC0_FCR.bit_pattern(false)}
+\end{flushright}
+
+The third step is done by reading the Status Register of the memory bank's
+controller repeatedly, until its least significant bit is 1. Indeed, this bit
+is 0 while the controller is writing the page into flash memory, and 1 when the
+process is done.
+
+\begin{Table}
+  \begin{tabular}{|l|l|l|l|}\hline
+    \makecell{\thead{Name}} & \thead{Type} & \thead{EEFC0} & \thead{EEFC1} \\
+    \hline
+    \makecell{Mode Register} & Read-Write & \rs{hex(EEFC0_FMR.address)} &
+    \rs{hex(EEFC1_FMR.address)} \\
+    \makecell{Command Register} & Write-Only & \rs{hex(EEFC0_FCR.address)} &
+    \rs{hex(EEFC1_FCR.address)} \\
+    \makecell{Status Register} & Read-Only & \rs{hex(EEFC0_FSR.address)} &
+    \rs{hex(EEFC1_FSR.address)} \\ \hline
+  \end{tabular}
+  \caption{The Enhanced Embedded Flash Controller registers used in this
+  book.}\label{table:eefc-registers}
+\end{Table}
+
+To illustrate this, lets assume we want to write the fourth page (counting from
+0) controlled by the second flash controller, \ie, the 64 words in
+[\hexa{C0400},\hexa{C0500}[. We first need to write the 64 words at these
+addresses (writing them in [\hexa{80000},\hexa{80100}[, for instance, would
+work too, since the registers are mapped there too). We must then write the
+\hexa{5A000403} command in the EEFC1 Command Register, \ie, at address
+\rs{hex(EEFC1_FCR.address)}. Finally, we need to wait until bit 0 of the EEFC1
+Status Register, at address \rs{hex(EEFC1_FSR.address)}, is 1.
+
+\subsection{Boot mode}\label{subsection:boot-mode}
+
+Besides controlling the flash memory banks, the flash controllers also control
+3 additional bits of non-volatile memory: bit 0 (security), bit 1 (boot mode
+selection), and bit 2 (flash selection). In this book we use only the boot mode
+selection bit. When this bit is 0, which is the case after a full erase, the
+memory mapped in the ``Boot'' region [0,\hexa{80000}[ is the ROM (see
+\cref{fig:boot-memory-map}). When it is 1, the memory mapped in this region is
+the flash memory (see \cref{fig:memory-map}).
+
+These bits can be modified with the EEFC0 Command Register. With the values
+$password=5A_{16}$, $command=B_{16}$, and $argument=n$, bit $n$ is set to 1.
+With $command=C_{16}$ instead, bit $n$ is reset to 0. Thus, writing
+\hexa{5A00010B} at address \rs{hex(EEFC0_FCR.address)} sets the boot mode
+selection bit to 1, and writing \hexa{5A00010C} instead resets it to 0. In both
+cases, the least significant bit of the Status Register is set to 1 when the
+operation completes, as for a page write command.
+
+\begin{Figure}
+  \input{figures/chapter1/address-space.tex}
+  \caption{The memory map when the ``boot mode selection'' bit is 1, showing
+  how memory banks and microcontroller registers (bottom) are mapped to memory
+  addresses (top).}\label{fig:memory-map}
+\end{Figure}
+
+\subsection{Experiments}
+
+We can now put this new knowledge into practice. First, connect the Arduino to
+your computer, open a terminal as you did in
+\cref{section:boot-assistant-first-steps}, and start the \code{boot\_helper.py}
+program:
+
+\rust{
+  let micro_controller = RefCell::new(MicroController::default());
+  let mut boot_helper = BootHelper::new(&micro_controller);
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent Lets then write some values in the fourth page of the second flash
+memory bank, [\hexa{C0400}, \hexa{C0500}[, as described in
+\cref{section:flash-controller}. We first need to write the values in the
+internal registers of the flash controllers. This is a bit painful because we
+need to write 64 values (you can ``cheat'' by using copy paste):
+
+\rust{
+  for i in 0..64 {
+    boot_helper.write(&format!("W{:05X},{}#", 0xC0400 + 4 * i, i + 1));
+  }
+}
+\rs{host_log_multicols(&boot_helper.read(), 5)}
+
+\noindent We then write the ``erase and write page'' command in the Command
+Register, and check that it is done with the Status Register:
+
+\rust{
+  boot_helper.write(&format!("W{:X},5A000403#", EEFC1_FCR.address));
+  boot_helper.write(&format!("w{:X},#", EEFC1_FSR.address));
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent Finally, we can check that the operation was successful by reading
+some values in the page we just wrote:
+
+\rust{
+  boot_helper.write("wC0408,#");
+  boot_helper.write("wC0424,#");
+  boot_helper.write("exit#");
+  let result = boot_helper.read();
+  assert_eq!(result, ">wC0408,#\n0x00000003\n>wC0424,#\n0x00000010\n>exit#");
+}
+\rs{host_log(&result)}
+
+\noindent We can also verify that these values are not lost when the Arduino is
+turned off. For this, unplug the Arduino, plug it again, and read again the
+value at \hexa{C0424}:
+
+\rust{
+  micro_controller.borrow_mut().reset();
+  boot_helper = BootHelper::new(&micro_controller);
+  boot_helper.write("wC0424,#");
+}
+\rs{host_log(&boot_helper.read())}
+
+Let us now test the boot mode selection bit. Set this bit to 1 as described
+above:
+
+\rust{
+  boot_helper.write(&format!("W{:X},5A00010B#", EEFC0_FCR.address));
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent The page we just wrote is now mapped in the ``Boot'' region as well,
+offset by 512~KB from the ``original'' (see \cref{fig:memory-map}), \ie, in
+[\hexa{40400},\hexa{40500}[:
+
+\rust{
+  boot_helper.write("w40408,#");
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent Now reset the boot mode selection bit. This maps the ROM again in the
+``Boot'' region:
+
+\rust{
+  boot_helper.write(&format!("W{:X},5A00010C#", EEFC0_FCR.address));
+  boot_helper.write("w40408,#");
+  boot_helper.write("exit#");
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent Finally, press the Arduino's ERASE button for a few seconds, to erase
+the page we wrote, and unplug it.
+
+\section{Parallel Input Output controller}\label{section:pio}
+
+To conclude this chapter, we present here the Parallel Input Output (PIO)
+controllers. They are an important part of the microcontroller, since all the
+peripheral controllers use them to access the microcontroller's pins. We use
+this at the end to turn a LED on and off via the boot assistant.
+
+\subsection{User interface}
+
+The main goal of the PIO controllers is to enable the microcontroller to
+communicate with external devices. Another important goal is to enable the
+microprocessor and the peripheral controllers (USART, SPI, etc -- see
+\cref{fig:sam3x8e}) to {\em share} the microcontroller's pins in a principled
+way (\ie, one at a time). If each peripheral controller was using its own
+private pins, then the SAM3X8E chip would need much more than 144 pins to
+connect all of them. Hopefully, users rarely need to use them all at the same
+time. The pins can thus be used by a subset of the peripherals for some time,
+then used by another subset, and so on.
+
+This sharing is done as follows: each peripheral controller uses a fixed set of
+pins, but a pin can be used by up to two peripherals. For instance, the USART
+peripheral always uses pins PA10 and PA11 to receive and transmit data -- this
+can't be changed. But PA10 can also be used by the Digital-to-Analog
+peripheral. Similarly, PA11 can also be used by the Analog-to-Digital
+peripheral. In addition, all the PIO pins can also be used directly by the
+microprocessor. This means that each pin can be controlled by up to 3 entities
+(one at a time): two peripherals, hereafter named A and B\footnote{For PA10,
+peripheral A is the USART, and peripheral B is the Digital-to-Analog
+converter.}, and the microprocessor.
+
+\begin{Figure}
+  \input{figures/chapter1/pio.tex}
+  \caption{A simplified view of the circuit and registers (in gray) controlling
+  the output of each pin. The input part is not shown. See Figure 31-3 in
+  \cite{SAM3X8E}.}\label{fig:pio-controller}
+\end{Figure}
+
+To choose the entity controlling a pin at a given time, each PIO controller has
+the following registers (see \cref{fig:pio-controller} -- here we use the PIO A
+controller as an example; the others work in the same way):
+\begin{itemize}
+  \item The PIO Status Register: if its {\em n}th bit is 1, then the PA{\em n}
+  pin is controlled by the microprocessor. This register can only be read.
+  Writing to it has no effect. Instead, one must write in the PIO Enable
+  Register (resp. the PIO Disable Register) to set (resp. clear) bits in the
+  Status Register. For instance, writing \bina{101} in the Enable Register
+  sets bits 0 and 2 to 1 in the Status Register, and leaves the other bits
+  unchanged. Writing \bina{1000} in the Clear Register sets bit 3 to 0 in the
+  Status Register, and leaves the other bits unchanged.
+
+  \item The Output Status Register: if the PA{\em n} pin is controlled by the
+  microprocessor, then the {\em n}th bit of this register indicates if this pin
+  is an output (bit equal to 1), or a pure input (bit equal to 0). As for the
+  Status Register, this register can only be read. It can only be changed via
+  the Output Enable Register or the Output Disable Register.
+
+  \item The Output Data Status Register: if the PA{\em n} pin is controlled by
+  the microprocessor, and if it is configured as an output, then the {\em n}th
+  bit of this register defines the pin's output value. This register can only
+  be changed via the Set Output Data Register or the Clear Output Data
+  Register.
+
+  \item The Peripheral AB Select Register: if the PA{\em n} pin is {\em not}
+  controlled by the microprocessor, then the {\em n}th bit of this register
+  indicates whether this pin is controlled by peripheral A (bit equal to 0) or
+  B (bit equal to 1). Unlike the above registers, this register can be read
+  {\em and} written. If a pin is controlled by a peripheral, this peripheral
+  decides whether it should be used as an output or not and, if yes, which
+  value to output.
+\end{itemize}
+
+In addition to this, \ie, independently of which entity controls it, each pin
+can optionally be connected to the 3.3V power source via a {\em pull-up}
+resistor (see \cref{fig:pio-controller}). When a pin is configured as an input
+but is not connected to an external device, this resistor ``pulls'' the pin
+voltage up to 3.3V. Without it, a disconnected pin could be at any voltage,
+depending on external interferences. Note that setting a pin's output value to
+0 with the above registers sets the pin voltage to 0V (if it is configured as
+an output), even if the pull-up resistor is enabled. The Pull-up Status
+Register indicates which pins have their pull-up {\em disabled}: if its {\em
+n}th bit is 1, then the pull-up is disabled. This register is read-only. It can
+only be modified by writing into the Pull-up Disable Register or the Pull-up
+Enable Register.
+
+\begin{Table}
+  \begin{tabular}{|l|l|l|l|}\hline
+    \makecell{\thead{Name}} & \thead{Type} & \thead{PIO A} & \thead{PIO B} \\
+    \hline
+    \makecell{PIO Enable Register} & Write-Only & \rs{hex(PIOA_PER)} &
+    \rs{hex(PIOB_PER)} \\
+    \makecell{PIO Disable Register} & Write-Only & \rs{hex(PIOA_PDR)} &
+    \rs{hex(PIOB_PDR)} \\
+    \makecell{PIO Status Register} & Read-Only & \rs{hex(PIOA_PSR)} &
+    \rs{hex(PIOB_PSR)} \\
+
+    \makecell{Output Enable Register} & Write-Only & \rs{hex(PIOA_OER)} &
+    \rs{hex(PIOB_OER)} \\
+    \makecell{Output Disable Register} & Write-Only & \rs{hex(PIOA_ODR)} &
+    \rs{hex(PIOB_ODR)} \\
+    \makecell{Output Status Register} & Read-Only & \rs{hex(PIOA_OSR)} &
+    \rs{hex(PIOB_OSR)} \\
+
+    \makecell{Set Output Data Register} & Write-Only & \rs{hex(PIOA_SODR)} &
+    \rs{hex(PIOB_SODR)} \\
+    \makecell{Clear Output Data Register} & Write-Only & \rs{hex(PIOA_CODR)} &
+    \rs{hex(PIOB_CODR)} \\
+    \makecell{Output Data Status Register} & Read-Only & \rs{hex(PIOA_ODSR)} &
+    \rs{hex(PIOB_ODSR)} \\
+
+    \makecell{Pull-up Disable Register} & Write-Only & \rs{hex(PIOA_PUDR)} &
+    \rs{hex(PIOB_PUDR)} \\
+    \makecell{Pull-up Enable Register} & Write-Only & \rs{hex(PIOA_PUER)} &
+    \rs{hex(PIOB_PUER)} \\
+    \makecell{Pull-up Status Register} & Read-Only & \rs{hex(PIOA_PUSR)} &
+    \rs{hex(PIOB_PUSR)} \\
+
+    \makecell{Peripheral AB Select Register} & Read-Write & \rs{hex(PIOA_ABSR)}
+    &
+    \rs{hex(PIOB_ABSR)} \\ \hline
+  \end{tabular}
+  \caption{The Parallel Input Output registers used in this
+  book.}\label{table:pioa-registers}
+\end{Table}
+
+A simplified representation of a small part of the digital circuit controlling
+each pin is represented in \cref{fig:pio-controller}. The addresses of some of
+the registers of each PIO controller are given in \cref{table:pioa-registers}.
+The full circuit and the complete list of registers can be found in Chapter 31
+of~\cite{SAM3X8E}.
+
+\subsection{Experiments}\label{subsection:pio-experiments}
+
+Lets put this new knowledge into practice. We know that the ``L'' LED on the
+board is connected to pin PB27 (see \cref{fig:arduino-due}). We have seen above
+how to control a pin by writing values in memory. And we have already used the
+boot assistant to write values in memory. Thus, we should be able to control
+the LED via the boot assistant. For this, connect the Arduino to your computer
+and open a terminal as you did in \cref{section:boot-assistant-first-steps}.
+Lets first check which entity controls the PB27 pin, by reading the PIO Status
+Register:
+
+\rust{
+  let micro_controller = RefCell::new(MicroController::default());
+  let mut boot_helper = BootHelper::new(&micro_controller);
+
+  assert!(micro_controller.borrow().get_pin_output(Controller::PB, 27));
+}
+\rust{
+  boot_helper.write(&format!("w{:X},#", PIOB_PSR));
+  let result = boot_helper.read();
+  assert!(result.ends_with("0x0FFFFFFF"));
+}
+\rs{host_log(&result)}
+
+We see that bit 27 is 1, meaning that the pin is controlled by the
+microprocessor. Lets check the Output Status Register and the Output Data
+Status Register:
+
+\rust{
+  boot_helper.write(&format!("w{:X},#", PIOB_OSR));
+  boot_helper.write(&format!("w{:X},#", PIOB_ODSR));
+}
+\rs{host_log(&boot_helper.read())}
+
+They are both 0, meaning that the pin is not used as output, \ie, it is
+disconnected from the PIO controller circuit. Yet the LED is on. This probably
+means that the pull-up resistor is enabled. We can check this by reading the
+Pull-up Status Register:
+
+\rust{
+  boot_helper.write(&format!("w{:X},#", PIOB_PUSR));
+}
+\rs{host_log(&boot_helper.read())}
+
+All bits are 0, in particular bit 27, meaning that the pull-up is not {\em
+disabled}, \ie, it is enabled as we suspected. Let us now configure the pin as
+an output, by setting the $27^{th}$ bit (\(=2^{27}=800000_{16}\)) to 1 in the
+Output Status Register. As said above, this must be done by using the Output
+Enable Register:
+
+\rust{
+  boot_helper.write(&format!("W{:X},8000000#", PIOB_OER));
+  assert!(!micro_controller.borrow().get_pin_output(Controller::PB, 27));
+}
+\rs{host_log(&boot_helper.read())}
+
+At this point you should see that the LED is off! Indeed we just configured the
+pin as an output, and we saw above that the output value in the Output Data
+Status Register was 0. The pin has thus been connected to the ground, as we did
+with a wire at the end of \cref{section:overview-due}. We can turn the LED on
+again by setting the pin's output value to 1, with the Set Output Data Register:
+
+\rust{
+  boot_helper.write(&format!("W{:X},8000000#",PIOB_SODR));
+  assert!(micro_controller.borrow().get_pin_output(Controller::PB, 27));
+}
+\rs{host_log(&boot_helper.read())}
+
+\noindent You can now \code{exit\#} and unplug the Arduino.

@@ -1,0 +1,65 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="60mm" viewBox="0 0 145 60" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="8" height="16" x="26" y="33" fill="#118ab2"/>
+    <rect width="24" height="16" x="70" y="33" fill="#cccccc"/>
+    <rect width="28" height="16" x="116" y="33" fill="#cccccc"/>
+    <rect width="20" height="16" x="6" y="33" fill="#ebebeb"/>
+    <rect width="16" height="16" x="34" y="33" fill="#0e6e8e"/>
+    <rect width="8" height="16" x="62" y="33" fill="#0e6e8e"/>
+    <path d="m 57,49 h 47 l 1,-7 h -2 L 104,33 57,33 l -1,7 2,0 z" fill="none" stroke="#000000"/>
+    <path d="m 106,49 h 38 V 33 h -38 l -1,7 2,0 z" fill="none" stroke="#000000"/>
+    <text x="-41" y="31" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">TBB</text>
+    <text x="-41" y="5" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">MOV</text>
+    <text x="-32" y="5" transform="rotate(-90)" font-size="2.8px">0</text>
+    <text x="-32" y="13" transform="rotate(-90)" font-size="2.8px">4</text>
+    <text x="-32" y="17" transform="rotate(-90)" font-size="2.8px">6</text>
+    <text x="-32" y="21" transform="rotate(-90)" font-size="2.8px">8</text>
+    <text x="-32" y="25" transform="rotate(-90)" font-size="2.8px">...</text>
+    <text x="-41" y="9" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">LDRB</text>
+    <text x="-41" y="13" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">ADD</text>
+    <text x="-41" y="17" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">CMP</text>
+    <text x="-41" y="21" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">IT</text>
+    <text x="-41" y="25" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">UDF</text>
+    <path d="m 6,33 v 16" stroke="#000000"/>
+    <path d="m 10,33 v 16" stroke="#000000"/>
+    <path d="m 14,33 v 16" stroke="#000000"/>
+    <path d="m 18,33 v 16" stroke="#000000"/>
+    <path d="m 22,33 v 16" stroke="#000000"/>
+    <path d="m 26,33 v 16" stroke="#000000"/>
+    <path d="m 34,33 v 16" stroke="#000000"/>
+    <path d="m 38,33 v 16" stroke="#000000"/>
+    <text x="124" y="42" text-anchor="middle">retv</text>
+    <text x="138" y="42" text-anchor="middle">blx</text>
+    <text x="88" y="42" text-anchor="middle">cst\_1</text>
+    <text x="76" y="42" text-anchor="middle">cst\_0</text>
+    <path d="m 42,33 v 16" stroke="#000000"/>
+    <path d="m 46,33 v 16" stroke="#000000"/>
+    <path d="m 50,33 v 16" stroke="#000000"/>
+    <path d="M 66,33 V 49" stroke="#000000"/>
+    <path d="M 132,33 V 49" stroke="#000000"/>
+    <path d="M 116,33 V 49" stroke="#000000"/>
+    <path d="M 82,33 V 49" stroke="#000000"/>
+    <path d="M 94,33 V 49" stroke="#000000"/>
+    <path d="m 70,33 0,16" stroke="#000000"/>
+    <path d="m 2,49 h 53 l 1,-7 -2,0 L 55,33 l -53,0 z" fill="none" stroke="#000000"/>
+    <path d="M 62,33 V 49" stroke="#000000"/>
+    <path d="m 32,32 0,-4 40,0 L 72,32" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 36,32 0,-6 h 48 v 6" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 68,32 0,-12 h 66 l 0,12" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 80,50 v 4 H 0 V 28 l 8,0 v 4" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 64,32 0,-10 h 54 l 0,10" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 92,50 0,4 H 80" fill="none" stroke="#000000"/>
+    <path d="m 130,50 0,4 H 92" fill="none" stroke="#000000"/>
+    <path d="m 142,50 0,4 h -12" fill="none" stroke="#000000"/>
+  </g>
+</svg>

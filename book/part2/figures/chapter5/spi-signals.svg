@@ -1,0 +1,70 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <text x="11" y="11" text-anchor="end">CS</text>
+    <text x="11" y="23" text-anchor="end">SCK</text>
+    <text x="11" y="47" text-anchor="end">MISO</text>
+    <text x="11" y="35" text-anchor="end">MOSI</text>
+    <path d="M 12,5 18,5 v 8 h 99 v -8 h 6" fill="none" stroke="#0e6e8e"/>
+    <text x="-33" y="116" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 0</text>
+    <text x="-33" y="110" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 1</text>
+    <text x="-33" y="104" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 2</text>
+    <text x="-33" y="98" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 3</text>
+    <text x="-33" y="92" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 4</text>
+    <text x="-33" y="86" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 5</text>
+    <text x="-33" y="80" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 6</text>
+    <text x="-33" y="74" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 7</text>
+    <text x="-33" y="31" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 14</text>
+    <text x="-33" y="25" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 15</text>
+    <path d="m 12,17 h 9 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 l 3,0 v 8 h 3 v -8 H 99 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 9" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 21,33 1,-4 h 4 l 2,8 h 4 l 1,-4 -1,-4 H 28 l -2,8 h -4 z" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 21,33 -1,-4 h -8" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 118,33 -1,-4 h -4 l -2,8 h -4 l -2,-8 h -4 l -2,8 h -4 l -2,-8 h -4 l -2,8 h -4 l -2,-8 h -4 l -2,8 h -4 l -1,-4 1,-4 h 4 l 2,8 h 4 l 2,-8 h 4 l 2,8 h 4 l 2,-8 H 99 l 2,8 h 4 l 2,-8 h 4 l 2,8 h 4 z" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 118,33 1,-4 h 4" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 118,45 -1,-4 h -4 L 111,49 h -4 l -2,-8 h -4 L 99,49 h -4 l -2,-8 h -4 l -2,8 h -4 l -2,-8 h -4 l -2,8 h -4 l -1,-4 1,-4 h 4 l 2,8 h 4 l 2,-8 h 4 l 2,8 h 4 l 2,-8 H 99 L 101,49 h 4 l 2,-8 h 4 L 113,49 h 4 z" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 118,45 1,-4 h 4" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 32,37 h 39" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="M 71,49 H 22 L 20,41 h -8" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="M 24,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 30,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 42,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 48,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 54,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 60,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 66,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 72,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 78,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 84,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 90,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 96,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 102,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 108,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 114,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 36,25 V 17" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <text x="114" y="16" font-size="2.8px" text-anchor="middle">16</text>
+    <text x="102" y="16" font-size="2.8px" text-anchor="middle">14</text>
+    <text x="96" y="16" font-size="2.8px" text-anchor="middle">13</text>
+    <text x="90" y="16" font-size="2.8px" text-anchor="middle">12</text>
+    <text x="84" y="16" font-size="2.8px" text-anchor="middle">11</text>
+    <text x="78" y="16" font-size="2.8px" text-anchor="middle">10</text>
+    <text x="72" y="16" font-size="2.8px" text-anchor="middle">9</text>
+    <text x="66" y="16" font-size="2.8px" text-anchor="middle">8</text>
+    <text x="60" y="16" font-size="2.8px" text-anchor="middle">7</text>
+    <text x="54" y="16" font-size="2.8px" text-anchor="middle">6</text>
+    <text x="48" y="16" font-size="2.8px" text-anchor="middle">5</text>
+    <text x="42" y="16" font-size="2.8px" text-anchor="middle">4</text>
+    <text x="36" y="16" font-size="2.8px" text-anchor="middle">3</text>
+    <text x="30" y="16" font-size="2.8px" text-anchor="middle">2</text>
+    <text x="24" y="16" font-size="2.8px" text-anchor="middle">1</text>
+    <text x="108" y="16" font-size="2.8px" text-anchor="middle">15</text>
+  </g>
+</svg>

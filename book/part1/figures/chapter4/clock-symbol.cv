@@ -1,0 +1,74 @@
+{
+"name": "clock-symbol",
+"timePeriod": 500,
+"clockEnabled": false,
+"projectId": "4w8Qzf61kvoDj3JVnqwz",
+"focussedCircuit": 50803294886,
+"orderedTabs": [
+"50803294886"
+],
+"scopes": [
+{
+"layout": {
+"width": 100,
+"height": 40,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1
+]
+},
+{
+"x": 550,
+"y": 310,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+}
+],
+"id": 50803294886,
+"name": "Main",
+"Clock": [
+{
+"x": 520,
+"y": 310,
+"objectType": "Clock",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 0
+},
+"constructorParamaters": [
+"RIGHT"
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": [
+1
+]
+}
+]
+}

@@ -1,0 +1,109 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\tikzstyle{cv_font} = [font={\footnotesize\sffamily},color=green0]
+\tikzstyle{cv_smallfont} = [font={\tiny\sffamily}]
+
+\tikzset{
+  AndGate/.pic={
+    \path[draw=black] (-10, -20) -- (-10, 20) -- (0, 20)
+    .. controls (12, 20) and (20, 11) .. (20, 0)
+    .. controls (20, -11) and (12, -20) .. (0, -20) -- cycle;
+  },
+  Button/.pic={
+    \path[draw=black] (13, 0) -- (30, 0);
+    \path[draw=black,fill=gray1] (0, 0) circle[radius=13];
+  },
+  Clock/.pic={
+    \path[draw=black] (-10, -10) rectangle +(20, 20);
+    \path[draw=green2,line width=0.3mm] (-6, 0) -- (-6, -5.5) -- (0, -5.5) --
+    (0, 5.5) -- (6, 5.5) -- (6, 0);
+  },
+  Demultiplexer/.pic={
+    \path[draw=black] (10, -10) -- (10, 10) -- (-10, 20) -- (-10, -20) -- cycle;
+    \node[cv_smallfont,anchor=center] at (-4,-10){1};
+    \node[cv_smallfont,anchor=center] at (-4,10){0};
+  },
+  DflipFlop/.pic={
+    \path[draw=black] (-20, -20) rectangle +(40, 40);
+    \path[draw=black] (-20, 5) -- (-15, 10) -- (-20, 15);
+  },
+  DigitalLed/.pic={
+    \path[draw=gray1] (-20, 0) -- (-40, 0);
+    \path[fill=gray1] (-20, -9) rectangle +(20,18);
+    \path[fill=gray1] (0, 0) circle[radius=9];
+  },
+  DigitalLedOn/.pic={
+    \path[draw=gray1] (-20, 0) -- (-40, 0);
+    \path[fill=red0] (-20, -9) rectangle +(20,18);
+    \path[fill=red0] (0, 0) circle[radius=9];
+  },
+  Ground/.pic={
+    \path[draw=black] (0, -10) -- (0, 0) (-10, 0) -- (10, 0)
+    (-6, 5) -- (6, 5) (-3, 10) -- (3, 10);
+  },
+  Input/.pic={
+    \path[draw=black] (-10, -10) rectangle +(20, 20);
+  },
+  Multiplexer/.pic={
+    \path[draw=black] (10, -10) -- (10, 10) -- (-10, 20) -- (-10, -20) -- cycle;
+    \node[cv_smallfont,anchor=center] at (-4,-10){0};
+    \node[cv_smallfont,anchor=center] at (-4,10){1};
+  },
+  NandGate/.pic={
+    \path[draw=black] (-10, -20) -- (-10, 20) -- (0, 20)
+    .. controls (12, 20) and (20, 11) .. (20, 0)
+    .. controls (20, -11) and (12, -20) .. (0, -20) -- cycle;
+    \path[draw=black] (25, 0) circle[radius=5];
+  },
+  NorGate/.pic={
+    \path[draw=black] (-10, -20) .. controls (0, 0) .. (-10, 20)
+    .. controls (0, 20) and (15, 10) .. (20, 0)
+    .. controls (15, -10) and (0, -20) .. cycle;
+    \path[draw=black] (25, 0) circle[radius=5];
+  },
+  NotGate/.pic={
+    \path[draw=black] (-10, -10) -- (-10, 10) -- (10, 0) -- cycle;
+    \path[draw=black] (15, 0) circle[radius=5];
+  },
+  OrGate/.pic={
+    \path[draw=black] (-10, -20) .. controls (0, 0) .. (-10, 20)
+    .. controls (0, 20) and (15, 10) .. (20, 0)
+    .. controls (15, -10) and (0, -20) .. cycle;
+  },
+  Output/.pic={
+    \path[draw=blue0] (-10, -10) rectangle +(20, 20);
+  },
+  OutputX/.pic={
+    \path[draw=red0] (-10, -10) rectangle +(20, 20);
+  },
+  Power/.pic={
+    \path[draw=black] (0, 10) -- (0, 0) -- (10, 0) -- (0, -10)
+    -- (-10, 0) -- (0, 0);
+  },
+  SRflipFlop/.pic={
+    \path[draw=black] (-20, -20) rectangle +(40,40);
+  },
+  TriState/.pic={
+    \path[draw=black] (-10, -15) -- (20, 0) -- (-10, 15) -- cycle;
+  },
+  XorGate/.pic={
+    \path[draw=black] (-10, -20)
+    .. controls (0, 0) .. (-10, 20)
+    .. controls (0, 20) and (15, 10) .. (20, 0)
+    .. controls (15, -10) and (0, -20) .. cycle;
+    \path[draw=black] (-20, -20)
+    .. controls (-6, -10) and (-6, 10) .. (-20, 20);
+  },
+}
+
+\newcommand*{\cvmath}[1]{\normalsize $#1$}
+
+\input{introduction.tex}
+\input{chapter1.tex}
+\input{chapter2.tex}
+\input{chapter3.tex}
+\input{chapter4.tex}
+\input{chapter5.tex}
+\input{conclusion.tex}

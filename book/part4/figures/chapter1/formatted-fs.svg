@@ -1,0 +1,45 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="16" height="20" x="1" y="28" fill="#ebebeb"/>
+    <rect width="16" height="24" x="26" y="24" fill="#ebebeb"/>
+    <rect width="16" height="24" x="76" y="24" fill="#ebebeb"/>
+    <rect width="16" height="24" x="101" y="24" fill="#ebebeb"/>
+    <rect width="16" height="24" x="51" y="24" fill="#ebebeb"/>
+    <rect width="16" height="24" x="126" y="24" fill="#ebebeb"/>
+    <rect width="16" height="28" x="51" y="20" fill="none" stroke="#000000"/>
+    <path d="M 76,24 H 92" stroke="#000000"/>
+    <path d="M 51,24 H 67" stroke="#000000"/>
+    <text x="141" y="23" font-size="3.5px" text-anchor="end" fill="#9a9a9a">null</text>
+    <text x="16" y="23" font-size="3.5px" text-anchor="end" fill="#9a9a9a">null</text>
+    <rect width="16" height="28" x="76" y="20" fill="none" stroke="#000000"/>
+    <path d="m 126,24 h 16" stroke="#000000"/>
+    <rect width="16" height="28" x="126" y="20" fill="none" stroke="#000000"/>
+    <path d="m 15,26 h 5 l 0,-10 h 20 l 0,4" fill="none" stroke="#9a9a9a" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 40,22 h 5 l 0,-6 h 20 v 4" fill="none" stroke="#9a9a9a" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 65,22 h 5 v -6 h 20 v 4" fill="none" stroke="#9a9a9a" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 101,24 h 16" stroke="#000000"/>
+    <rect width="16" height="28" x="101" y="20" fill="none" stroke="#000000"/>
+    <circle cx="65" cy="22" r="1" fill="#9a9a9a"/>
+    <circle cx="90" cy="22" r="1" fill="#9a9a9a"/>
+    <circle cx="115" cy="22" r="1" fill="#9a9a9a"/>
+    <path d="m 26,24 h 16" stroke="#000000"/>
+    <rect width="16" height="28" x="26" y="20" fill="none" stroke="#000000"/>
+    <path d="M 1,24 H 17" stroke="#000000"/>
+    <path d="M 1,28 H 17" stroke="#000000"/>
+    <rect width="16" height="28" x="1" y="20" fill="none" stroke="#000000" stroke-width="0.4"/>
+    <circle cx="15" cy="26" r="1" fill="#9a9a9a"/>
+    <circle cx="40" cy="22" r="1" fill="#9a9a9a"/>
+    <path d="m 91,22 h 5 v -6 h 20 v 4" fill="none" stroke="#9a9a9a" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 115,22 h 5 v -6 h 20 v 4" fill="none" stroke="#9a9a9a" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+  </g>
+</svg>

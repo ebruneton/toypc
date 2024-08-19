@@ -1,0 +1,194 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\usepackage{calc}
+\usepackage[
+  paperwidth=16cm,paperheight=24cm,
+  body={118mm,185mm},
+  %hmarginratio=25:17,
+  hcentering,
+  vcentering,
+  headsep=2pc]{geometry}
+
+\usepackage[pagestyles,explicit,clearempty]{titlesec}
+\usepackage{xcolor}
+\usepackage{pagecolor}
+\usepackage{afterpage}
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+\usetikzlibrary{calc}
+
+\definecolor{gray0}{RGB}{154,154,154}
+\definecolor{gray1}{RGB}{204,204,204}
+\definecolor{gray2}{RGB}{235,235,235}
+
+\definecolor{red1}{RGB}{239,71,111}
+\definecolor{yellow1}{RGB}{255,209,102}
+\definecolor{green1}{RGB}{5,171,128}
+\definecolor{blue1}{RGB}{17,138,178}
+\definecolor{violet1}{RGB}{7,59,76}
+
+\colorlet{red0}{red1!80!black}
+\colorlet{red2}{red1!80!white}
+\colorlet{yellow0}{yellow1!80!black}
+\colorlet{yellow2}{yellow1!80!white}
+\colorlet{green0}{green1!80!black}
+\colorlet{green2}{green1!80!white}
+\colorlet{blue0}{blue1!80!black}
+\colorlet{blue2}{blue1!80!white}
+\colorlet{violet0}{violet1!80!black}
+\colorlet{violet2}{violet1!80!white}
+
+\definecolor{covercolor}{RGB}{23,40,81}
+\colorlet{titlescolor}{blue0}
+
+\newpagestyle{chapter}{
+  \setfoot
+  [\normalfont\sffamily\color{titlescolor}\bfseries\thepage][][]
+  {}{}{\normalfont\sffamily\color{titlescolor}\bfseries\thepage}
+  \settitlemarks{part,chapter}
+}
+
+\renewpagestyle{plain}{
+  \sethead
+  [\normalfont\sffamily\color{titlescolor}
+    \ifthechapter
+      {{\bfseries
+      \MakeUppercase{\chaptertitlename}~\thechapter}\quad\chaptertitle}
+      {\ifthenelse{\not\equal{\thepart}{}}
+        {{\bfseries PART~\thepart}\quad\parttitle}
+        {}}][][]
+  {}{}{\normalfont\sffamily\color{titlescolor}
+    \ifthechapter
+      {{\bfseries\thesection}\quad\sectiontitle}
+      {\ifthenelse{\not\equal{\thepart}{}}
+        {{\bfseries PART~\thepart}\quad\parttitle}
+        {}}}
+  \setfoot
+  [\normalfont\sffamily\color{titlescolor}\bfseries\thepage][][]
+  {}{}{\normalfont\sffamily\color{titlescolor}\bfseries\thepage}
+  \settitlemarks{part,chapter}
+}
+
+\assignpagestyle{\part}{empty}
+\assignpagestyle{\chapter}{chapter}
+\pagestyle{plain}
+
+\newlength{\partnumberwidth}
+\newlength{\parttitlesep}
+\setlength{\partnumberwidth}{2.4cm}
+\setlength{\parttitlesep}{6mm}
+\titleformat{\part}[block]{}{}{0pt}{
+  \thispagestyle{empty}
+  \begin{tikzpicture}
+    \scope[inner xsep=0, outer sep=0, align=center, text=titlescolor]
+    \node (number) [
+    anchor=north east,
+    text width=\partnumberwidth]
+    {\fontsize{115}{115}\selectfont\thepart};
+    \node[
+    anchor=south east,
+    outer ysep=\parttitlesep,
+    text width=\partnumberwidth,
+    text=white,fill=titlescolor]
+    at (node cs:name=number, anchor=north east)
+    {\sffamily\fontsize{18}{18}\fontseries{bx}\selectfont PART};
+    \node [
+    anchor=north west,
+    inner xsep=\parttitlesep,
+    text width=0.99\linewidth - \partnumberwidth - 2\parttitlesep,
+    align=flush left]
+    at (node cs:name=number, anchor=north east)
+    {\sffamily\fontsize{32}{40}\fontseries{l}\selectfont#1\\};
+    \endscope
+  \end{tikzpicture}
+}
+
+\newlength{\chapternumberwidth}
+\newlength{\chaptertitlesep}
+\setlength{\chapternumberwidth}{2cm}
+\setlength{\chaptertitlesep}{3mm}
+\titleformat{\chapter}[block]{}{}{0pt}{
+  \begin{tikzpicture}
+    \scope[inner xsep=0, outer sep=0, align=center, text=titlescolor]
+    \node (number) [
+    minimum width=\chapternumberwidth]
+    {\fontsize{84}{84}\selectfont\thechapter};
+    \path let \p1=(number.west), \p2=(number.east) in
+    node[
+    anchor=south east,
+    outer ysep=\chaptertitlesep,
+    text width=\x2-\x1,
+    text=white,fill=titlescolor]
+    at (node cs:name=number, anchor=north east)
+    {\sffamily\fontseries{bx}\selectfont \MakeUppercase{\chaptertitlename}};
+    \path let \p1=(number.west), \p2=(number.east) in
+    node [
+    anchor=north west,
+    inner xsep=\chaptertitlesep,
+    text width=0.99\linewidth - (\x2 - \x1) - 2\chaptertitlesep,
+    align=flush left]
+    at (node cs:name=number, anchor=north east)
+    {\sffamily\fontsize{22}{28}\fontseries{l}\selectfont#1\\};
+    \endscope
+  \end{tikzpicture}
+}
+
+\titleformat{name=\chapter,numberless}
+  {\color{titlescolor}}
+  {}
+  {0mm}
+  {\sffamily\fontsize{22}{28}\fontseries{l}\selectfont#1\\}
+
+\titleformat{\section}
+  {\Large\sffamily\bfseries\color{titlescolor}}
+  {\thesection}{8pt}{#1}
+
+\titleformat{\subsection}
+  {\large\sffamily\bfseries\color{titlescolor}}
+  {\thesubsection}{8pt}{#1}
+
+\titleformat{\subsubsection}
+  {\normalsize\sffamily\bfseries\color{titlescolor}}
+  {\thesubsubsection}{8pt}{#1}
+
+\titleformat{\paragraph}[runin]
+  {\normalsize\sffamily\bfseries}{}{0pt}{#1}
+
+\titlespacing*{\chapter}{0mm}{0mm}{1pc}
+\titlespacing*{\section}{0mm}{5.3mm}{2.1mm}
+\titlespacing*{\subsection}{0mm}{5.3mm}{2.1mm}
+\titlespacing*{\subsubsection}{0mm}{4.2mm}{1.1mm}
+\titlespacing*{\paragraph}{0mm}{0mm}{2mm}
+
+\usepackage{titletoc}
+\usepackage[nottoc]{tocbibind}
+
+\titlecontents{part}
+[0em]
+{\vspace{1cm}\normalfont\sffamily\bfseries\fontsize{14}{16}\selectfont}
+{}
+{\color{titlescolor}PART }
+{\titlerule*[0.7pc]{.}\normalfont\small\sffamily\selectfont\contentspage}
+[\vspace{3mm}]
+
+\titlecontents{chapter}
+[0em]
+{\normalfont\sffamily\bfseries\fontsize{12}{16}\selectfont}
+{\color{titlescolor}\MakeUppercase{\chaptertitlename}
+ {\thecontentslabel}\hspace{4mm}}
+{}
+{\titlerule*[0.7pc]{.}\normalfont\small\sffamily\selectfont\contentspage}
+
+\titlecontents{section}
+[0em]
+{\normalfont\normalsize\selectfont}
+{\color{titlescolor}\sffamily\bfseries\fontsize{10}{12}\selectfont%
+  \makebox[12mm][r]{\thecontentslabel}%
+  \hspace{2mm}\normalfont\normalsize\selectfont}
+{}
+{\titlerule*[0.7pc]{.}\normalfont\small\sffamily\selectfont\contentspage}
+
+\newcommand\appendixintoc{\def\chaptertitlename{\appendixname}}
+

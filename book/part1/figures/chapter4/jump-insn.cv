@@ -1,0 +1,700 @@
+{
+"name": "jump-insn",
+"timePeriod": 500,
+"clockEnabled": true,
+"projectId": "ka6wAIZvn2oGcrQJ4N1p",
+"focussedCircuit": 55095457268,
+"orderedTabs": [
+"55095457268",
+"99099432285",
+"45280280520",
+"92951099443"
+],
+"scopes": [
+{
+"layout": {
+"width": 80,
+"height": 40,
+"title_x": 40,
+"title_y": 23,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1
+]
+},
+{
+"x": 0,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+}
+],
+"id": 99099432285,
+"name": "DECODE",
+"Output": [
+{
+"x": 590,
+"y": 340,
+"objectType": "Output",
+"label": " ",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 0
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 80,
+"y": 20,
+"id": "CHbLOX2fd0E5NnKWBNHr"
+}
+]
+}
+}
+],
+"Ground": [
+{
+"x": 540,
+"y": 350,
+"objectType": "Ground",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 1
+},
+"constructorParamaters": [
+1
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": []
+},
+{
+"layout": {
+"width": 130,
+"height": 20,
+"title_x": 65,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+}
+],
+"id": 45280280520,
+"name": "is zero",
+"Input": [
+{
+"x": 480,
+"y": 300,
+"objectType": "Input",
+"label": " ",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 0
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 10,
+"id": "VIFzYVJ0PjRSuyM2BL9h"
+}
+]
+}
+}
+],
+"Output": [
+{
+"x": 570,
+"y": 300,
+"objectType": "Output",
+"label": "  ",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 1
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 130,
+"y": 10,
+"id": "qqbvWgDUlcYLm9O28lXV"
+}
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": []
+},
+{
+"layout": {
+"width": 130,
+"height": 20,
+"title_x": 70,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+}
+],
+"id": 92951099443,
+"name": "is not zero",
+"Input": [
+{
+"x": 500,
+"y": 350,
+"objectType": "Input",
+"label": " ",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 0
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 10,
+"id": "O4JNh7SaEIZabk8XPTKB"
+}
+]
+}
+}
+],
+"Output": [
+{
+"x": 570,
+"y": 350,
+"objectType": "Output",
+"label": "  ",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 1
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 130,
+"y": 10,
+"id": "CGTm6gEEu6fNx1JGaFtV"
+}
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": []
+},
+{
+"layout": {
+"width": 100,
+"height": 40,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+15
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+7
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+9
+]
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Control Signal",
+"connections": [
+4
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+3
+]
+},
+{
+"x": 0,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+8
+]
+},
+{
+"x": 0,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+10
+]
+},
+{
+"x": 590,
+"y": 380,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1,
+8
+]
+},
+{
+"x": 590,
+"y": 370,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+5,
+7
+]
+},
+{
+"x": 590,
+"y": 400,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+2,
+10
+]
+},
+{
+"x": 590,
+"y": 410,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+6,
+9
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+19
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+21
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+14
+]
+},
+{
+"x": 810,
+"y": 390,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+13
+]
+},
+{
+"x": 80,
+"y": 20,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+},
+{
+"x": 130,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+18
+]
+},
+{
+"x": 130,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+20
+]
+},
+{
+"x": 740,
+"y": 370,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+16,
+19
+]
+},
+{
+"x": 740,
+"y": 380,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+11,
+18
+]
+},
+{
+"x": 740,
+"y": 410,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+17,
+21
+]
+},
+{
+"x": 740,
+"y": 400,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+12,
+20
+]
+}
+],
+"id": 55095457268,
+"name": "Main",
+"Input": [
+{
+"x": 570,
+"y": 440,
+"objectType": "Input",
+"label": "\\cvmath{\\ne 0}",
+"direction": "UP",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 4
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"UP",
+1,
+{
+"x": 0,
+"y": 20,
+"id": "tOiEIrc4twjPBNGJVGfe"
+}
+]
+}
+}
+],
+"OrGate": [
+{
+"x": 760,
+"y": 390,
+"objectType": "OrGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+2,
+1
+],
+"nodes": {
+"inp": [
+11,
+12
+],
+"output1": 13
+}
+}
+}
+],
+"Demultiplexer": [
+{
+"x": 570,
+"y": 390,
+"objectType": "Demultiplexer",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"LEFT",
+1,
+1
+],
+"nodes": {
+"output1": [
+1,
+2
+],
+"input": 0,
+"controlSignalInput": 3
+}
+}
+}
+],
+"SubCircuit": [
+{
+"x": 450,
+"y": 370,
+"id": "99099432285",
+"label": "",
+"labelDirection": "LEFT",
+"inputNodes": [],
+"outputNodes": [
+15
+],
+"version": "2.0"
+},
+{
+"x": 600,
+"y": 360,
+"id": "45280280520",
+"label": "",
+"labelDirection": "LEFT",
+"inputNodes": [
+5
+],
+"outputNodes": [
+16
+],
+"version": "2.0"
+},
+{
+"x": 600,
+"y": 400,
+"id": "92951099443",
+"label": "",
+"labelDirection": "LEFT",
+"inputNodes": [
+6
+],
+"outputNodes": [
+17
+],
+"version": "2.0"
+}
+],
+"Text": [
+{
+"x": 820,
+"y": 390,
+"objectType": "Text",
+"label": "...",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"...",
+14
+]
+}
+},
+{
+"x": 420,
+"y": 390,
+"objectType": "Text",
+"label": "...",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"...",
+14
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": [
+7,
+8,
+9,
+10,
+14,
+18,
+19,
+20,
+21
+]
+}
+]
+}

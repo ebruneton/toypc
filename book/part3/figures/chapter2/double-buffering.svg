@@ -1,0 +1,46 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="19" height="12" x="47" y="17" fill="#ebebeb" stroke="#000000"/>
+    <rect width="17" height="10" x="48" y="18" fill="#062f3d" stroke-dasharray="0.2 0.6"/>
+    <rect width="17" height="10" x="23" y="14" fill="none" stroke="#000000"/>
+    <rect width="15" height="22" x="1" y="14" fill="none" stroke="#000000"/>
+    <text x="49" y="22" font-size="3.5px" fill="#06d6a0">Hello,</text>
+    <text x="49" y="26" font-size="3.5px" fill="#06d6a0">World!</text>
+    <text x="24" y="18" font-size="3.5px">Wo</text>
+    <text x="-24" y="20" transform="rotate(-90)" font-size="3.1px" text-anchor="end">draws</text>
+    <text x="-26" y="98" transform="rotate(-90)" font-size="3.1px">draws</text>
+    <text x="-26" y="45" transform="rotate(-90)" font-size="3.1px">displays</text>
+    <rect width="17" height="10" x="23" y="26" fill="none" stroke="#000000"/>
+    <text x="24" y="30" font-size="3.5px">Hello,</text>
+    <text x="24" y="34" font-size="3.5px">World!</text>
+    <text x="-25" y="9" transform="rotate(-90)" text-anchor="middle">Arduino</text>
+    <text x="42" y="36">Graphics card</text>
+    <text x="47" y="16">LCD</text>
+    <rect width="19" height="24" x="22" y="13" fill="none" stroke="#000000" stroke-dasharray="0.6 0.6"/>
+    <path d="m 16,25 7,-6" stroke="#000000" stroke-dasharray="0.2 0.2" marker-end="url(#arrow)"/>
+    <path d="m 40,31 7,-6" stroke="#000000" stroke-dasharray="0.2 0.2" marker-start="url(#arrow)"/>
+    <rect width="19" height="12" x="125" y="17" fill="#ebebeb" stroke="#000000"/>
+    <rect width="17" height="10" x="126" y="18" fill="#062f3d" stroke-dasharray="0.2 0.6"/>
+    <rect width="17" height="10" x="101" y="14" fill="none" stroke="#000000"/>
+    <rect width="15" height="22" x="79" y="14" fill="none" stroke="#000000"/>
+    <text x="127" y="22" font-size="3.5px" fill="#06d6a0">World!</text>
+    <text x="102" y="18" font-size="3.5px">World!</text>
+    <text x="-24" y="123" transform="rotate(-90)" font-size="3.1px" text-anchor="end">displays</text>
+    <rect width="17" height="10" x="101" y="26" fill="none" stroke="#000000"/>
+    <text x="102" y="34" font-size="3.5px">Bonjo</text>
+    <text x="-25" y="87" transform="rotate(-90)" text-anchor="middle">Arduino</text>
+    <rect width="19" height="24" x="100" y="13" fill="none" stroke="#000000" stroke-dasharray="0.6 0.6"/>
+    <path d="M 94,25 101,31" stroke="#000000" stroke-dasharray="0.2 0.2" marker-end="url(#arrow)"/>
+    <path d="m 118,19 7,6" stroke="#000000" stroke-dasharray="0.2 0.2" marker-start="url(#arrow)"/>
+  </g>
+</svg>

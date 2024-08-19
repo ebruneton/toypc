@@ -1,0 +1,63 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="75mm" viewBox="0 0 145 75" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+    </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="m 65,40 h 34 l 1,-10 h -1 l 1,-13 H 65" fill="#05ab80"/>
+    <path d="m 133,40 h -33 l 1,-12 h -1 l 1,-11 h 32" fill="#ebebeb"/>
+    <path d="m 33,40 -32,0 0,-23 H 33" fill="#ebebeb"/>
+    <text x="-39" y="84" transform="rotate(-90)" font-size="3.5px">arg2</text>
+    <rect width="32" height="23" x="33" y="17" fill="#06d6a0"/>
+    <text x="-39" y="80" transform="rotate(-90)" font-size="3.5px">arg1</text>
+    <text x="-39" y="76" transform="rotate(-90)" font-size="3.5px">arg0</text>
+    <text x="-39" y="64" transform="rotate(-90)" font-size="3.5px">status register</text>
+    <text x="-39" y="60" transform="rotate(-90)" font-size="3.5px">return address</text>
+    <text x="-39" y="56" transform="rotate(-90)" font-size="3.5px">R14</text>
+    <path d="m 77,17 0,23" stroke="#000000"/>
+    <path d="m 73,17 0,23" stroke="#000000"/>
+    <path d="m 61,17 0,23" stroke="#000000"/>
+    <path d="m 57,17 0,23" stroke="#000000"/>
+    <path d="m 65,17 v 23" stroke="#000000"/>
+    <path d="m 81,17 0,23" stroke="#000000"/>
+    <path d="m 85,17 0,23" stroke="#000000"/>
+    <path d="M 65,42 H 33.1" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="65" y="46" text-anchor="end">interrupt stack frame</text>
+    <path d="m 65,41 v 2" stroke="#000000"/>
+    <path d="m 137,42 -4,0" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="137" y="46" text-anchor="end">SVC handler</text>
+    <path d="m 137,41 v 2" stroke="#000000"/>
+    <text x="-39" y="136" transform="rotate(-90)" font-size="3.5px">EXC\_RETURN</text>
+    <path d="m 133,17 0,23" stroke="#000000"/>
+    <path d="m 141,17 0,23" stroke="#000000"/>
+    <path d="m 137,17 0,23" stroke="#000000"/>
+    <text x="-39" y="40" transform="rotate(-90)" font-size="3.5px">R1=args</text>
+    <text x="-39" y="44" transform="rotate(-90)" font-size="3.5px">R2</text>
+    <text x="-39" y="48" transform="rotate(-90)" font-size="3.5px">R3</text>
+    <text x="-39" y="36" transform="rotate(-90)" font-size="3.5px">R0=service ID</text>
+    <text x="-29" y="140" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="-29" y="69" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="-29" y="89" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">...</text>
+    <path d="m 37,17 0,23" stroke="#000000"/>
+    <path d="m 33,17 0,23" stroke="#000000"/>
+    <path d="m 45,17 0,23" stroke="#000000"/>
+    <text x="-39" y="52" transform="rotate(-90)" font-size="3.5px">R12</text>
+    <path d="m 49,17 0,23" stroke="#000000"/>
+    <path d="m 53,17 0,23" stroke="#000000"/>
+    <path d="m 41,17 0,23" stroke="#000000"/>
+    <path d="m 1,40 98,0 1,-10 h -1 l 1,-13 -99,0" fill="none" fill-opacity="0.802963" stroke="#000000"/>
+    <path d="m 144,17 -43,0 -1,11 h 1 l -1,12 44,0" fill="none" stroke="#000000"/>
+    <path d="m 135,14 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="135" y="13" text-anchor="middle">SP=MSP</text>
+    <text x="35" y="13" text-anchor="middle">PSP</text>
+    <path d="m 35,14 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <circle cx="39" cy="19" r="1"/>
+    <path d="m 39,19 v -5 h 36 v 3" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+  </g>
+</svg>

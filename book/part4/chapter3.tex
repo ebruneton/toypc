@@ -1,0 +1,1268 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter3}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "processes.txt")?;
+}
+
+\chapter[Processes and System Calls]{Processes\\and System
+Calls}\label{chapter:processes}
+
+Thanks to our boot loader we can now reassemble a program stored in the file
+system into a contiguous sequence of bytes and run it. However, the boot loader
+can only launch a single initial program, namely the operating system kernel.
+To run other programs a solution is to implement a kernel which, in turn, can
+load and run other programs. Our kernel currently contains the clock, graphics
+card, keyboard and disk drivers. In particular, it contains a {\tt
+disk\_read\_file} function which can load a program stored on disk. Hence we
+``just'' need to improve our kernel so that it can also run programs. In fact
+things are not so simple.
+
+In order to load and run a program the kernel must find a RAM region not
+already used by other programs. For this it must keep track of which regions
+are currently used and which ones are free. Moreover, to do something useful,
+programs launched by the kernel should be able to use the keyboard, the screen,
+or the disk. The kernel already provides functions for this, and we don't want
+to re-implement them in each program. In other words, the kernel should provide
+a way for a program to use its services. This chapter provides a new version of
+our kernel which does this. We test it at the end with a small program
+launching itself recursively to compute a factorial.
+
+\section{Requirements}
+
+Most operating systems can run several programs concurrently. Such systems can,
+for instance, run a music player program ``at the same time'' as a compiler. In
+fact they run the music player for a few milliseconds, then the compiler for a
+few milliseconds, then the music player again, etc. They are called
+multitasking operating systems. The opposite is a monotasking system. Such a
+system cannot run several programs concurrently. Monotasking systems are much
+simpler to implement than multitasking ones. For this reason, we use a
+monotasking model for our toy operating system, presented below.
+
+A program loaded and started by the kernel is called a {\em process}. A process
+is {\em spawned} by loading the compiled code of a program in RAM and by
+calling its main function. A {\em parent} process P can ask the kernel to spawn
+a {\em child} process Q but, to get a monotasking system, we require P to be
+suspended until Q terminates. In other words, processes must behave like
+functions calling each other (when a function calls another, the caller is
+suspended until the callee returns).
+
+By analogy with functions, which can have parameters and can return a result,
+we also the require the ability to spawn a process with some arguments, and the
+ability to return a result from a child process to its parent. Moreover, a
+process should be able to stop and return a result at any time, and not just
+when its main function returns (like our compiler with its {\tt panic}
+function). We also add a safety requirement: a bug in a process should not
+crash everything and require the user to reboot the computer. Instead, the
+process should be terminated and should return some error value to its parent,
+which should resume its execution normally.
+
+As described above, the kernel should provide a way for processes to use its
+services. In this chapter we require only two services: one to spawn a child
+process with some arguments, and another to stop the current process and to
+return a value to its parent. We define more services in the next chapter.
+
+To solve the issue that the boot loader can only launch a single program, the
+kernel could ask the user to type on the keyboard the name and arguments of a
+program to launch, run it until completion, ask which other program to launch
+next, etc. But a better method is to implement this {\em command line
+interpreter}, also called a {\em shell}, in a process. Indeed, this reduces
+the kernel size and makes it easier to change the shell implementation. Hence,
+we require our kernel to spawn a single process when it starts, from the
+program file named ``{\tt shell}''.
+
+\section{Design}\label{subsection:process-design}
+
+Since spawning a process should behave similarly to calling a function, one
+could be tempted to use actual function calls for this. More precisely, a
+process could call a ``{\tt spawn}'' function in the kernel, which would itself
+load some program's code and call its main function. This would lead to a
+single stack, with the stack frames of ``{\tt spawn}'' function calls
+interleaved between the stack frames of process function calls.
+
+Unfortunately this simple design cannot ensure our safety requirement. A bug in
+a process might cause it to write random values in the code, heap, or stack of
+the kernel, or of another process. This could trigger a Hard Fault some time
+later, when the kernel or this other process uses this incorrect instruction or
+value. To prevent this, one method is to completely {\em isolate} each process
+from each other, and from the kernel. This means that each process should have
+its own memory region to store its code, heap and stack. And that it should not
+be able to access any other memory region, in any way. A consequence is that
+the kernel and the processes should each have their own stack. Another is that
+processes cannot call functions in the kernel or in another process (because,
+for this, they would need to read the function's instructions, outside their
+own memory region).
+
+Most operating systems isolate processes in this way, and thus need to use one
+stack per process, and to avoid function calls to system services. This is why
+the ARM Cortex M3, like many other microprocessors, provides several features
+specifically designed for these tasks. We present them below, before presenting
+our final design.
+
+\subsection{Memory Protection Unit}
+
+The Memory Protection Unit (see \cref{section:cortex-m3}) is designed to
+enforce isolation between processes. We show how to use it in
+\cref{chapter:memory-protection}.
+
+\subsection{Process Stack Pointer}\label{subsection:process-stack-pointer}
+
+To make it easier to have one stack per process, and one stack for the kernel,
+the Cortex M3 has two Stack Pointer (SP) registers. One is called the Main
+Stack Pointer (MSP), and is intended to be used by the kernel. The other is
+called the Process Stack Pointer (PSP) and, as its name implies, is intended to
+be used by processes. Instructions which the use ``the'' SP, such as \arm{PUSH}
+or \arm{POP}, actually use either the MSP or the PSP, depending on the current
+state of the microprocessor:
+\begin{itemize}
+  \item when an exception or interrupt handler is executing (other than the
+  Reset handler), which is called the {\em handler mode}, these instructions
+  always operate on the Main Stack Pointer register.
+
+  \item otherwise, in {\em thread mode}, the register used depends on a ``stack
+  selection'' bit in a so called CONTROL register. When this bit is 0, which is
+  the default value, the MSP is used. When it is 1, the PSP is used instead.
+\end{itemize}
+
+So far we never changed the stack selection bit, and we were thus using the MSP
+all the time, in handler and thread mode. It is however possible to change this
+bit, and we present a method to do this in the next section. This enables using
+the PSP with instructions such as \arm{PUSH} or \arm{POP}, but also with
+\arm{ADD}, \arm{SUB}, \arm{MOV}, \arm{LDR}, or \arm{STR} instructions using the
+SP as operand. It is also possible to get or set the value of the MSP and of
+the PSP directly, with the following instructions:
+
+\begin{Paragraph}
+  \rs{MRS_RD_SYSM.definition()}\medskip\\
+  \rs{MSR_SYSM_RD.definition()}
+\end{Paragraph}
+
+The ``Move to Register from Special Register'' (\arm{MRS}) instruction copies
+the value of the special register SYSR$x$ into a normal register R$z$. The
+``Move to Special Register from Register'' (\arm{MSR}) instruction does the
+opposite. The MSP, PSP, and CONTROL registers correspond to SYSR8, SYSR9, and
+SYSR20, respectively. R$x$ and R$z$ must not be the PC or the SP.
+
+\subsection{Interrupt entry and return}\label{subsection:interrupt-entry-exit2}
+
+As described in \cref{subsection:interrupt-entry-return}, the microprocessor
+pushes some values on the stack when an exception or interrupt occurs, and pops
+them when it terminates. In fact things are a bit more complex since there are
+two stack pointers. This section gives more details about this process (but not
+all of them -- see \cite{ARMv7} for a complete description).
+
+When an interrupt\footnote{The process is the same for exceptions.} becomes
+active the microprocessor pushes an {\em interrupt stack frame} on the {\em
+  currently selected stack}. This stack frame contains (see
+\cref{fig:system-call}):
+\begin{itemize}
+  \item the value of the R0, R1, R2, R3, R12, and R14 (LR) registers.
+
+  \item the {\em return address}, \ie, the address of the instruction to return
+  to when the handler terminates. This address is {\em not} an interworking
+  address.
+
+  \item the value of a special ``status'' register which contains, among other
+  things, the result of the last \arm{CMP} instruction (see
+  \cref{subsection:data-insns}). For the same reason behind interworking
+  addresses (see \cref{subsection:program-counter}), bit 24 of this value must
+  always be 1.
+\end{itemize}
+
+After this the microprocessor sets the Link Register (LR) to a special value
+called {\em EXC\_RETURN}, which encodes the current execution mode\footnote{An
+  interrupt can become active in handler mode. We explain this in the next
+  chapter.} and stack selection bit:
+
+\begin{center}
+  \begin{tabular}{|l|l|l|} \hline
+    \makecell{\thead{Mode}} & \thead{Stack} & \thead{EXC\_RETURN}\\ \hline
+    \makecell{Handler} & Main & \hexa{FFFFFFF1} \\
+    \makecell{Thread} & Main & \hexa{FFFFFFF9} \\
+    \makecell{Thread} & Process & \hexa{FFFFFFFD} \\ \hline
+  \end{tabular}
+\end{center}
+
+Finally, the Cortex M3 changes the current mode to handler mode, and the
+current stack to the Main stack. The interrupt handler then starts to execute,
+on this stack. When {\em any} one of the above EXC\_RETURN value is copied into
+the Program Counter, the reverse process happens: the execution mode and the
+current stack are set according to the EXC\_RETURN value, and the R0, R1, R2,
+R3, R12, R14, R15 (Program Counter), and ``status'' registers are set to values
+popped from this new stack.
+
+Note that an interrupt handler can return with a different EXC\_RETURN value
+than the one set in the LR when it started. For instance, an interrupt which
+occurred in thread mode while the Main stack was selected can set the PC to
+\hexa{FFFFFFFD}. In this case execution resumes in thread mode but on the
+Process stack (which should then contain a valid interrupt stack frame). An
+interrupt handler can also change the Process Stack Pointer during its
+execution. We use both possibilities in the next sections, to spawn the initial
+process and to switch execution between processes.
+
+\subsection{SVC instruction and interrupt}
+
+The Cortex M3 provides several features to make it possible to use services
+provided by the kernel without function calls. One is the possibility to
+configure the Memory Protection Unit so that memory is protected only in thread
+mode. Another is the following instruction:
+
+\begin{Paragraph}
+  \rs{SVC_IMM8.definition()}
+\end{Paragraph}
+
+The ``Supervisor Call'' instruction triggers a special interrupt called an
+``SVC interrupt'', corresponding to the 11$^{th}$ entry of the Vector Table
+(counting from 0, \ie, at offset 44). Its $c$ operand is unused. A program
+executing this instruction is immediately suspended, and resumes only when the
+stack frame pushed on interrupt entry is popped. In other words, this
+instruction behaves a bit like a function call to the SVC handler, hence its
+name. But it uses an interrupt for this, which executes in handler mode. Hence,
+if the Memory Protection Unit is configured as explained above, the SVC handler
+can access any memory, and in particular the kernel's code, heap and stack.
+This provides a way for processes to use kernel services, despite their
+memory isolation, without using actual function calls.
+
+\subsection{Final design}
+
+\begin{Figure}
+  \input{figures/chapter3/process-ram-map.tex}
+
+  \caption{The layout of a process in RAM.  Red, yellow, green, and gray areas
+  represent native code, heap, stack, and unused memory,
+  respectively.}\label{fig:process-ram-map}
+\end{Figure}
+
+Thanks to the above Cortex M3 features we can achieve our requirements with the
+following design. First of all, to make it easier to isolate processes, we
+store each one in a contiguous region of RAM, noted $[\mathit{begin},
+\mathit{end}[$. Due to limitations of the Memory Protection Unit, these
+addresses must be multiple of 32 bytes (see \cref{chapter:memory-protection}).
+We then organize this region as follows (see \cref{fig:process-ram-map}):
+\begin{itemize}
+  \item a process's memory region starts with the program's compiled code,
+  which must itself start with its main function.
+
+  \item the code is followed by a {\em heap} region, between $\mathit{heap}$
+  and $\mathit{heap\_limit}$, where the program can store its own data. The
+  process arguments are put at the beginning of this region, as a data buffer
+  (\ie, a 32-bit header containing the arguments size $s$, followed by $s$
+  bytes of arbitrary data).
+
+  \item the heap is followed by a region reserved for the stack, between
+  $\mathit{heap\_limit}$ and $\mathit{end}$. As usual, the
+  stack grows in decreasing address order. The stack pointer is thus
+  initialized to $\mathit{end}$. The heap can be used in arbitrary
+  ways, but usually grows in increasing address order.
+\end{itemize}
+
+To launch this process we need a way to ``tell'' the program where the process
+arguments are, and where it can store its own data. For this we require its
+main function to have two parameters, corresponding to $\mathit{heap}$ and
+$\mathit{heap\_limit}$. This specifies both the region where data can be
+stored, and the location of the process arguments (since, by hypothesis, they
+start at $\mathit{heap}$).
+
+To spawn a new process while keeping track of the used and unused regions of
+memory, a simple solution is to put it just after its parent  (see
+\cref{fig:simple-processes-layout}). This leads to a simple ``stack'' of
+processes, pushed when spawn and popped when they terminate. But this design
+wastes the parent's unused memory, which cannot use it until its child
+terminates since it is suspended. To solve this issue we use another design
+instead: we put child processes inside their parent process, like Russian dolls
+(see \cref{fig:kernel-data-structures}). This allows each child process to use
+as many bytes as possible of its parent's unused memory (up to 2$\times$31
+bytes can be wasted due to the alignment constraints of $\mathit{begin}$ and
+$\mathit{end}$). Finally, we use all the available memory between the kernel's
+heap and stack, for which we reserve fixed amounts of RAM, to spawn the initial
+shell process (see \cref{fig:kernel-ram-map,fig:kernel-data-structures}).
+
+\begin{Figure}
+  \input{figures/chapter3/simple-processes-layout.tex}
+
+  \caption{Storing processes one after the other would waste memory. Here
+    spawning a process would be possible if the unused memory was not
+    fragmented.}\label{fig:simple-processes-layout}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter3/data-structures.tex}
+
+  \caption{Processes are stored in the unused memory region of their parent,
+  between the areas reserved for the kernel's heap (blue) and stack (white).
+  The kernel's heap contains a {\tt Kernel} data structure (dark blue) with a
+  linked list (red links) of {\tt Process} data structures, starting with the
+  current one. Each structure describes the start and end address of a process
+  and links to its parent.}\label{fig:kernel-data-structures}
+\end{Figure}
+
+\section{Data structures and algorithms}
+
+To implement our requirements we store in the kernel's heap the following data
+structures, and we use them in the algorithms described below (see
+\cref{fig:kernel-data-structures}):
+\begin{itemize}
+  \item a {\tt Kernel} struct contains the limits of the regions reserved for
+  the kernel's heap and stack. It also contains a {\tt heap} pointer to the
+  first free byte in the kernel's heap. Finally, it links to a struct
+  representing the currently running process.
+
+  \item a {\tt Process} struct per process. Each struct describes the start and
+  end address of the process, and links to the {\tt Process} struct of its
+  parent.
+\end{itemize}
+
+\subsection{System calls}\label{subsection:system-calls}
+
+In order to allow processes to ``call'' services provided by the operating
+system kernel, \ie, to make {\em system calls}, we use the SVC instruction. But
+this is not sufficient. This instruction can only ``call'' a single interrupt
+handler function, and we would like our kernel to provide several services (for
+the keyboard, the screen, the disk, etc). To solve this we can pass to this
+handler an integer specifying the desired service, \ie, a {\em service ID}. But
+we need to decide how. We also need a way to pass some arguments to each
+service, and to get a result back. This can be done via registers, with the
+stack, or a mix of both. Here, to simplify the implementation, we require the
+following:
+\begin{itemize}
+  \item before using the SVC instruction R0 and R1 should contain the service
+  ID and a pointer to the service arguments, respectively. The registers not
+  automatically saved in the interrupt stack frame should not contain any
+  important value (so that the interrupt handler does not need to save and
+  restore them).
+
+  \item when the interrupted process resumes R0 should contain the service's
+  result.
+\end{itemize}
+
+As a consequence, when the SVC handler function starts executing, the Process
+stack and the Main stack look as depicted in \cref{fig:system-call}:
+\begin{itemize}
+  \item the top of the Process stack contains the interrupt stack frame, pushed
+  on interrupt entry, starting with the service ID and the pointer to the
+  service arguments.
+
+  \item the top of the Main stack contains the EXC\_RETURN value. Indeed the
+  handler function has no argument and, like any function, its pushes its
+  arguments and the LR on the stack when it starts (see
+  \cref{fig:native-stack-frame}). And the LR contains the EXC\_RETURN values as
+  described \cref{subsection:interrupt-entry-exit2}.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter3/system-call.tex}
+
+  \caption{When the SVC handler starts it pushes the EXC\_RETURN value on the
+  Main stack (white). The stack frame pushed on interrupt entry (light green),
+  on the Process stack (green), must start with a service ID and a pointer
+  to its arguments.}\label{fig:system-call}
+\end{Figure}
+
+\subsection{Spawn}\label{subsection:spawn}
+
+We then define a ``{\tt spawn}'' service, with ID 0 and with the following
+arguments:
+\begin{itemize}
+  \item a destination pointer where to spawn the process, $\mathit{dst}$,
+
+  \item a pointer to the name of the file containing its code, $\mathit{name}$,
+
+  \item the length of this name, $\mathit{name\_length}$,
+
+  \item a pointer to the process arguments, $\mathit{args}$,
+
+  \item the size of these arguments, $\mathit{args\_length}$.
+\end{itemize}
+
+As a consequence, when the SVC handler for a ``{\tt spawn}'' system call starts
+executing, the Process stack of the calling process looks as depicted in
+\cref{fig:spawn-process}. We then use the following algorithm to spawn the child
+process (see \cref{fig:process-ram-map,fig:spawn-process}):
+\begin{enumerate}
+  \item compute $\mathit{begin}$ by rounding up $\mathit{dst}$ to a multiple of
+  32, and $\mathit{end}$ by rounding down the current Process Stack Pointer to
+  a multiple of 32 (or the kernel's $\mathit{stack\_limit}$ for the initial
+  process -- there is no current process in this case).
+
+  \item compute $\mathit{heap\_limit}$ by subtracting a minimum stack size from
+  $\mathit{end}$ (512 bytes -- if a program needs more space for its stack, it
+  can then further decrease $\mathit{heap\_limit}$ to make sure not to store
+  data beyond this).
+
+  \item load the program's code at $\mathit{begin}$, and compute
+  $\mathit{heap}$ as $\mathit{begin}$ plus the code size.
+
+  \item copy the process arguments after the code, at address
+  $\mathit{heap}$.
+
+  \item {\em synthesize an interrupt stack frame} in the new process stack
+  area. Set the saved R0 and R1 values to $\mathit{heap}$ and
+  $\mathit{heap\_limit}$, and the return address to $\mathit{begin}$,
+  \ie, the address of the new process's main function.
+
+  \item save the current Process Stack Pointer in a field of the current {\tt
+  Process} struct named {\tt saved\_context} (see
+  \cref{fig:kernel-data-structures}). Then change it, with an \arm{MSR}
+  instruction, to the top of the above synthesized stack frame.
+
+  \item create and initialize a new {\tt Process} struct representing the
+  spawned process, which becomes the new {\tt Kernel}'s current process.
+\end{enumerate}
+
+Thus, when the SVC handler returns, {\em the synthesized interrupt stack frame
+is popped from the stack of the spawned process}. The effect is a jump to the
+main function of this new process, with its $\mathit{heap}$ and
+$\mathit{heap\_limit}$ parameters in R0 and R1, as required. In other words,
+the new process starts executing, with its own stack.
+
+\begin{Figure}
+  \input{figures/chapter3/spawn-process.tex}
+
+  \caption{The memory content when the SVC handler for a ``{\tt spawn}''
+  system call starts (top), and just before it returns
+  (bottom).}\label{fig:spawn-process}
+\end{Figure}
+
+\subsection{Exit}\label{subsection:exit}
+
+To terminate this new process and return a value to its parent we define an
+``{\tt exit}'' service, with ID 1 and a single $\mathit{result}$ argument, and
+using the following algorithm:
+\begin{enumerate}
+  \item delete the {\tt Process} struct representing the child process, and
+  sets the {\tt Kernel}'s current process to its parent.
+
+  \item set the Process Stack Pointer to the value saved in the parent {\tt
+  Process} (at step 6 of the {\tt spawn} algorithm). That is, to the top of the
+  interrupt stack frame which was pushed when the parent called {\tt spawn}.
+
+  \item set the saved R0 value in this interrupt stack frame to
+  $\mathit{result}$.
+\end{enumerate}
+
+Thus, when the SVC handler returns, execution resumes in the parent process, at
+the instruction just after the \arm{SVC}. Moreover, the child process's result
+is in R0, as a normal function result.
+
+\subsection{Error handling}\label{subsection:status_or}
+
+Several errors can occur when spawning a process. For instance, the program
+file might not exist, or there might not be enough memory to load it. In such
+cases we want to return an error code to the parent. There are several ways to
+do this. A convenient method for users is to return it in R0, like the exit
+value of the spawned process. To distinguish the two cases (spawning error {\em
+vs} spawned process's result) we spit the 32-bit result in two parts:
+\begin{itemize}
+  \item we store the error, if any, in the most significant byte,
+  called the result's {\em status}.
+
+  \item we store the result of the spawned process in the 3 least significant
+  bytes (this leaves only $2^{24}$ possible result values, but this is
+  acceptable for a toy system).
+\end{itemize}
+
+The advantage of this encoding is that if the process is spawned successfully,
+\ie, if the result's status is 0, then the 32-bit result is directly equal to
+the exit value. For consistency, we use this encoding for all system calls.
+
+\subsection{Initial process}
+
+After it has initialized itself the kernel can spawn the initial shell process
+with a {\tt spawn} system call, like for any other process. Note however that
+this system call is made by the kernel, and not by a process. At this stage the
+kernel is running in Thread mode on the Main stack. This has two consequences:
+\begin{itemize}
+  \item the SVC interrupt stack frame is pushed on the Main stack, instead of
+  the Process Stack as for all other system calls. The SVC handler is pushed on
+  the same stack just after that. Hence, the interrupt stack frame is just
+  below the EXC\_RETURN value in this case (see \cref{fig:spawn-shell}).
+
+  \item the SVC interrupt handler must change the EXC\_RETURN value to
+  \hexa{FFFFFFFD} to use the Process Stack on interrupt exit. Otherwise the
+  interrupt would return in the kernel.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter3/spawn-shell.tex}
+
+  \caption{The Main Stack when the SVC handler for the initial ``{\tt spawn}''
+    starts.}\label{fig:spawn-shell}
+\end{Figure}
+
+\section{Implementation}
+
+\rust{
+  let mut t = Transpiler5::new_str(
+      &context.get_text(context.memory_region("kernel_source").start));
+}
+
+We can now extend the first version of our kernel, written in the previous
+chapter, with the algorithms described above. We start by declaring a new
+function to spawn the initial shell process, after the initialization of the
+kernel:
+
+\toy{
+@fn os_init(code: &u32, heap: &u32, stack: &u32);
+fn os_spawn_shell();
+
+@fn entry(code: &u32, heap: &u32, stack: &u32) {
+@  os_init(code, heap, stack);
+  os_spawn_shell();
+@}
+}%toy
+
+\rust{
+  t.add_unchanged("fn load8(", "const OK: u32 = 0;");
+}
+
+We continue by adding some error code definitions, and a utility function to
+compute a result with an error status (see \cref{subsection:status_or}):
+\begin{itemize}
+  \item {\tt NOT\_FOUND} if spawning a process fails because its program file
+  is not found.
+
+  \item {\tt INTERNAL\_ERROR} if a process triggers a Hard Fault and thus
+  terminates abnormally.
+
+  \item {\tt INVALID\_STATE} if the initial process calls {\tt exit} (it
+  has no parent to return to).
+\end{itemize}
+
+\toy{
+@const OK: u32 = 0;
+@const INVALID_ARGUMENT: u32 = 1;
+const INVALID_STATE: u32 = 2;
+const NOT_FOUND: u32 = 3;
+const ALREADY_EXISTS: u32 = 4;
+const OUT_OF_MEMORY: u32 = 5;
+const INTERNAL_ERROR: u32 = 6;
+
+fn error_result(error: u32) -> u32 { return error << 24; }
+}%toy
+
+\rust{
+  t.add_unchanged("fn disk_create_file(", "fn usart_handler(");
+}
+
+We then define, after the disk driver functions and before the {\tt
+usart\_handler}, some types corresponding to the data structures defined above
+(see \cref{fig:kernel-data-structures}).
+{\tt Context} corresponds to an interrupt stack frame (see
+\cref{fig:system-call}). The last 3 fields of {\tt Kernel} contain the
+addresses of functions implementing our system calls (we add a temporary {\tt
+draw\_char} system call for testing purposes):
+
+\toy{
+struct Context {
+  r0: u32,
+  r1: u32,
+  r2: u32,
+  r3: u32,
+  r12: u32,
+  r14: u32,
+  return_address: u32,
+  status_register: u32
+}
+struct Process {
+  parent: &Process,
+  begin: &u32,
+  end: &u32,
+  saved_context: &Context
+}
+struct Kernel {
+  heap: &u32,
+  heap_limit: &u32,
+  stack_limit: &u32,
+  current_process: &Process,
+  spawn: u32,
+  exit: u32,
+  draw_char: u32
+}
+}%toy
+
+To find the {\tt Kernel} allocated in the kernel's heap (see
+\cref{fig:kernel-data-structures}) we store a pointer to it in a General
+Purpose Backup Register, after the ones used by the keyboard driver (at address
+\rs{hex_dec(0x400E1A9Cu32)} -- see \cref{subsection:keyboard-driver-impl}).
+
+\toy{
+const KERNEL_POINTER_REGISTER: &&Kernel = 1074666140;
+fn os_kernel() -> &Kernel { return *KERNEL_POINTER_REGISTER; }
+}%toy
+
+\subsection{Spawn}
+
+To implement the {\tt spawn} system call we need the \arm{MRS} and \arm{MSR}
+instructions to get and set the Process Stack Pointer. This can only be done
+with native functions:
+
+\toy{
+fn get_process_stack_pointer() -> &u32 [
+  /*MRS_R0_PSP*/ 2148135919;
+  /*MOV_PC_LR*/ 18167;
+]
+fn set_process_stack_pointer(value: &u32) [
+  /*MSR_PSP_R0*/ 2282353536;
+  /*MOV_PC_LR*/ 18167;
+]
+}%toy
+
+We use them in the following utility function, which changes the current
+process to the given one (the change becomes effective when the SVC handler
+calling it returns):
+
+\toy{
+fn os_set_current_process(kernel: &Kernel, process: &Process) {
+  set_process_stack_pointer(process.saved_context as &u32);
+  kernel.current_process = process;
+}
+}%toy
+
+The {\tt spawn} system call takes some pointers as arguments. A bug in the
+calling process might cause them to point in a reserved memory region, in the
+kernel's code, heap, or stack, or in another process. Since {\tt spawn} reads
+and writes data at these addresses, such a bug could cause a crash of the
+kernel, even if processes are isolated. To avoid this, all system calls must
+check that their arguments are correct. This is the goal of the following
+function, which checks if the {\tt size} bytes starting at {\tt ptr} are
+inside the memory region of a process (while being careful to avoid overflows):
+
+\toy{
+const FALSE: u32 = 0;
+const TRUE: u32 = 1;
+fn process_contains_buffer(self: &Process, ptr: &u32, size: u32) -> u32 {
+  if ptr < self.begin || ptr >= self.end { return FALSE; }
+  if size > self.end - ptr { return FALSE; }
+  return TRUE;
+}
+}%toy
+
+We can now implement a function to spawn a process, as described in
+\cref{subsection:spawn}. We start by checking if there is enough free memory in
+the kernel's heap to store a new {\tt Process} struct, and by computing
+$\mathit{begin}$ and $\mathit{end}$:
+
+\toy{
+fn os_spawn(dst: &u32, name: &u32, name_length: u32, args: &u32, \
+args_length: u32) -> u32 \{
+  let kernel = os_kernel();
+  if sizeof(Process) > kernel.heap_limit - kernel.heap {
+    return error_result(OUT_OF_MEMORY);
+  }
+  let begin = (((dst as u32 + 31) >> 5) << 5) as &u32;
+  let end = (((kernel.stack_limit as u32) >> 5) << 5) as &u32;
+  let parent = kernel.current_process;
+  if parent != null \{
+    end = ((get_process_stack_pointer() as u32 >> 5) << 5) as &u32;
+}%toy
+
+We then check the arguments, unless {\tt parent} is {\tt null} (this case
+corresponds to the kernel spawning the initial shell process, and we trust it).
+More precisely, we check that the $[\mathit{begin}, \mathit{end}[$ region is
+not empty, and that the parent's memory region contains it (as well as the name
+and arguments of the process to spawn). We also check that the arguments do not
+overlap the $[\mathit{begin}, \mathit{end}[$ region, so that we can copy them
+later on with {\tt mem\_copy\_non\_overlapping}.
+
+\toy{
+    if end < begin || begin < parent.begin ||
+        process_contains_buffer(parent, name, name_length) == FALSE ||
+        process_contains_buffer(parent, args, args_length) == FALSE {
+      return error_result(INVALID_ARGUMENT);
+    }
+    if args + args_length > begin && args < end {
+      return error_result(INVALID_ARGUMENT);
+    }
+  \}
+}%toy
+
+We continue by checking if the program file exists, and if there is enough
+memory to load it in the new process. If so we compute $\mathit{heap}$ and
+$\mathit{heap\_limit}$. Finally, we check if this heap region can contain the
+process arguments, as a data buffer (\ie, with an additional 4 bytes header).
+
+\toy{
+  let file_block = disk_find_file(name, name_length, null);
+  if file_block == null { return error_result(NOT_FOUND); }
+  let code_size = disk_get_file_size(file_block);
+  if code_size > end - begin {
+    return error_result(OUT_OF_MEMORY);
+  }
+  const MIN_STACK_SIZE: u32 = 512;
+  let heap = begin + code_size;
+  let heap_limit = end - MIN_STACK_SIZE;
+  if heap_limit < heap + 4 || args_length > heap_limit - heap - 4 {
+    return error_result(OUT_OF_MEMORY);
+  }
+}%toy
+
+At this point all the possible error cases have been checked (while being
+careful to avoid overflows). We can thus actually spawn the process. For this
+we start by loading the program's code at the $\mathit{begin}$ address. This
+code starts after the header of the first file block, which contains 3 words
+and the file name (see \cref{fig:data-structures}). We also copy the process
+arguments, as a data buffer, in the new process heap:
+
+\toy{
+  let offset = 12 + name_length;
+  disk_read_file(&file_block as &&DiskBlock, &offset, begin, code_size);
+  *heap = args_length;
+  mem_copy_non_overlapping(args, heap + 4, args_length);
+}%toy
+
+Finally, we initialize an interrupt stack frame as described in
+\cref{subsection:spawn,fig:spawn-process}, save the current Process Stack
+Pointer, create a {\tt Process} struct in the kernel's heap describing the
+spawned process, and make it the current process.
+
+\toy{
+  let context = (end - sizeof(Context)) as &Context;
+  context.r0 = heap as u32;
+  context.r1 = heap_limit as u32;
+  context.r14 = 0;
+  context.return_address = begin as u32;
+  context.status_register = 1 << 24;
+  if parent != null {
+    parent.saved_context = get_process_stack_pointer() as &Context;
+  }
+  let process = kernel.heap as &Process;
+  kernel.heap = kernel.heap + sizeof(Process);
+  process.parent = parent;
+  process.begin = begin;
+  process.end = end;
+  process.saved_context = context;
+  os_set_current_process(kernel, process);
+  return OK;
+\}
+}%toy
+
+\subsection{Exit}
+
+Implementing the {\tt exit} function is much easier. We start by checking if
+the current {\tt process} has a parent (the initial shell process must not
+exit). We also check if the result value is less than $2^{24}$ (see
+\cref{subsection:status_or}). If so we delete {\tt process} from the kernel's
+heap, copy the exit value in the parent's saved R0 register, and make this
+parent the new current process.
+
+\toy{
+fn os_exit(result: u32) -> u32 {
+  let kernel = os_kernel();
+  let process = kernel.current_process;
+  if process.parent == null { return error_result(INVALID_STATE); }
+  if result >= (1 << 24) { return error_result(INVALID_ARGUMENT); }
+  kernel.heap = process as &u32;
+  process = process.parent;
+  process.saved_context.r0 = result;
+  os_set_current_process(kernel, process);
+  return OK;
+}
+}%toy
+
+In order to test the above system calls we need to spawn a process doing
+something that we can easily verify, such as drawing characters on the screen.
+For this we implement the following temporary function (see
+\cref{subsection:text-config}):
+
+\toy{
+fn os_draw_char(c: u32) -> u32 {
+  gpu_set_register(2, c);
+  return OK;
+}
+}%toy
+
+\subsection{Hard Fault and SVC handlers}
+
+As described in the requirements, an error occurring in a process should
+terminate it and return an error code to its parent. We thus implement the Hard
+Fault handler as follows (we assume that the kernel is bug free, \ie, that no
+Hard Fault can occur while the kernel is running):
+
+\toy{
+fn hard_fault_handler() {
+  os_exit(INTERNAL_ERROR);
+}
+}%toy
+
+The SVC handler must call either {\tt os\_spawn}, {\tt os\_exit}, or {\tt
+os\_draw\_char}, depending on the service ID in the interrupt stack frame. This
+could be done with a chain {\tt if id == 0} $\ldots$ {\tt else if id == 1}
+$\ldots$ {\tt else if id == 2} $\ldots$ However, this would become less and
+less practical as new services are defined. Instead, we store the addresses of
+these functions in the {\tt Kernel} struct, and we call the {\tt id}$^{th}$ one
+with the following native function:
+
+\toy{
+fn call(arg0: u32, arg1: u32, arg2: u32, arg3: u32, arg4: u32, arg5: u32,
+    function: u32) -> u32 [
+  /*BX_R6*/ 18224;
+]
+}%toy
+
+This calls a function $f$ at interworking address {\tt function} with up
+to 6 arguments. Indeed, when the \arm{BX} instruction executes R0 to R5 contain
+the arguments, and the LR contains the return address in the caller. This is
+what $f$ expects. We can thus jump to it directly with this instruction (R6
+contains {\tt function}). $f$ will then return directly in the caller.
+
+Before implementing the SVC handler it is useful to have some constants
+describing the total number of system calls and the number of parameters of
+each one. It is also useful to have a {\tt struct} representing the system call
+arguments (\ie, what the saved R1 register in the interrupt stack frame points
+to -- see \cref{fig:system-call}):
+
+\toy{
+const NUM_SYSTEM_CALLS: u32 = 3;
+static SYSTEM_CALL_ARITY = [5, 1, 1];
+
+struct CallArguments {
+  arg0: u32,
+  arg1: u32,
+  arg2: u32,
+  arg3: u32,
+  arg4: u32,
+  arg5: u32
+}
+}%toy
+
+With this we can finally implement the SVC handler. We start by computing the
+address of the top of the interrupt stack frame, in {\tt context}. If there is
+a current process this is simply the value of the Process Stack Pointer (see
+\cref{fig:system-call}). Otherwise this is 4 bytes after the EXC\_RETURN value
+(see \cref{fig:spawn-shell}). And the EXC\_RETURN value itself is 4 bytes after
+the {\tt kernel} local variable, on top of the stack:
+
+\toy{
+fn supervisor_call_handler() \{
+  let kernel = os_kernel();
+  let exc_return_ptr = &kernel as &u32 + 4;
+  let context = (exc_return_ptr + 4) as &Context;
+  let process = kernel.current_process;
+  if process != null {
+    context = get_process_stack_pointer() as &Context;
+  }
+}%toy
+
+We then compute the address $f$ of the function which can handle this system
+call, and the address of its arguments. For this we compute the address of the
+{\tt kernel} field which contains $f$ (the {\tt spawn}, {\tt exit}, or {\tt
+draw\_char} field, for ID=0, 1, or 2, respectively), and get the value at this
+address:
+
+\toy{
+  let id = context.r0;
+  let function = *(&kernel.spawn + (id << 2));
+  let args = context.r1 as &CallArguments;
+}%toy
+
+We then call this function, whose interworking address is $f+1$, after checking
+that the system call ID and the arguments are valid. In particular, the
+arguments must be contained in the process's memory region (if there is a
+current process):
+
+\toy{
+  let args_size = 0;
+  let result = error_result(INVALID_ARGUMENT);
+  if id < NUM_SYSTEM_CALLS {
+    args_size = load8(SYSTEM_CALL_ARITY + id) << 2;
+    if process == null ||
+        process_contains_buffer(process, args as &u32, args_size) == TRUE {
+      result = call(args.arg0, args.arg1, args.arg2, args.arg3,
+          args.arg4, args.arg5, function + 1);
+    }
+  }
+}%toy
+
+Finally, we copy the result in the saved R0 register, so that it is popped in
+R0 on interrupt exit. We also set the EXC\_RETURN value to
+\rs{hex_dec(0xFFFFFFFDu32)}, in order to force a return using the Process Stack
+(this is only necessary for the initial {\tt spawn} system call):
+
+\toy{
+  context.r0 = result;
+  *exc_return_ptr = 4294967293; /*Thread Mode, Process Stack*/
+\}
+}%toy
+
+\subsection{Initialization}
+
+\rust{
+  t.add_unchanged("fn usart_handler(", "fn os_init(");
+}
+
+We update the {\tt os\_init} function to add the new Hard Fault and SVC
+handlers in the Vector Table, and to create and initialize the {\tt Kernel}
+data structure (we also remove the temporary test code after {\tt gpu\_init}).
+For this we reserve 512 bytes for kernel's heap (enough for 30 processes), and
+512 bytes for its stack:
+
+\toy{
+@fn os_init(code: &u32, heap: &u32, stack: &u32) {
+@  const VECTOR_TABLE_OFFSET_REGISTER: &&u32 = 3758157064;
+  const HARD_FAULT_HANDLER_OFFSET: u32 = 12;
+  const SVC_HANDLER_OFFSET: u32 = 44;
+@  const USART_HANDLER_OFFSET: u32 = 132;
+@  let vector_table = code - 257;
+  *(vector_table + HARD_FAULT_HANDLER_OFFSET) = hard_fault_handler + 1;
+  *(vector_table + SVC_HANDLER_OFFSET) = supervisor_call_handler + 1;
+@  *(vector_table + USART_HANDLER_OFFSET) = usart_handler + 1;
+@  *VECTOR_TABLE_OFFSET_REGISTER = vector_table;
+@
+@  restore_bios_vector_table();
+
+  const MAX_KERNEL_HEAP_SIZE: u32 = 512;
+  const MAX_KERNEL_STACK_SIZE: u32 = 512;
+  let kernel = heap as &Kernel;
+  kernel.heap = heap + sizeof(Kernel);
+  kernel.heap_limit = heap + MAX_KERNEL_HEAP_SIZE;
+  kernel.stack_limit = stack - MAX_KERNEL_STACK_SIZE;
+  kernel.current_process = null;
+  kernel.spawn = os_spawn;
+  kernel.exit = os_exit;
+  kernel.draw_char = os_draw_char;
+  *(KERNEL_POINTER_REGISTER as &&Kernel) = kernel;
+
+@  clock_init();
+@  keyboard_init();
+@  gpu_init();
+}
+}%toy
+
+We finish the implementation with the {\tt os\_spawn\_shell} function, which
+spawns the program file named ``{\tt shell}'', without any argument, after the
+kernel's heap. For this we use an SVC instruction in a native function, called
+from an intermediate {\tt spawn} function:
+
+\toy{
+fn system_call(id: u32, args: &u32) [ /*SVC*/ 57088; ]
+
+fn spawn(dst: &u32, name: &u32, name_length: u32, args: &u32, \
+args_length: u32) {
+  system_call(0, &dst as &u32);
+}
+
+static SHELL = ['s','h','e','l','l'];
+fn os_spawn_shell() {
+  let dst = os_kernel().heap_limit;
+  spawn(dst, SHELL, 5, null, 0);
+}
+}%toy
+
+When {\tt spawn} starts it pushes its arguments on the stack, in the same order
+as required by the SVC handler (compare \cref{fig:native-stack-frame} and
+\cref{fig:system-call}). Moreover, the {\tt system\_call} function stores the
+system call ID 0 and the address of the first argument in R0 and R1,
+respectively, before jumping to the SVC instruction (as required in
+\cref{subsection:system-calls}). Finally, no other register are used at this
+point. In other words, everything is ready to make a system call. Note also
+that, since the initial process cannot exit, no instruction is needed to return
+from {\tt system\_call}.
+
+\rust{
+  t.write_toy5("website/sources/toys_v1.txt")?;
+}
+
+\section{Compilation and tests}
+
+\rust{
+  let native_compiler_code =
+      context.memory_region("compiler_code_backup").start;
+  let application_source = context.memory_region("compiler_source").end();
+  let command_editor_source = context.memory_region("command_editor_source");
+  let ram_command_source =
+      command_editor_source.label_address("ram_command_source");
+  let ram_source = command_editor_source.label_address("ram_compiler_source");
+
+  context.add_memory_region(
+      "application_source",
+      MemoryRegion::new(
+          RegionKind::DataBuffer,
+          application_source,
+          native_compiler_code - application_source,
+          &HashMap::new(),
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  // Start command editor.
+  let command_editor_main = context
+      .memory_region("command_editor")
+      .label_address("command_editor");
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert_eq!(
+      display.borrow().get_text(),
+      "Welcome to the command editor."
+  );
+}
+
+Type ``F8''+``r'' in the command editor to load the current kernel source code,
+and ``F4''+``r'' to edit it. Then update it as described above. For reference,
+we also provide this new version in the {\tt toys\_v1.txt} file in
+\toypcurl{sources.zip}. When done, type ``F10''+``r'' to save it and
+``F9''+``r'' to compile it. If necessary, repeat these steps until the
+compilation is successful. To copy the compiled code in the ``{\tt toys}'' file
+use F3 to load the builder source code, and F4 to edit it. Then change its main
+function to the following:
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F10"]);
+  context.type_ascii("R\n");
+  // F9 to compile it (stores it in flash memory too)
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  let builder_source =
+  context.get_text(context.memory_region("builder_source").start);
+  let kernel_code = context.memory_region("kernel_code").start;
+  let mut t = Transpiler5::new_str(&builder_source);
+  t.add_unchanged("fn main() -> u32;", "static NAME = [");
+  t.add_placeholder("#CODE", &format!("{}", kernel_code));
+}
+
+\toy{
+@static NAME = ['t','o','y','s'];
+@fn main() -> u32 {
+@  const COMPILED_CODE: &u32 = #CODE;
+  return buffer_write(COMPILED_CODE, NAME, 4);
+@}
+}%toy
+
+\noindent Finally, save the builder with F5, compile it with F6, and run it
+with F7.
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+  // F7 to run it
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+To test this kernel we need a ``shell'' program. We use here a small test
+application spawning itself recursively to compute a factorial. As in the
+previous chapter, we store it in the Flash1 memory bank before copying it in
+the file system. For this we use a new data buffer, at address
+\rs{hex_dec(application_source)}  = page
+\rs{dec(page_number(application_source))} (see \cref{fig:shell-memory-map}). To
+load and save its content, edit the F11 command as follows (see F3 and F8):
+
+\rust{
+  context.type_keys(vec!["F11"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("load_application_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(application_source);
+  c.cst(ram_source);
+  c.call("buffer_copy");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = format!(
+      "{}\nd LOAD_APPLICATION_SOURCE_CODE",
+      c.get_toy0_source_code()
+  );
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\noindent and define the F12 command with (see F5 and F10):
+
+\rust{
+  // Edit 'Save' (F12) command to save source code of application.
+  context.type_keys(vec!["F12"]);
+  context.type_ascii("S");
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("save_application_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(ram_source);
+  c.cst(page_number(application_source));
+  c.call("buffer_flash");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = format!(
+      "{}\nd SAVE_APPLICATION_SOURCE_CODE",
+      c.get_toy0_source_code()
+  );
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+
+  let mut t = Transpiler5::default();
+  let define_address = |name, value| {
+    define(name, &hex(context.memory_region(value).start))
+  };
+}
+\rs{code(&c_source)}
+
+\begin{Figure}
+\rs{define_address("mmapa", "compiler_code")}
+\rs{define_address("mmapb", "builder_code")}
+\rs{define_address("mmapc", "command_editor_commands")}
+\rs{define_address("mmapd", "compiler_source")}
+\rs{define_address("mmape", "application_source")}
+\rs{define_address("mmapf", "compiler_code_backup")}
+\rs{define_address("mmapg", "kernel_code")}
+\rs{define_address("mmaph", "boot_block_backup")}
+\rs{define_address("mmapi", "builder_source")}
+\rs{define_address("mmapj", "kernel_source")}
+\input{figures/chapter3/memory-map.tex}
+
+\caption{The Flash1 memory bank content at the end of
+\cref{chapter:processes}. White, blue, red and gray areas represent source
+code, bytecode, native code, and unused memory, respectively (not to
+scale).}\label{fig:shell-memory-map}
+\end{Figure}
+
+Then use F2 to start a new program, F4 to edit it, and type the following code:
+
+\toy{
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32;
+fn exit(result: u32) -> u32;
+
+fn entry(heap: &u32, heap_limit: &u32) {
+  let args = heap + 4;
+  let args_end = args + *heap;
+  heap = (((args_end as u32 + 3) >> 2) << 2) as &u32;
+  exit(main(args, args_end, heap, heap_limit));
+}
+fn system_call(id: u32, args: &u32) -> u32 [
+  /*SVC*/ 57088;
+  /*MOV_PC_LR*/ 18167;
+]
+
+fn spawn(dst: &u32, name: &u32, name_length: u32, args: &u32, \
+args_length: u32) -> u32 {
+  return system_call(0, &dst as &u32);
+}
+fn exit(result: u32) -> u32 {
+  return system_call(1, &result);
+}
+fn draw_char(c: u32) -> u32 {
+  return system_call(2, &c);
+}
+
+static SHELL = ['s','h','e','l','l'];
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 {
+  if args_end == args {
+    *heap = 3;
+    draw_char('=');
+    draw_char('0' + spawn(heap + 4, SHELL, 5, heap, 4));
+    loop {}
+  } else {
+    if *args == 0 { return 1; }
+    *args = *args - 1;
+    return spawn(heap, SHELL, 5, args, 4) * (*args + 1);
+  }
+}
+}%toy
+
+The {\tt entry} function computes the start and end pointers of the arguments,
+and adjusts {\tt heap} to the first multiple of 4 after {\tt args\_end} (to
+avoid unaligned memory accesses, which might decrease performance -- this is
+not necessary here but we reuse this code later on). It then calls a {\tt main}
+function with these new arguments and {\tt exit} its result.
+
+The {\tt spawn} function is similar to the one in the kernel, but now returns a
+result (the exit value of the spawned process). The {\tt exit} and {\tt
+draw\_char} functions are similar, for the corresponding system calls. The {\tt
+system\_call} native function is also extended with a ``return'' instruction
+because these 3 system calls are now expected to return.
+
+Finally, the {\tt main} function implements our factorial test. If the
+arguments are empty, which is the case when this application is spawned by the
+kernel, if spawns itself with the argument 3, at the destination address {\tt
+heap} + 4. It then draws a digit corresponding to the result of the child
+process, and finally loops forever. Otherwise, if the arguments are not empty,
+the {\tt main} function computes the factorial of the first argument with a
+recursive {\tt spawn}.
+
+When you are done typing this program, use F12 to save it, and F9 to compile
+it. If necessary, repeat these steps until the compilation is successful. To
+copy the compiled code in the ``{\tt shell}'' file and to test it use F3 to
+load the builder source code, and F4 to edit it. Then change its main function
+to the following:
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F12"]);
+  context.type_ascii("R\n");
+  // F9 to compile it (stores it in flash memory too)
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\rust{
+  let builder_source =
+  context.get_text(context.memory_region("builder_source").start);
+  let mut t = Transpiler5::new_str(&builder_source);
+  t.add_unchanged("fn main() -> u32;", "static NAME = [");
+  t.add_placeholder("#CODE", &format!("{}", kernel_code));
+}
+
+\toy{
+static NAME = ['s','h','e','l','l'];
+@fn main() -> u32 {
+@  const COMPILED_CODE: &u32 = #CODE;
+  let result = buffer_write(COMPILED_CODE, NAME, 5);
+  if result == OK { flash_boot_loader_and_reset(); }
+  return result;
+@}
+}%toy
+
+\noindent Finally, save the builder with F5, compile it with F6, and run it
+with F7. If all goes well this should launch the kernel, which should launch
+our test program, which should then spawn itself recursively and finally
+display ``{\tt=6}'', the factorial of 3. After that you can reset the Arduino,
+which should restart with the memory editor.
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  context.type_keys(vec!["F7"]);
+  context.send_scancode(0x2D /* 'R' scancode */);
+
+  // Test system now running with boot loader and second kernel version
+  context.micro_controller().borrow_mut().run(5000000);
+  assert_eq!(display.borrow().get_text(), "=6");
+
+  // Test reset goes back to memory editor and old system
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  assert!(display.borrow().get_text().contains("20088000 00000000"));
+}

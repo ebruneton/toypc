@@ -1,0 +1,1249 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter1}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "file_system.txt")?;
+}
+
+\chapter{File System}\label{chapter:file-system}
+
+As explained in introduction, the first step to build our toy operating system
+is to implement a file system. The goal is to remove the need to manually keep
+track of the flash memory content. This chapter defines the requirements for
+this file system, presents the data structures used to achieve them, and
+provides some functions based on these data structures to create, read,
+write, and delete files. We test them at the end with a small program and a
+test file in a previously initialized file system.
+
+\section{Requirements}
+
+The basic requirements of our file system are the ability to create an empty
+file with a given name, to write data in an existing file, to read data from a
+file, and to delete a file. We also require the possibility to get the size of
+a file, and to get a list of all the existing files.
+
+Flash memory is larger than the RAM, and it should be possible to use files
+which fit in flash but not in RAM. For this we require the possibility to read
+only a small piece of a file, and to write data in a file piece by piece. More
+precisely, it should be possible to append new data at the end of an existing
+file. To simplify, we do not require the possibility to insert new data in the
+middle of a file, nor even to partially override existing data.
+
+Standard file systems generally support grouping files into a hierarchy of
+folders. To simplify, and since we expect to have less than a hundred files in
+our final system, we require a {\em flat} file system (\ie, non hierarchical).
+A consequence is that each file must have a globally unique name. For instance,
+we cannot have two files named {\tt help.txt}. Instead, we need to use names
+such as {\tt text\_editor\_help.txt} and {\tt compiler\_help.txt}. For this we
+require the possibility to use ``long'' file names, up to 128 characters at
+least. However, to simplify the implementation:
+\begin{itemize}
+  \item file names should only contain printable ASCII characters other than
+  Space.
+
+  \item file names cannot be changed. To rename a file from $x$ to $y$, one
+  must thus create a new file $y$, copy $x$'s data into $y$, and finally delete
+  $x$.
+\end{itemize}
+
+Standard file systems also generally keep track of the creation and
+modification dates of each file, and of which users can read, write or execute
+it. Here again, to simplify, we do not require any of these features.
+
+\section{Data structures}
+
+\begin{Figure}
+  \input{figures/chapter1/compact-linear-fs.tex}
+
+  \caption{A file system with 5 files stored as contiguous sequences of bytes,
+  one after the other (top). Adding new bytes to C requires moving it to a new
+  address (bottom). Gray areas represent unused
+  memory.}\label{fig:compact-linear-fs}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter1/fragmented-linear-fs.tex}
+
+  \caption{When files are stored as contiguous sequences of bytes, next to each
+  other (top), and some files are deleted (C, F, middle), the unused memory
+  (gray) can be too fragmented to store a new file (I). In this case files must
+  be moved to merge these regions (bottom).}\label{fig:fragmented-linear-fs}
+\end{Figure}
+
+So far each program that we saved in flash memory was stored as a contiguous
+sequence of bytes. This is the easiest method when one has to manually store
+data while keeping track of the memory content. However, this method has
+several drawbacks:
+\begin{itemize}
+  \item when programs are stored compactly, one after the other, a program
+  cannot be updated to a larger version without moving it elsewhere (see
+  \cref{fig:compact-linear-fs}).
+
+  \item if some unused memory is left between each program, to mitigate the
+  above problem, then this memory is wasted and reduces the total storage
+  capacity.
+
+  \item even if programs are never updated, and no space is left between them,
+  after some programs are deleted we can get a lot of small unused memory
+  regions between them. This can prevent the storage of a new large program,
+  unless the existing ones are moved next to each other to merge these small
+  regions (see \cref{fig:fragmented-linear-fs}).
+\end{itemize}
+
+To avoid these issues, most file systems divide the storage into many small
+blocks of equal capacity, split each file into ``chunks'', and store each chunk
+in a block (see \cref{fig:block-fs}). With this method, contiguous chunks of a
+file do not need to be stored in contiguous blocks, nor even in blocks in
+increasing address order. This solves the above problems. Indeed:
+\begin{itemize}
+  \item as long as there are enough {\em free blocks} (\ie, not used by any
+  files), files can be extended, and new files can be created, without having
+  to move existing data.
+
+  \item no memory is wasted between files. The only wasted memory is in the
+  last block of each file whose size is not an exact multiple of the block
+  size. For instance, if each block contains 200 bytes, a 1250 bytes file uses 6
+  full blocks and 50 bytes in a seventh block, leaving 150 unused bytes (these
+  bytes are not used to store data from another file, to avoid re-introducing
+  the above issues). On average, we thus get only one half block of wasted
+  memory per file.
+\end{itemize}
+
+However, this method creates a new problem. Indeed, while an address and a size
+were sufficient to keep track of the location of a file (with the first
+method), we now need a list of the blocks containing its data. This is a bit
+more complex, but the pros outweigh the cons. We therefore use blocks for our
+toy file system.
+
+\begin{Figure}
+  \input{figures/chapter1/block-fs.tex}
+
+  \caption{The same files as in \cref{fig:compact-linear-fs}, stored in a block
+  based file system (top). Each file is divided in chunks which can be stored
+  in any block, in any order (\eg, A is divided in 3 chunks A$_0$, A$_1$ and
+  A$_2$). Bottom: adding bytes to a file can be done by putting them in any
+  free block (in gray), without moving existing data (\eg, chunks C$_2$ and
+  C$_3$ are added in free blocks on the right).}\label{fig:block-fs}
+\end{Figure}
+
+\subsection{File blocks}\label{subsection:file-blocks}
+
+\subsubsection{Block capacity}
+
+Our file system is designed to store files in flash memory, which is divided in
+pages of 256 bytes each. Moreover, writing into flash memory can only be done
+one full page at a time. The most convenient way to build our file system is
+thus to use blocks whose capacity is a multiple of 256 bytes. To minimize the
+wasted memory per file (one half block on average), we use blocks of exactly
+256 bytes.
+
+\subsubsection{Block structure}
+
+In order to know which blocks contain the data of a file, and in which order,
+we use a linked list {\em stored in the blocks themselves}. For this we divide
+each block in two parts called {\em header} and {\em payload}, used as follows
+(see \cref{fig:data-structures}, where these parts are shown in white and blue,
+respectively):
+\begin{itemize}
+  \item in each block of a file, except the last one, the first header word
+  stores the address of the block containing the next file chunk, noted {\tt
+  next\_block}. The payload contains a $256-h$ bytes chunk of the file, where
+  $h$ is the header size.
+
+  \item in the last block the first header word contains the {\em block size}
+  $s$, defined as the header size plus the payload size. The payload contains
+  the last file chunk ($s-h$ bytes by definition). The remaining $256-s$ bytes
+  are unused.
+\end{itemize}
+
+Note that block addresses are larger than or equal to \hexa{80000}, the start
+address of the flash memory (see \cref{fig:boot-memory-map}). On the other
+hand, the size $s$ of a block is less than or equal to 256. Hence, the value
+$v$ of the first word of a block unambiguously indicates if this block has a
+next block ($v>256$) or is the last one ($v\le 256$).
+
+\begin{Figure}
+  \input{figures/chapter1/data-structures.tex}
+
+  \caption{The data structures of our file system, illustrated with 6 blocks of
+  7 words each. The superblock (left) points to the first file and the first
+  free block. The first block of each file starts with a pointer to the next
+  block (blue arrows), a pointer to the next file (black arrows), the length of
+  its name, and the name itself (white background). Here there are 2 files,
+  ``A'' containing ``lorem ipsum'' in one block (light blue), and ``Cat''
+  containing ``lorem ipsum dolor sit amet'' in two blocks (blue). The last
+  block of each file starts with the total number of bytes used in this block
+  (here 24 and 17). Each free block points to the next one (gray
+  arrows).}\label{fig:data-structures}
+\end{Figure}
+
+\subsubsection{File list}
+
+In order to maintain the map between file names and flash memory addresses,
+which is the main goal of our file system, we use another linked list, also
+stored in the blocks themselves. More precisely, we use the header of the first
+block of each file to store the following data (after the {\tt next\_block}
+address, see \cref{fig:data-structures}):
+\begin{itemize}
+  \item the address of the next file's first block, noted {\tt next\_file}.
+
+  \item the length of the file name, noted {\tt name\_length}.
+
+  \item the {\tt name\_length} bytes of the name itself.
+\end{itemize}
+
+With this data structure, finding the address of the first block of a file can
+be done by following the {\tt next\_file} links from one file to the next,
+until the block's name matches the one we are looking for. The other blocks of
+the file can then be found by following the {\tt next\_block} links.
+
+By definition, the first block of a file has a header size $h$ equal to $12\ +\
+${\tt name\_length}: 4 bytes each for {\tt next\_block}, {\tt next\_file}, and
+{\tt name\_length}, and {\tt name\_length} bytes for the file name. The header
+of the other file blocks only contain a {\tt next\_block} link and thus has
+size $h=4$.
+
+Note that we implicitly assumed above that file names fit in the first file
+block. To ensure this we restrict them to $256-12=244$ characters at most.
+
+\subsection{Free blocks}
+
+In order to create new files, or to append data to an existing file, we need to
+find blocks not yet used by any file, called free blocks. For this we use a
+linked list of all the free blocks, once again stored in the free blocks
+themselves. More precisely, we store in the first word of each free block the
+address of the next free block (or 0 if this is the last free block -- see
+\cref{fig:data-structures}).
+
+\subsection{Super block}
+
+In order to use the above linked list of files we need to know where it starts.
+More precisely, we need the address of the first block of the first file in
+this list. Similarly, for the same reason, we need the address of the first
+free block in the list of free blocks. We store these two addresses, noted {\tt
+first\_file} and {\tt first\_free\_block} respectively, in a special block
+called the {\em super block} (see \cref{fig:data-structures}). This block only
+contains these two addresses, and is stored at a fixed, predefined address.
+
+\begin{Figure}
+  \input{figures/chapter1/formatted-fs.tex}
+
+  \caption{The initial state of the file system. All blocks are free and simply
+  point to the next block in increasing address order. The super block's {\tt
+  first\_file} pointer is {\tt null} because there are initially no files.
+  }\label{fig:formatted-fs}
+\end{Figure}
+
+\subsection{Initial state}
+
+Initially each bit of the flash memory is equal to 1. The first word of each
+page is thus initially equal to \hexa{FFFFFFFF}, which is not a valid {\tt
+next\_block} or {\tt first\_file} address. In other words, the flash memory does
+not initially contain a valid file system data structure. To solve this we need
+to explicitly initialize it to a valid state. For this the simplest is to use a
+state without any file, where all blocks are free (see
+\cref{fig:formatted-fs}). This initialization process is called {\em disk
+formatting}.
+
+\section{Implementation}
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+
+We can now implement some functions to create, read, write and delete files
+stored as described above. These functions have several goals. In this chapter
+we use some of them to format the Flash0 memory bank, hereafter called the
+``disk''. We also test them by creating a small file, writing data in it,
+reading it back, and deleting the file. In the next chapters we use these
+functions to copy some programs edited and compiled in the Flash1 memory bank
+as files on the disk. Finally, we also copy them in our operating system kernel
+to implement a {\em disk driver} (in addition to the clock, graphics card and
+keyboard drivers).
+
+In order to use the above functions we need to put them in some program. We
+thus start a new program here. As in our compiler, we start by declaring a {\tt
+main} function, implemented at the very end, but called from the first
+function, here called {\tt entry} (both return 0 if and only if no error
+occurred):
+
+\toy{
+fn main() -> u32;
+fn entry() -> u32 {
+  const NVIC_INTERRUPT_SET_ENABLE_REGISTER: &u32 = 3758153984;
+  const NVIC_INTERRUPT_CLEAR_ENABLE_REGISTER: &u32 = 3758154112;
+  const USART_ID: u32 = 131072;
+  *NVIC_INTERRUPT_CLEAR_ENABLE_REGISTER = USART_ID;
+  let result = main();
+  *NVIC_INTERRUPT_SET_ENABLE_REGISTER = USART_ID;
+  return result;
+}
+}%toy
+
+Since this program will write data in the Flash0 memory bank, which cannot be
+read while writing in it (see \cref{subsection:page-write}), the {\tt entry}
+function temporarily disables USART interrupts before calling {\tt main} (see
+\cref{section:nvic,table:nvic-registers}). Otherwise, a key press during this
+time would read the Vector Table to find the USART handler address, which would
+trigger a Hard Fault since our Vector Table is at address \hexa{80000} in the
+Flash0 memory bank (see \cref{section:bios-foundations})\footnote{Another
+solution is to move the Vector Table in RAM. We do this in the next chapter.}.
+
+We continue with two small functions to load and store bytes, copied from the
+types compiler, which are needed later on:
+
+\toy{
+fn load8(ptr: &u32) -> u32 { return (*ptr) & 255; }
+fn store8(ptr: &u32, value: u32) { *ptr = (*ptr) & 4294967040 | value; }
+}%toy
+
+\subsection{Data structures}
+
+The following types correspond to the data structures defined
+in the previous section:
+
+\toy{
+struct DiskBlock {
+  next_block: &DiskBlock
+}
+struct FileBlock {
+  next_block: &DiskBlock,
+  next_file: &FileBlock,
+  name_length: u32,
+  name: u32
+}
+struct SuperBlock {
+  first_file: &FileBlock,
+  first_free_block: &DiskBlock
+}
+}%toy
+
+A {\tt DiskBlock} represents either a free block or a file block other than a
+first file block. In the first case {\tt next\_block} is either {\tt null} or
+points to the next free block. In the second case {\tt next\_block} points to
+the next file block, if its value is larger than 256. Otherwise it contains the
+block size (header size plus payload size). The following functions make it
+easier to work with this rule:
+
+\toy{
+fn block_next(self: &DiskBlock) -> &DiskBlock {
+  if self.next_block as u32 <= 256 { return null; }
+  return self.next_block;
+}
+fn block_size(self: &DiskBlock) -> &u32 {
+  return &self.next_block as &u32;
+}
+}%toy
+
+The first one returns the next block of a block, or {\tt null} if there is
+none. The second one returns a pointer to the size of a block,
+assuming that it does not have a next block.
+
+A {\tt FileBlock} represents the first block of a file. Its {\tt name} field
+contains the first 4 characters of the file name (at most). If {\tt file} is a
+{\tt FileBlock} pointer, then the file name's $i^{th}$ character is at address
+{\tt \&file.name}$\ +\ i$.
+
+The {\tt SuperBlock} points to the first file and the first free block. We
+store it in page 1 of the Flash0 memory bank, at address
+\rs{hex_dec(0x80100u32)} (page 0 must contain a valid Vector Table in order to
+boot from flash memory -- \cf \cref{section:vector-table}):
+
+\toy{
+const SUPER_BLOCK: &SuperBlock = 524544;
+}%toy
+
+\subsection{Reading functions}
+
+We can now implement some functions using these block data structures. We start
+in this section with functions which only read them, because they are simpler
+than those modifying blocks.
+
+We first need a function to find the {\tt FileBlock} of a file, given its name.
+Here we assume that the linked list of files is sorted in alphabetical order,
+because it is more convenient for users than an unsorted list. We can thus find
+a file with a given name $n$ by comparing it with the name of each file in this
+list, until a match is found or the file name is greater than $n$ (by
+hypothesis the next file names are greater than $n$ too). This requires the
+ability to compare two names. The following function does this:
+
+\toy{
+const EQUAL: u32 = 0;
+const SMALLER: u32 = 1;
+const GREATER: u32 = 2;
+fn disk_compare_file_name(file: &FileBlock, name: &u32, length: u32) -> u32 {
+  let file_name_length = file.name_length;
+  let file_name = &file.name;
+  let i = 0;
+  while i < file_name_length && i < length {
+    if load8(file_name + i) < load8(name + i) { return SMALLER; }
+    if load8(file_name + i) > load8(name + i) { return GREATER; }
+    i = i + 1;
+  }
+  if file_name_length < length { return SMALLER; }
+  if file_name_length > length { return GREATER; }
+  return EQUAL;
+}
+}%toy
+
+It returns {\tt EQUAL}, {\tt SMALLER}, or {\tt GREATER} if the name of {\tt
+file} is equal, smaller, or greater than {\tt name}, respectively (more
+precisely than the name starting at address {\tt name} and with {\tt length}
+characters). Its {\tt while} loop compares the characters of these names from
+left to right, and stops when a difference is found or the end of one name is
+reached. If no difference is found names are compared based on their length.
+
+The following function uses it to find a file, with the algorithm described
+above:
+
+\toy{
+fn disk_find_file(name: &u32, length: u32, previous_file: &&FileBlock) \
+-> &FileBlock {
+  let file = SUPER_BLOCK.first_file;
+  let file_name = SMALLER;
+  while file != null {
+    file_name = disk_compare_file_name(file, name, length);
+    if file_name == EQUAL { return file; }
+    if file_name == GREATER { return null; }
+    if previous_file != null { *previous_file = file; }
+    file = file.next_file;
+  }
+  return null;
+}
+}%toy
+
+If returns the file's {\tt FileBlock}, or {\tt null} if no file was found. If
+{\tt previous\_file} is not {\tt null} it also stores at this address a
+pointer to the {\tt FileBlock} immediately preceding the returned file in the
+linked list of files (we assume that {\tt *previous\_file} is initialized to
+{\tt null} by the caller).
+
+Once we have a {\tt FileBlock} we can use it to compute the size of this file,
+as follows:
+
+\toy{
+fn disk_get_file_size(file: &FileBlock) -> u32 {
+  let file_size = 0;
+  let block = file as &DiskBlock;
+  let header_size = 12 + file.name_length;
+  loop {
+    if block_next(block) == null {
+      return file_size + *block_size(block) - header_size;
+    }
+    file_size = file_size + 256 - header_size;
+    block = block.next_block;
+    header_size = 4;
+  }
+}
+}%toy
+
+This function simply adds the payload size of each block of the file, found by
+following the {\tt next\_block} links. As described in
+\cref{subsection:file-blocks}, the payload size is $256-h$ for all blocks
+except the last one, where the header size $h$ is 12 plus the file name length
+for the first block, and 4 otherwise. The payload size of the last block is the
+block size minus $h$.
+
+To read the content of a file into some buffer we need to copy memory. We
+already have a {\tt mem\_copy} function in our flash memory driver (see
+\cref{section:flash-memory-driver-impl}), but only in bytecode form. Since we
+want to eventually get rid of the bytecode interpreter we re-implement it here.
+Actually we only need it to copy data between memory regions which do not
+overlap. We thus implement a simpler version instead:
+
+\toy{
+fn mem_copy_non_overlapping(src: &u32, dst: &u32, size: u32) {
+  let i = 0;
+  while i < size {
+    store8(dst + i, load8(src + i));
+    i = i + 1;
+  }
+}
+}%toy
+
+We use it to implement the following function, which copies up to {\tt size}
+bytes, starting {\tt *offset} bytes from the file block {\tt *block}, into {\tt
+dst}:
+
+\toy{
+fn disk_read_file(block: &&DiskBlock, offset: &u32, dst: &u32, size: u32) \
+-> u32 {
+  let available = 0;
+  loop {
+    if block_next(*block) == null {
+      available = *block_size(*block) - *offset;
+    } else {
+      available = 256 - *offset;
+    }
+    if available >= size {
+      mem_copy_non_overlapping((*block) as &u32 + *offset, dst, size);
+      *offset = *offset + size;
+      return 0;
+    }
+    mem_copy_non_overlapping((*block) as &u32 + *offset, dst, available);
+    if block_next(*block) == null {
+      return size - available;
+    }
+    *block = (*block).next_block;
+    *offset = 4;
+    dst = dst + available;
+    size = size - available;
+  }
+}
+}%toy
+
+This function first computes the number of available bytes in {\tt *block},
+after {\tt *offset}, which depends on whether it is the last block or not. If
+there are more bytes available than requested, it copies {\tt size} bytes from
+this block into {\tt dst} and returns 0, meaning that all the requested
+bytes have been copied. Otherwise it copies all the available bytes into {\tt
+dst}, and then checks if there is a next block. If not it returns the number
+of bytes that were requested but could not be copied because the end of the
+file was reached. If there is a next block it repeats the above steps after
+updating {\tt *block} to this next block (whose header size is necessarily 4),
+and after updating the destination address and the number of bytes to copy
+(since {\tt available} bytes have just been copied).
+
+Note that if this function returns 0, meaning that the file may have more
+bytes that those just read, then {\tt *block} and {\tt *offset} contain
+the correct values to read these additional bytes with a new call to this
+function.
+
+\subsection{Writing functions}
+
+This section provides functions to create a file, append data to a file, and
+delete a file. This requires the ability to modify blocks, \ie, to modify data
+in flash memory pages. We therefore start with some low level functions to do
+this.
+
+\subsubsection{Low level functions}
+
+As explained in \cref{subsection:page-write}, writing a flash memory page
+requires storing a value in the 64 words of this page first, even if we only
+need to change a single word. Hopefully the value of these words can be
+overridden several times before actually writing the page. This suggests the
+following strategy to change some words in a page:
+\begin{enumerate}
+  \item load the current value of each page word and store it back unchanged.
+  \item store new value(s) in the desired page word(s).
+  \item send a ``write page'' command to flash the page.
+\end{enumerate}
+
+The following functions implement steps 1 and 3 of this process ({\tt
+block\_write} works as explained in \cref{subsection:page-write}; {\tt address}
+must be in [\hexa{80000},\hexa{C0000}[ =
+[\rs{dec(0x80000u32)},\rs{dec(0xC0000u32)}[):
+
+\toy{
+fn block_read(ptr: &u32) {
+  let end = ptr + 256;
+  while ptr < end {
+    *ptr = *ptr;
+    ptr = ptr + 4;
+  }
+}
+fn block_write(address: u32) {
+  const EEFC0_COMMAND_REGISTER: &u32 = 1074661892;
+  const EEFC0_STATUS_REGISTER: &u32 = 1074661896;
+  const WRITE_PAGE_COMMAND: u32 = 1509949443;
+  let page = (address - 524288) >> 8;
+  *EEFC0_COMMAND_REGISTER = WRITE_PAGE_COMMAND | (page << 8);
+  while *EEFC0_STATUS_REGISTER & 1 != 1 {}
+}
+}%toy
+
+Step 2 depends on each use case, but the important point is that only 32-bit
+values can be stored in the page, and only at addresses which are a multiple of
+4 (see \cref{subsection:page-write}). In particular, the native \arm{STRH} and
+\arm{STRB} instructions cannot be used here. The {\tt store8} function does not
+use them but cannot be used either, because loads do no ``see'' the effect of
+stores until the page is flashed (see \cref{subsection:page-write}). If it was
+called several times to store the bytes of a word, only the last call would
+have any effect.
+
+Unfortunately, the payload of a block does not always start and end at a
+word-aligned address, as shown in \cref{fig:data-structures}. We thus sometimes
+need to store individual bytes in a block. The following function solves this
+issue by using an intermediate {\tt buffer} word to copy {\tt size} bytes from
+{\tt src} to {\tt dst}:
+
+\toy{
+fn block_copy_bytes(src: &u32, dst: &u32, size: u32) {
+  let buffer_size = ((dst as u32) & 3) << 3;
+  dst = dst - (buffer_size >> 3);
+  let buffer = *dst & ((1 << buffer_size) - 1);
+  let i = 0;
+  while i < size {
+    if buffer_size == 32 {
+      *dst = buffer;
+      dst = dst + 4;
+      buffer = 0;
+      buffer_size = 0;
+    }
+    buffer = buffer | (load8(src + i) << buffer_size);
+    buffer_size = buffer_size + 8;
+    i = i + 1;
+  }
+  if buffer_size != 0 { *dst = buffer; }
+}
+}%toy
+
+The {\tt while} loop copies each source byte in {\tt buffer}, one by one. When
+this buffer is full (\ie, when {\tt buffer\_size} is equal to 32 bits), it is
+stored at {\tt dst} and cleared. Otherwise each byte is copied in {\tt buffer}
+after the {\tt buffer\_size} bits already used, and the buffer size is
+incremented by 8. If the buffer is not empty when the {\tt while} loop ends, it
+is stored at {\tt dst} too.
+
+The beginning of the function is the most complex part. It initializes the
+buffer and rounds {\tt dst} down to a multiple of 4, as required by the rest of
+the function. More precisely, if {\tt dst} is equal to $4k+r$ with $0\le r<4$
+then this part rounds {\tt dst} down to $4k$ and initializes {\tt buffer} with
+the first $r$ bytes of the word at $4k$:
+\begin{itemize}
+  \item the $1^{st}$ line computes $r$ with {\tt (dst as u32) \& 3}, and {\tt
+  buffer\_size} as $8r = r \ll 3$.
+
+  \item the $2^{nd}$ line rounds {\tt dst} down to $4k$ ({\tt buffer\_size
+  {>}{>} 3} = {\tt buffer\_size / 8}).
+
+  \item the $3^{rd}$ line copies the least significant {\tt buffer\_size} bits
+  of the word at {\tt dst} into {\tt buffer} ($1 \ll n = 2^n$ and $2^n - 1 =\ $
+  a number with $n$ ones in base 2).
+\end{itemize}
+
+\subsubsection{Create file function}
+
+In order to create an empty file we need to find a free block, turn it into a
+properly initialized {\tt FileBlock}, insert it in the linked list of files,
+and remove it from the linked list of free blocks (see \cref{fig:create-file}).
+If the file name is invalid, if a file with this name already exists, or if
+there is no free block the creation fails. We define some error codes for these
+cases:
+
+\begin{Figure}
+  \input{figures/chapter1/create-file.tex}
+
+  \caption{To create a file the first free block (left) is turned into a {\tt
+  FileBlock} (right, in green), removed from the list of free blocks (c), and
+  inserted in the alphabetically sorted list of files (a,
+  b).}\label{fig:create-file}
+\end{Figure}
+
+\toy{
+const OK: u32 = 0;
+const INVALID_ARGUMENT: u32 = 1;
+const ALREADY_EXISTS: u32 = 2;
+const OUT_OF_MEMORY: u32 = 3;
+}%toy
+
+\noindent and we start a function to create a file by returning them if one of
+these cases happens:
+
+\toy{
+fn disk_create_file(name: &u32, length: u32, result: &&FileBlock) -> u32 \{
+  if length == 0 || length > 244 { return INVALID_ARGUMENT; }
+  let i = 0;
+  while i < length {
+    if load8(name + i) <= 32 || load8(name + i) >= 127 {
+      return INVALID_ARGUMENT;
+    }
+    i = i + 1;
+  }
+  let super_block = SUPER_BLOCK;
+  let previous_file: &FileBlock = null;
+  let file = super_block.first_file;
+  let file_name = SMALLER;
+  while file != null {
+    file_name = disk_compare_file_name(file, name, length);
+    if file_name == EQUAL { return ALREADY_EXISTS; }
+    if file_name == GREATER { break; }
+    previous_file = file;
+    file = file.next_file;
+  }
+  let new_file = super_block.first_free_block as &FileBlock;
+  if new_file == null { return OUT_OF_MEMORY; }
+}%toy
+
+At this point we have a block for the new file, in {\tt new\_file}, and we know
+that it must be inserted between {\tt previous\_file} and {\tt file} to keep
+the list in alphabetic order. We start by updating the {\tt next\_file} link of
+{\tt previous\_file} (link (a) in \cref{fig:create-file} -- if {\tt
+previous\_file} is {\tt null} we update the {\tt first\_file} link instead):
+
+\toy{
+  let new_first_file = super_block.first_file;
+  if previous_file != null {
+    block_read(previous_file as &u32);
+    previous_file.next_file = new_file;
+    block_write(previous_file as u32);
+  } else {
+    new_first_file = new_file;
+  }
+}%toy
+
+We continue by initializing the new file block, after saving in a temporary
+variable the address of the second free block, which will become the new first
+free block:
+
+\toy{
+  let new_first_free_block = new_file.next_block;
+  block_read(new_file as &u32);
+  *block_size(new_file as &DiskBlock) = 12 + length;
+  new_file.next_file = file;
+  new_file.name_length = length;
+  block_copy_bytes(name, &new_file.name, length);
+  block_write(new_file as u32);
+}%toy
+
+Finally, we update the super block and store the address of the new file in
+{\tt *result}:
+
+\toy{
+  block_read(super_block as &u32);
+  super_block.first_file = new_first_file;
+  super_block.first_free_block = new_first_free_block;
+  block_write(super_block as u32);
+  *result = new_file;
+  return OK;
+\}
+}%toy
+
+\subsubsection{Write file function}
+
+The next function appends {\tt size} bytes from {\tt src} to the file whose
+last block is {\tt *block}. It returns {\tt OK} if the operation succeeds, or
+{\tt OUT\_OF\_MEMORY} if there are not enough free blocks for this:
+
+\toy{
+fn disk_write_file(block: &&DiskBlock, src: &u32, size: u32) -> u32 {
+  let super_block = SUPER_BLOCK;
+  let new_first_free_block = super_block.first_free_block;
+  let used = *block_size(*block);
+  let free = 256 - used;
+  let result = OK;
+  loop {
+    if size <= free {
+      block_read((*block) as &u32);
+      *block_size(*block) = used + size;
+      block_copy_bytes(src, (*block) as &u32 + used, size);
+      block_write((*block) as u32);
+      break;
+    }
+    if new_first_free_block == null {
+      result = OUT_OF_MEMORY;
+      break;
+    }
+    block_read((*block) as &u32);
+    (*block).next_block = new_first_free_block;
+    block_copy_bytes(src, (*block) as &u32 + used, free);
+    block_write((*block) as u32);
+    *block = new_first_free_block;
+    new_first_free_block = new_first_free_block.next_block;
+    src = src + free;
+    size = size - free;
+    used = 4;
+    free = 252;
+  }
+  if new_first_free_block != super_block.first_free_block {
+    block_read(super_block as &u32);
+    super_block.first_free_block = new_first_free_block;
+    block_write(super_block as u32);
+  }
+  return result;
+}
+}%toy
+
+It first computes the number of bytes already {\tt used} in {\tt *block}, and
+the number of {\tt free} bytes to store new data. If the number of bytes to
+copy is less than {\tt free} then it appends them to {\tt *block}, updates its
+header to reflect its new payload size, and returns {\tt OK}. Otherwise, at
+least one free block $b$ is necessary to store the bytes which cannot be stored
+in {\tt *block}. If there is none then it returns {\tt OUT\_OF\_MEMORY}.
+Otherwise it appends as many bytes as possible to {\tt *block} (\ie, {\tt free}
+bytes), and uses $b$ for the {\tt next\_block} of {\tt *block}. It then repeats
+the above steps with this next block (which has 4 used bytes and 252 free
+bytes), after updating the source address and the number of bytes to write
+(since {\tt free} bytes have just been written).
+
+The function always ends by updating the super block, if some free blocks were
+used. Note that if it returns {\tt OK}, then {\tt *block} contains the new last
+block of the file, \ie, the correct value to append more bytes to this file
+(with a new call to this function).
+
+\subsubsection{Clear and delete file functions}
+
+The last disk functions delete a file, or clear all its data without deleting
+it (yielding an empty file). Both need a way to recycle some file blocks into
+free blocks. The following function does this. It adds all the file blocks
+starting at {\tt block} (included) to the list of free blocks, and returns the
+new first free block (see \cref{fig:delete-blocks}):
+
+\begin{Figure}
+  \input{figures/chapter1/delete-blocks.tex}
+
+  \caption{To delete the list of blocks starting at {\tt block} (left) we
+  just need to link the last one to the first free block (a), and to update
+  {\tt first\_free\_block} to {\tt block} (right).}\label{fig:delete-blocks}
+\end{Figure}
+
+\toy{
+fn disk_delete_file_blocks(block: &DiskBlock) -> &DiskBlock {
+  let last_block = block;
+  while block_next(last_block) != null {
+    last_block = last_block.next_block;
+  }
+  block_read(last_block as &u32);
+  last_block.next_block = SUPER_BLOCK.first_free_block;
+  block_write(last_block as u32);
+  return block;
+}
+}%toy
+
+For this it finds the last block of the list starting at {\tt block}, and sets
+its {\tt next\_block} to the current first free block. The first free block
+then becomes {\tt block}, but the super block is {\em not} updated to reflect
+this (the caller must do this instead).
+
+With this function it is easy to clear a file: we just need to delete all its
+block except the first one (if there is more than one) and to update the super
+block accordingly. In any case we also need to reset the payload size of the
+first block to 0:
+
+\toy{
+fn disk_clear_file(file: &FileBlock) {
+  let super_block = SUPER_BLOCK;
+  let new_first_free_block: &DiskBlock = null;
+  if block_next(file as &DiskBlock) != null {
+    new_first_free_block = disk_delete_file_blocks(file.next_block);
+    block_read(super_block as &u32);
+    super_block.first_free_block = new_first_free_block;
+    block_write(super_block as u32);
+  }
+  block_read(file as &u32);
+  *block_size(file as &DiskBlock) = 12 + file.name_length;
+  block_write(file as u32);
+}
+}%toy
+
+To completely delete a file we need to delete all its blocks, including the
+first one, and to remove it from the list of files. For this we need to set the
+{\tt next\_file} link of the previous file (given as parameter) to the next
+file of {\tt file} (see \cref{fig:delete-file} -- if there is no previous file
+then the super block's {\tt first\_file} link must be updated instead):
+\toy{
+fn disk_delete_file(file: &FileBlock, previous_file: &FileBlock) {
+  let next_file = file.next_file;
+  let super_block = SUPER_BLOCK;
+  let new_first_file = super_block.first_file;
+  let new_first_free_block = disk_delete_file_blocks(file as &DiskBlock);
+  if previous_file != null {
+    block_read(previous_file as &u32);
+    previous_file.next_file = next_file;
+    block_write(previous_file as u32);
+  } else {
+    new_first_file = next_file;
+  }
+  block_read(super_block as &u32);
+  super_block.first_file = new_first_file;
+  super_block.first_free_block = new_first_free_block;
+  block_write(super_block as u32);
+}
+}%toy
+
+\begin{Figure}
+  \input{figures/chapter1/delete-file.tex}
+
+  \caption{To remove a file from the list of files (middle left) we just need
+  to change the {\tt next\_file} link of the previous file to the next file
+  (right, green arrow).}\label{fig:delete-file}
+\end{Figure}
+
+\subsection{Disk formatting}
+
+In order to use the above functions we first need to format the disk, as
+illustrated in \cref{fig:formatted-fs}. For this we finally implement the {\tt
+main} function as follows:
+
+\rust{
+  let gpu_draw_char = context.memory_region("graphics_card_driver")
+      .label_address("gpu_draw_char");
+  t.add_placeholder("%GPU_DRAW_CHAR%", &format!("{}", gpu_draw_char - 0xC0000));
+}
+\toy{
+fn gpu_draw_char(c: u32) = %GPU_DRAW_CHAR%;
+fn main() -> u32 {
+  let super_block = SUPER_BLOCK;
+  let free_block = (super_block + 256) as &DiskBlock;
+  let last_free_block = (super_block + 1022 * 256) as &DiskBlock;
+  block_read(super_block as &u32);
+  super_block.first_file = null;
+  super_block.first_free_block = free_block;
+  block_write(super_block as u32);
+  while free_block <= last_free_block {
+    block_read(free_block as &u32);
+    if free_block == last_free_block {
+    	free_block.next_block = null;
+    } else {
+    	free_block.next_block = free_block + 256;
+    }
+    block_write(free_block as u32);
+    free_block = free_block + 256;
+    gpu_draw_char('.');
+  }
+  return 0;
+}
+}%toy
+
+After the super block initialization, the {\tt while} loop initializes 1022
+free blocks by setting their {\tt next\_block} link to the next block, or to
+{\tt null} for the last one (the disk contains 1024 blocks but the first one is
+reserved for the Vector Table, and the second one is the super block). Since
+writing a page takes a few milliseconds this process takes some time. To
+monitor its progress we draw a dot on the screen for each free block, with the
+\hyperlink{gpu-draw-char}{gpu\_draw\_char} function.
+
+\rust{
+  t.write_toy5("website/sources/disk_formatter.txt")?;
+}
+
+\section{Compilation and tests}
+
+\rust{
+  context.update_memory_region("compiler_code");
+  context.update_memory_region("compiler_code_backup");
+  let command_editor_source = context.memory_region("command_editor_source");
+  let ram_command_source =
+      command_editor_source.label_address("ram_command_source");
+  let ram_source = command_editor_source.label_address("ram_compiler_source");
+  let ram_code = command_editor_source.label_address("ram_compiler_code");
+
+  let builder_source = 0xF0000;
+  const MAX_COMPILER_CODE_KB: u32 = 8;
+  let compiled_code_kb = context.memory_region("compiler_code").len / 1024;
+  let builder_code = context.memory_region("compiler_code").start +
+      MAX_COMPILER_CODE_KB * 1024;
+  const MAX_BUILDER_SOURCE_SIZE: u32 = 16 * 1024;
+  const MAX_BUILDER_CODE_SIZE: u32 = 4 * 1024;
+  context.add_memory_region(
+    "builder_source",
+    MemoryRegion::new(
+      RegionKind::DataBuffer,
+      builder_source,
+      MAX_BUILDER_SOURCE_SIZE,
+      &HashMap::new(),
+      0,
+      0,
+      0,
+      Vec::default(),
+    ),
+  );
+  context.add_memory_region(
+    "builder_code",
+    MemoryRegion::new(
+      RegionKind::DataBuffer,
+      builder_code,
+      MAX_BUILDER_CODE_SIZE,
+      &HashMap::new(),
+      0,
+      0,
+      0,
+      Vec::default(),
+    ),
+  );
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  // Start the command editor.
+  let command_editor_main = context.memory_region("command_editor")
+      .label_address("command_editor");
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(),
+      "Welcome to the command editor.");
+}
+
+To type this program we first need to decide where to save it. Indeed, we don't
+have a file system yet. We thus still need to manually keep track of the flash
+memory content. We choose to store the source code at address
+\rs{hex_dec(builder_source)} = page
+\rs{dec(page_number(builder_source))}, and the compiled code at address
+\rs{hex_dec(builder_code)} = page
+\rs{dec(page_number(builder_code))} (\rs{dec(MAX_COMPILER_CODE_KB)}~KB after
+the start of the types compiler, which is about
+\rs{dec(compiled_code_kb)}~KB -- see \cref{fig:final-toyc-memory-map}).
+
+We then need to update the command editor commands to use these new addresses.
+In the memory editor, type ``w\rs{hex_word_low(command_editor_main)}''+Enter,
+followed by ``r'', to start the command editor. Then type ``F3'' and ``e'' to
+edit the ``load source code'' command and update its code to the following (we
+call our new program the ``builder'' since its purpose is to build our
+operating system; see also \cref{subsection:first-commands}):
+
+\rust{
+  context.type_keys(vec!["F3"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("load_builder_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(builder_source);
+  c.cst(ram_source);
+  c.call("buffer_copy");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source =
+      format!("{}\nd LOAD_BUILDER_SOURCE_CODE", c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+When done, type Escape and ``s'' to save it. In the same way, update the ``save
+source code'' command (F5) to:
+
+\rust{
+  context.type_keys(vec!["F5"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("save_builder_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(ram_source);
+  c.cst(page_number(builder_source));
+  c.call("buffer_flash");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source =
+      format!("{}\nd SAVE_BUILDER_SOURCE_CODE", c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\noindent the ``compile source code'' command (F6) to:
+
+\rust{
+  context.type_keys(vec!["F6"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("compiler_code"));
+  c.func("compile_builder_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(builder_source); // src_buffer
+  c.cst(ram_code); // dst_buffer
+  c.cst(builder_code); // flash_buffer
+  c.call("main");
+  c.retv();
+  let c_source =
+      format!("{}\nd COMPILE_BUILDER_SOURCE_CODE", c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\noindent and the ``store compiled code'' command (F7) to:
+
+\rust{
+  context.type_keys(vec!["F7"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("run_builder", &[], "", &[]);
+  c.new_line();
+  // save compiled code of builder
+  c.cst(ram_code);
+  c.cst(page_number(builder_code));
+  c.call("buffer_flash");
+  c.new_line();
+  // run the builder and return its result
+  c.cst(builder_code + 4);
+  c.calld();
+  c.retv();
+  let c_source =
+      format!("{}\nd STORE_AND_RUN_COMPILED_BUILDER_CODE",
+      c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+The first line stores the compiled code of the builder in flash memory. The
+second line runs it and returns its result (the {\tt entry} function starts
+after the 4 bytes header of the compiled code data buffer).
+
+\subsection{Disk formatting}
+
+We now have everything we need to type our program, compile it and run it. Type
+``F2''+``r'' to initialize a new text buffer, and ``F4''+``r'' to edit it. Then
+type the source code listed in the previous section. For reference, we also
+provide this code in the {\tt disk\_formatter.txt} file in
+\toypcurl{sources.zip}. When done, type ``F5''+``r'' to save it, and
+``F6''+``r'' to compile it. The result should be 0, meaning that the
+compilation was successful. If not, type ``F4''+``r'' to fix the error. The
+text editor should open right at the error location. Fix the error indicated by
+the error code returned by the compiler (see \cref{appendix:compilercodes}),
+save the program and compile it again. Repeat this process until the
+compilation is successful.
+
+\rust{
+  context.store_text(ram_source,
+      &fs::read_to_string("website/sources/disk_formatter.txt")?);
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // F7 to run it
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+Finally, type ``F7''+``r'' to run it, \ie, to format the disk. You should see
+dots appearing on the screen, eventually replaced with 0, meaning that the
+formatting is done. To check this you can type ``Escape'' to exit the command
+editor and then type ``w\rs{hex_word_low(0x80100u32)}''+Enter,
+``w\rs{hex_word_low(0x80200u32)}''+Enter,
+``w\rs{hex_word_low(0x80300u32)}''+Enter, etc to have a look at the super block
+and the first few free blocks. The super block should start with 0 and
+\hexa{80200}, and each free block should start with the address of the next one.
+
+\rust{
+  context.type_keys(vec!["Escape"]);
+  context.type_ascii(&format!("W{:08X}\n", 0x80100));
+  assert_eq!(display.borrow().get_text().lines().next().unwrap(),
+      "FFFFFFFF FFFFFFFF 00080200 00000000 00080100");
+  context.type_ascii(&format!("W{:08X}\n", 0x80200));
+  assert_eq!(display.borrow().get_text().lines().next().unwrap(),
+      "FFFFFFFF FFFFFFFF FFFFFFFF 00080300 00080200");
+}
+
+\subsection{Tests}
+
+\rust{
+  let mut t = Transpiler5::new("website/sources/disk_formatter.txt");
+  t.add_unchanged("fn main()", "fn gpu_draw_char(");
+}
+
+The above steps have only tested that the low level block reading and writing
+functions actually work. To test that the other functions work too, we can try
+to create a file in our new file system, append data to it, read it back, and
+finally delete the file. This can be done with the following code, which starts
+by creating a file, and returns 1 if the creation fails:
+
+\toy{
+@static NAME = ['m','y','_','f','i','l','e'];
+@const NAME_LENGTH: u32 = 7;
+
+@fn main() -> u32 \{
+@  let file: &FileBlock = null;
+@  if disk_create_file(NAME, NAME_LENGTH, &file) != OK { return 1; }
+}%toy
+
+It then initializes 300 bytes in RAM to some known values, starting at address
+\rs{hex_dec(0x20080000u32)}, and appends them to the file in two steps. If any
+step fails it returns a non-zero value:
+
+\toy{
+@  let block = file as &DiskBlock;
+@  let src = 537395200 as &u32;
+@  const SIZE: u32 = 300;
+@  let i = 0;
+@  while i < SIZE {
+@    store8(src + i, i);
+@    i = i + 1;
+@  }
+@  if disk_write_file(&block, src, 150) != OK { return 2; }
+@  if disk_write_file(&block, src + 150, 150) != OK { return 3; }
+}%toy
+
+The following code checks that the file has the expected size, and reads its
+data back in RAM, starting 300 bytes after {\tt src}, in chunks of 64 bytes:
+
+\toy{
+@  if disk_get_file_size(file) != SIZE { return 4; }
+@  block = file as &DiskBlock;
+@  let offset = 12 + NAME_LENGTH;
+@  let dst = src + SIZE;
+@  while disk_read_file(&block, &offset, dst, 64) == 0 {
+@    dst = dst + 64;
+@  }
+}%toy
+
+It then tests that the data that was read is equal to the data that was
+written, and returns a non-zero result if this is not the case:
+
+\toy{
+@  i = 0;
+@  while i < SIZE {
+@    if *(src + SIZE + i) != *(src + i) {
+@      return 5;
+@    }
+@    i = i + 4;
+@  }
+}%toy
+
+The rest of the code does a few more tests to check that creating another file
+with the same name fails, but that deleting it and recreating it works. It
+finally checks that the file can be found by its name, and deletes it:
+
+\toy{
+@  let unused: &FileBlock = null;
+@  if disk_create_file(NAME, NAME_LENGTH, &unused) == OK { return 6; }
+@  disk_delete_file(file, null);
+@  if disk_create_file(NAME, NAME_LENGTH, &unused) != OK { return 7; }
+@  let previous_file: &FileBlock = null;
+@  file = disk_find_file(NAME, NAME_LENGTH, &previous_file);
+@  if file == null { return 8; }
+@  disk_delete_file(file, previous_file);
+@  return 0;
+@\}
+}%toy
+
+To run this test:
+\begin{itemize}
+  \item start the command editor, if it is not already running, by typing
+  ``w\rs{hex_word_low(command_editor_main)}''+Enter, followed by ``r'' in the
+  memory editor.
+
+  \item type ``F3''+``r'' to load the builder source code and ``F4''+``r'' to
+  edit it. Then delete all the code after {\tt fn gpu\_draw\_char} (included),
+  and type the above code instead.
+
+  \item when done, type ``F5''+``r'' to save it, ``F6''+``r'' to compile it,
+  and finally ``F7''+``r'' to run it. The result should be 0, meaning that all
+  tests passed.
+\end{itemize}
+
+\rust{
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(),
+      "Welcome to the command editor.");
+
+  t.close_unchecked();
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}

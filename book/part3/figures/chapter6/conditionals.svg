@@ -1,0 +1,48 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <text x="6" y="34">$c_1$</text>
+    <text x="17" y="34">$c_2$</text>
+    <text x="28" y="34">$c_3$</text>
+    <text x="46" y="34" text-anchor="middle">{\tt \&amp;\&amp;}</text>
+    <text x="13" y="34" text-anchor="middle">{\tt \&amp;\&amp;}</text>
+    <text x="24" y="34" text-anchor="middle">{\tt \&amp;\&amp;}</text>
+    <text x="57" y="34" text-anchor="middle">{\tt \&amp;\&amp;}</text>
+    <text x="79" y="34" text-anchor="middle">{\tt \&amp;\&amp;}</text>
+    <text x="90" y="34" text-anchor="middle">{\tt \&amp;\&amp;}</text>
+    <text x="35" y="34" text-anchor="middle">{\tt ||}</text>
+    <text x="68" y="34" text-anchor="middle">{\tt ||}</text>
+    <text x="0" y="34">{\tt if}</text>
+    <text x="33" y="28">$\it{if\ true}$</text>
+    <text x="55" y="40">$\it{if\ false}$</text>
+    <text x="103" y="34">{\tt f(x);}</text>
+    <text x="99" y="34">{\tt \{}</text>
+    <text x="133" y="34">{\tt g(y);}</text>
+    <text x="115" y="34">{\tt \} else \{}</text>
+    <text x="144" y="34">{\tt \}}</text>
+    <path d="M 10,36 10,42 h 30 l 0,-6" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 21,36 0,5 h 18 l 0,-5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 32,30 v -6 l 72,0 0,6" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 65,30 0,-5 h 38 l 0,5" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 43,36 0,6 h 30 l 0,-6" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 54,36 0,5 h 18 l 0,-5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 75,36 v 6 l 60,0 0,-6" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 86,36 v 5 l 48,0 0,-5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 97,36 v 4 l 36,0 0,-4" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <text x="39" y="34">$c_4$</text>
+    <text x="50" y="34">$c_5$</text>
+    <text x="61" y="34">$c_6$</text>
+    <text x="72" y="34">$c_7$</text>
+    <text x="83" y="34">$c_8$</text>
+    <text x="94" y="34">$c_9$</text>
+  </g>
+</svg>

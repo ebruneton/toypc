@@ -1,0 +1,1482 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter5}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "expressions_compiler.txt")?;
+}
+
+\chapter{Expressions Compiler}\label{chapter:expressions-compiler}
+
+The labels compiler written in the previous chapter removes the need to
+manually compute function addresses and instruction offsets, which is a huge
+improvement. However, it still requires us to use numbers to refer to function
+arguments or values on the stack. This is easier to do than to use function
+addresses and instruction offsets, but it would be better if we could avoid
+this. Another issue is that computing simple expressions such as $2+3*4$
+requires a ``lot'' of code, in an unnatural order (\insn{cst8} {\tt 2}
+\insn{cst8} {\tt 3} \insn{cst8} {\tt 4} \insn{mul} \insn{add}). It would be
+better if we could just type {\tt 2+3*4} instead. This chapter extends our toy
+programming language and its compiler in order to solve these issues.
+
+\section{Requirements}
+
+\subsection{Function parameters}\label{subsubsection:toyc5-fn-params}
+
+So far we used comments to give a symbolic name to each function parameter. We
+also used these symolic names in comments next to each \insn{get}, \insn{set}
+or \insn{ptr} instruction, in order to make them easier to understand. To avoid
+using numbers in these instructions, the same solution as in the previous
+chapter can be used: we can use symbolic names directly in the source code,
+instead of in comments. The compiler can then keep track of the value of these
+symbols (\ie, their index in the stack frame), like it does for function names
+and labels. To this end, we now require function parameters to be declared
+after the function name, between parentheses and separated by commas, as in the
+following example:
+
+\insn{fn} {\tt gpu\_set\_color}{\tt (}{\tt red,} {\tt green,} {\tt blue}{\tt )}
+$\ldots$
+
+\noindent We could then use these names in instructions such as \insn{get} {\tt
+red}, \insn{set} {\tt green} or \insn{ptr} {\tt blue} (instead of writing
+\insn{get} {\tt 0}, \insn{set} {\tt 1} or \insn{ptr} {\tt 2}). In fact, to get
+shorter programs we simply use ``{\tt red}'' instead of \insn{get} {\tt red}
+and ``{\tt \&blue}'' instead of \insn{ptr} {\tt blue} (see below).
+
+\subsection{Expressions}\label{subsubsection:toyc5-exprs}
+
+A well-formed series of arithmetic and logic instructions (see
+\cref{subsection:alu-insns}) computes a single value on the stack which can be
+written in a shorter mathematical form. For instance, as noted above,
+\insn{cst8} {\tt 2} \insn{cst8} {\tt 3} \insn{cst8} {\tt 4} \insn{mul}
+\insn{add} computes {\tt 2+3*4}, which is much shorter to write and is called
+an {\em expression}. For this reason, we now require our programming language
+to support expressions. This means that it should be possible to write {\tt
+2+3*4} in a program, for instance, and that the compiler should automatically
+compile this into \insn{cst8} {\tt 2} \insn{cst8} {\tt 3} \insn{cst8} {\tt 4}
+\insn{mul} \insn{add} (in binary form).
+
+More precisely, our programming language should support the following
+expressions (where $e_i$ is an expression and {\tt code[$e_i$]} the
+corresponding compiled code, $x$ is a symbolic name corresponding to the
+$i^{th}$ stack frame slot, and $f$ is the name of a function whose address
+is $a+\hexa{C0000}$):
+\begin{itemize}
+  \item integer constants: compiled to \insn{cst\_0}, \insn{cst\_1},
+    \insn{cst8}, or \insn{cst}, depending on the value.
+  \item {\tt $e_1$ + $e_2$}: compiled to {\tt code[$e_1$]} {\tt code[$e_2$]}
+    \insn{add}.
+  \item {\tt $e_1$ - $e_2$}: compiled to {\tt code[$e_1$]} {\tt code[$e_2$]}
+    \insn{sub}.
+  \item {\tt $e_1$ * $e_2$}: compiled to {\tt code[$e_1$]} {\tt code[$e_2$]}
+    \insn{mul}.
+  \item {\tt $e_1$ / $e_2$}: compiled to {\tt code[$e_1$]} {\tt code[$e_2$]}
+    \insn{div}.
+  \item {\tt $e_1$ \& $e_2$}: compiled to {\tt code[$e_1$]} {\tt code[$e_2$]}
+    \insn{and}.
+  \item {\tt $e_1$ | $e_2$}: compiled to {\tt code[$e_1$]} {\tt code[$e_2$]}
+    \insn{or}.
+  \item {\tt *$e_1$}: compiled to {\tt code[$e_1$]} \insn{load}.
+  \item {\tt \&$x$}: compiled to \insn{ptr} $i$.
+  \item {\tt $x$}: compiled to \insn{get} $i$.
+  \item $f${\tt($e_1$, $e_2$, $\ldots$)}: compiled to {\tt code[$e_1$]}
+    {\tt code[$e_2$]} $\ldots$ \insn{call} $a$.
+\end{itemize}
+
+These expressions correspond to all the bytecode instructions which produce a
+value on the stack, except the ones we don't need for now (namely \insn{lsl},
+\insn{lsr}, \insn{callr}, and \insn{calld}). The \insn{call} instruction is a
+special case: the callee might not return a value. However, functions used in
+subexpressions {\em must} return a value.
+
+\subsection{Local variables}\label{subsubsection:toyc5-local-vars}
+
+The result of most expressions is immediately consumed in other expressions or
+instructions. Some results, however, are left on the stack and used later on
+with \insn{get}, \insn{set} or \insn{ptr} instructions. This currently requires
+keeping track of which value is stored in which stack frame slot. To avoid
+this, our programming language should provide a way to give a symbolic name to
+an expression whose value is stored on the stack. In this chapter we use the
+``{\tt let} $x$ $e${\tt ;}'' syntax, where $x$ is an identifier, and $e$ an
+expression. $x$ can then be used in other expressions, such as `{\tt `$x$+1}''
+or ``{\tt \&$x$}'' (unlike labels, $x$ must be {\em declared} with {\tt let}
+before it can be used). It is called a {\em local variable} because it can only
+be used in the current function (since \insn{get}, \insn{set} and \insn{ptr}
+can only refer to slots in the top stack frame). This does not prevent another
+function to declare a variable with the same name, but it is then independent
+(\ie, refers to a different slot).
+
+\subsection{Grammar}
+
+We can now extend the grammar of our programming language in order to support
+the above requirements. Lets look at expressions first. The above definitions
+might suggest a grammar rule of the following form:
+
+\begin{Paragraph}
+expr: expr (``{\tt +}'' | ``{\tt -}'' | ``{\tt *}'' | ``{\tt /}'' | ...) expr |
+``{\tt *}'' expr | ``{\tt \&}'' IDENTIFIER | ...
+\end{Paragraph}
+
+\noindent meaning that an expression is either a {\em binary} expression made
+of two subexpressions with an operator in between, or an {\em unary} expression
+with an operator followed by an expression, etc. However, this rule has several
+issues:
+\begin{itemize}
+  \item It is ambiguous. Consider for instance the $2+3*4$ expression. It can
+  be seen as a binary $+$ expression with subexpressions $2$ and $3*4$. But it
+  can also be seen as a binary $*$ expression with subexpressions $2+3$ and
+  $4$. Both interpretations are valid for the above grammar, but they don't
+  give the same value! In practice anyone would give the value $14$ because we
+  use implicit {\em operator precedence} rules. One such rule is that
+  multiplications have a higher precedence than additions, meaning that they
+  must be performed first. When we want to use the other interpretation we use
+  parentheses, which have the highest precedence: $(2+3)*4$.
+
+  Another ambiguity of the above rule is that $2-3-4$ can be seen as ``$2-3$''
+  minus $4$, or as $2$ minus ``$3-4$''. Here again, both interpretations are
+  valid for the grammar (and for the precedence rules), but they don't give the
+  same value. In practice one always uses the first interpretation, because we
+  use another implicit rule saying that operations are done from left to right.
+
+  \item It can not be implemented with a recursive descent parser. This is
+  because the ``expr'' rule is used on the leftmost position in the definition
+  of one of its alternatives (such grammars are called {\em left recursive}).
+  This would give a {\tt parse\_expr} function which would call itself
+  recursively without reading any token in between, \ie, indefinitely (if the
+  stack was unbounded).
+\end{itemize}
+
+To solve these issues, a solution is to use several rules, one per precedence
+level. For instance, considering only the four basic operations for now, we can
+use
+
+\begin{Paragraph}
+expr: term ((``{\tt +}'' | ``{\tt -}'') term)*\\
+term: factor ((``{\tt *}''| ``{\tt /}'') factor)*\\
+factor: INTEGER | ``{\tt (}'' expr ``{\tt )}''
+\end{Paragraph}
+
+\noindent where precedence increases from top to bottom. Indeed, with these
+rules, $2+3*4$ can be interpreted in only one way, the one we are used to
+(because $2+3$ is not a factor). Similarly, $2-3-4$ can only be seen as an
+expression with an unambiguously ordered list of 3 terms. This does not tell in
+itself whether these terms must be evaluated from left to right or right to
+left, but this choice can be enforced in the compiler implementation. Finally,
+these rules can be implemented with a recursive descent parser (``expr''
+indirectly uses itself recursively, but only after the ``{\tt (}'' token; hence
+there is no left recursion).
+
+The following grammar applies this idea to all the expressions in
+\cref{subsubsection:toyc5-exprs}, and takes into account the requirements in
+\cref{subsubsection:toyc5-fn-params,subsubsection:toyc5-local-vars}. It does
+this by extending the previous grammar as follows (unchanged parts are in gray):
+
+\begin{Paragraph}
+\unchanged{program: (fn | static} | const\unchanged{)* END}\\
+\unchanged{fn: ``{\tt fn}'' fn\_name} fn\_parameters \unchanged{fn\_body}\\
+\unchanged{fn\_name: IDENTIFIER}\\
+fn\_parameters: ``{\tt (}'' (IDENTIFIER (``{\tt ,}'' IDENTIFIER)*)?
+  ``{\tt )}''\\
+\unchanged{fn\_body:} ``{\tt \{}'' statement* ``{\tt \}}''
+  \unchanged{| ``{\tt ;}''}\\
+statement: label | let\_stmt | (expr (``{\tt ,}'' expr)*)? instruction?
+  ``{\tt ;}''\\
+let\_stmt: ``{\tt let}'' IDENTIFIER expr ``{\tt ;}''\\
+instruction: ``{\tt iflt}'' argument | ``{\tt ifeq}'' argument | ... |
+  ``{\tt store}'' | ``{\tt pop}'' | ...\\
+expr: bit\_and\_expr (``{\tt |}'' bit\_and\_expr)*\\
+bit\_and\_expr: add\_expr (``{\tt \&}'' add\_expr)*\\
+add\_expr: mult\_expr ((``{\tt +}'' | ``{\tt -}'') mult\_expr)*\\
+mult\_expr: pointer\_expr ((``{\tt *}'' | ``{\tt /}'') pointer\_expr)*\\
+pointer\_expr: ``{\tt *}'' pointer\_expr | ``{\tt \&}'' IDENTIFIER |
+primitive\_expr\\
+primitive\_expr:  INTEGER | IDENTIFIER fn\_arguments? |
+  ``{\tt (}'' expr ``{\tt )}''\\
+fn\_arguments: ``{\tt (}'' (expr (``{\tt ,}'' expr)*)? ``{\tt )}''\\
+\unchanged{label: ``{\tt :}'' IDENTIFIER}\\
+argument: IDENTIFIER\\
+\unchanged{static: ``{\tt static}'' IDENTIFIER INTEGER*}\\
+const: ``{\tt const}'' IDENTIFIER INTEGER
+\end{Paragraph}
+
+\noindent where ``?'' denotes an optional element. Thus, for instance, the
+``fn\_parameters'' rule means ``a left parenthesis, optionally followed by an a
+non-empty list of parameters, followed by a right parenthesis'' (the non-empty
+list of parameters being defined as an identifier, followed by any number of
+``comma identifier'' groups).
+
+The body of a function is now defined as a list of {\em statements} between
+curly braces (added to more clearly separate functions from each other, but
+also to simplify the parser). Each statement is either a label, a local
+variable declaration, or a comma separated list of expressions\footnote{It is
+possible to use more strict rules to enforce a precise number of expressions
+before each instruction (\eg, 0 before \insn{ret}, 1 before \insn{set}, or 2
+before \insn{ifeq}). We use this less strict rule to simplify the grammar, and
+thus the implementation.} followed by an optional instruction and ending with a
+semi-colon. Examples of the latter case include ``\insn{ret}{\tt ;}'', ``{\tt 0}
+\insn{set} {\tt x}{\tt ;}'', ``{\tt x}, {\tt y} \insn{ifeq} {\tt ok}{\tt ;}''
+(an instruction preceded by 0, 1 or 2 expressions, respectively), or ``{\tt
+panic(1){\tt ;}''} (an expression not followed by any instruction).
+
+Instructions are defined as in the previous chapter, except that all the
+instructions listed in \cref{subsubsection:toyc5-exprs} (\insn{add},
+\insn{sub}, etc) are now removed (expressions must be instead). Similarly,
+instruction arguments can no longer be integers: label, function parameter or
+local variable names must be used instead.
+
+Expressions are defined as explained above, with 6 levels of precedence.
+Constants, identifiers, function calls, parentheses, and the {\em address-of}
+operator ``{\tt \&}'' have the same highest precedence\footnote{We put the
+address-of operator in the pointer\_expr rule for convenience, but it could be
+moved in the primitive\_expr rule instead, thus showing that it has the same
+precedence as the others.}. They are followed by the {\em dereference operator}
+``{\tt *}'' which loads the value at some address. Then comes multiplicative
+expressions, additive expressions, bitwise and expressions, and finally bitwise
+or expressions. Thus, for instance, ``{\tt a + *b * c \& d}'' is equivalent to
+``{\tt (a + ((*b) * c)) \& d}'' and not to ``{\tt a + ((*b) * (c \& d))}'' or
+``{\tt a + (*(b * c) \& d)}'', for instance. However, when in doubt, it is
+preferable to use explicit parentheses.
+
+Finally, the new ``const'' rule adds a syntax to give a symbolic name to a
+constant value. For instance, ``{\tt const} {\tt RESOLVED} {\tt 0}'' makes it
+possible to use ``{\tt RESOLVED}'' in an expression, which is more meaningful
+than using ``{\tt 0}''. To simplify the implementation, a constant must be
+defined before it is used.
+
+\subsection{Scanner}
+
+As a last new requirement, our programming language should support INTEGER
+tokens of the form ``{\tt '$c$'}'', where $c$ is a printable character (ASCII
+code between 32 and 127, excluded), and whose numeric value is the ASCII code
+of $c$. For instance, it should be possible to write {\tt 'a'} instead of a's
+ASCII code {\tt 97}, or {\tt '\hspace{0pt}'\hspace{0pt}'} instead of the
+quote's ASCII code {\tt 39}.
+
+\section{Algorithms}\label{subsection:toyc2-algorithms}
+
+Compiling function parameters, local variable names and {\tt const}
+declarations can be done with the same algorithms used for function names and
+labels. Namely those to add a symbol in the list of symbols, and to use this
+list to find the value of a symbol. Similarly, compiling expressions can be
+done with the same recursive descent method already used, namely with one
+function per grammar rule. Hence we do not really need any new algorithm in
+this chapter. Instead, we list here the main implementation differences
+compared with the previous compiler version.
+
+The scanner needs an updated {\tt CHAR\_TYPES} table to support the new single
+character tokens (parentheses, curly braces, +, -, *, /, \&, | and ,). It also
+needs an updated {\tt KEYWORDS} table ({\tt let} and {\tt const} are added,
+\insn{add}, \insn{sub}, etc are removed). Finally, a new function is needed to
+read the new quoted character tokens defined above.
+
+The backend should provide new functions to write the opcode instructions
+needed to compile expressions (\insn{cst\_0}, $\ldots$ \insn{add}, $\ldots$).
+The goal is to simplify the parser by {\em encapsulating} the low level
+instruction encoding details in simple to use functions.
+
+The compiler needs to keep track of the stack frame slot index corresponding to
+each function parameter and local variable. The former is easy: the $i^{th}$
+parameter is in the $i^{th}$ slot. For the latter we assume that {\tt let}
+statements are the only ones which leave a value on the stack (this forbids,
+for instance, statements such as ``1;''). We also assume, without verification,
+that {\tt let} statements are executed in the same order as in the source code,
+and exactly once (unless the function returns before). Then the $i^{th}$ local
+variable is in the $(i+4)^{th}$ slot (recall that 4 saved register values are
+pushed after the function arguments).
+
+Compiling a {\tt const} $c$ $v$ declaration does not need to produce any code.
+Instead, we can simply add a corresponding symbol in the symbols list. Then,
+each time $c$ is used, a \insn{cst}* instruction to push $v$ on the stack can
+be produced. Note however that, in order to do this, the parser must know that
+$c$ refers to a constant. Indeed, if $c$ is referring to a local variable or
+function argument, a \insn{get} instruction must be produced instead. To this
+end, we introduce a new symbol kind, {\tt VARIABLE} (2), in addition to the
+{\tt RESOLVED} and {\tt UNRESOLVED} kinds. And we use {\tt RESOLVED} for {\tt
+const} symbols and {\tt VARIABLE} for local variables and function arguments.
+
+\section{Implementation}
+
+\rust{
+  let mut t = Transpiler2::new();
+}
+
+We can now extend the labels compiler in order to support expressions. We first
+need to write it without using expressions, so that it can be compiled with the
+labels compiler. We then compile this source code, which gives us the
+expressions compiler bytecode. Finally, we rewrite this source code with
+expressions, and we compile it with the expressions compiler bytecode. As
+before, to save space, we give the two compiler versions at the same time
+(without expressions in red, with in green).
+
+The start of the compiler does not change in the $1^{st}$ version (changes are
+indicated with a vertical bar in the margin), but can be rewritten in a clearer
+way in the $2^{nd}$:
+
+\toy{
+@fn tc_main(src_buffer, dst_buffer, flash_buffer);
+@fn main(src_buffer, dst_buffer, flash_buffer) {
+@  tc_main(src_buffer, dst_buffer, flash_buffer) retv;
+@}
+
+@fn load8(ptr) { (*ptr) & 255 retv; }
+@fn load16(ptr) { (*ptr) & 65535 retv; }
+@fn store8(ptr, value) { ptr, (*ptr) & 4294967040 | value store; ret; }
+@fn store16(ptr, value) { ptr, (*ptr) & 4294901760 | value store; ret; }
+
+@const PANIC_BUFFER 1074666152
+@fn panic_copy(src, dst) {
+@  dst, *src store;
+@  (dst + 4), *(src + 4) store;
+@  (dst + 8), *(src + 8) store;
+@  (dst + 12), *(src + 12) store;
+@  ret;
+@}
+@fn panic_result(ptr) {
+@  panic_copy(&ptr - 16, ptr);
+@  PANIC_BUFFER, ptr store;
+@  0 retv;
+@}
+@fn panic(error) {
+@  panic_copy(*PANIC_BUFFER, &error - 16);
+@  error retv;
+@}
+}%toy
+
+\subsection{Shared constants}
+
+We then declare, in the $2^{nd}$ version, a set of constants for $\it{token}$
+values, symbol's $\it{kind}$ values, for the offset of each symbol's variable
+(and their total size), and for the offset of the compiler variables from
+$\it{self}$. For convenience, we set the token values of +, -, *, /, \&, and |
+to their corresponding opcode (4, 5, 6, 7, 8, and 9, respectively).
+
+\toy{
+const TC_INTEGER 2
+const TC_IDENTIFIER 3
+const TC_ADD 4
+const TC_SUB 5
+const TC_MUL 6
+const TC_DIV 7
+const TC_BIT_AND 8
+const TC_BIT_OR 9
+const TC_FN 'f'
+const TC_LET 'l'
+const TC_CONST 'c'
+const TC_STATIC 's'
+
+const SYM_RESOLVED 0
+const SYM_UNRESOLVED 1
+const SYM_VARIABLE 2
+
+const sym_name 0
+const sym_length 4
+const sym_kind 8
+const sym_value 12
+const sym_next 16
+const sizeof_symbol 20
+
+const tc_src 0
+const tc_src_end 4
+const tc_next_char 8
+const tc_next_char_type 12
+const tc_next_token 16
+const tc_next_token_data 20
+const tc_next_token_length 24
+const tc_dst 28
+const tc_heap 32
+const tc_symbols 36
+const tc_flash_offset 40
+const tc_fn_dst 44
+}%toy
+
+\subsection{Scanner}
+
+The {\tt CHAR\_TYPES} table must be updated to support the new single character
+tokens (+, -, *, /, \&, |, comma, parentheses and curly braces). For
+convenience, we set the character types of +, -, *, /, \&, and | to the
+corresponding token values. And we set the type of the others, including the
+quote, to their ASCII code. The {\tt KEYWORDS} table must also be updated to
+remove instructions now handled with expressions (\insn{add}, \insn{sub}, etc)
+and to add the new {\tt let} and {\tt const} keywords.
+
+\toy{
+@static TC_CHAR_TYPES
+@  1 1 1 1 1 1 1 1 1 32 32 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  32 1 1 1 1 1 8 39 40 41 6 4 44 5 1 7 2 2 2 2 2 2 2 2 2 2 58 59 1 1 1 1
+@  1 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 1 1 1 1 3
+  1 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 123 9 125 1 1
+@  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+@  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+@  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+@  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+static TC_KEYWORDS
+@  4 'i' 'f' 'l' 't' 140
+@  4 'i' 'f' 'e' 'q' 141
+@  4 'i' 'f' 'g' 't' 142
+@  4 'i' 'f' 'l' 'e' 143
+@  4 'i' 'f' 'n' 'e' 144
+@  4 'i' 'f' 'g' 'e' 145
+@  4 'g' 'o' 't' 'o' 146
+  5 's' 't' 'o' 'r' 'e' 148
+  3 's' 'e' 't' 151
+  3 'p' 'o' 'p' 152
+  3 'r' 'e' 't' 157
+  4 'r' 'e' 't' 'v' 158
+  2 'f' 'n' 102
+  3 'l' 'e' 't' 108
+  5 'c' 'o' 'n' 's' 't' 99
+@  6 's' 't' 'a' 't' 'i' 'c' 115
+@  0
+}%toy
+
+The first scanner functions are unchanged compared with the labels compiler:
+
+\toy{
+@fn mem_compare(ptr1, ptr2, size) {
+@  let i 0;
+@:step2
+@  i, size ifge step4;
+@  load8(ptr1 + i), load8(ptr2 + i) ifne step4;
+@  i + 1 set i; goto step2;
+@:step4
+@  size - i retv;
+@}
+
+@fn tc_get_keyword(start, length) {
+@  let len 0;
+@  let ptr TC_KEYWORDS;
+@:step2
+@  load8(ptr) set len;
+@  len, 0 ifne step4;
+@  TC_IDENTIFIER retv;
+@:step4
+@  length, len ifne step7;
+@  mem_compare(start, ptr + 1, length), 0 ifne step7;
+@  load8(ptr + len + 1) retv;
+@:step7
+@  ptr + len + 2 set ptr; goto step2;
+@}
+
+@fn tc_read_char(self) {
+@  let src *(self+tc_src);
+@  let src_end *(self+tc_src_end);
+@  src, src_end iflt step2;
+@  panic(10);
+@:step2
+@  src + 1 set src;
+@  let c 0;
+@  let type 0;
+@  src, src_end ifge end;
+@  load8(src) set c;
+@  load8(TC_CHAR_TYPES + c) set type;
+@:end
+@  (self+tc_src), src store;
+@  (self+tc_next_char), c store;
+@  (self+tc_next_char_type), type store;
+@  type retv;
+@}
+
+@fn tc_read_integer(self) {
+@  let type *(self+tc_next_char_type);
+@  let v 0;
+@:step2
+@  type, TC_INTEGER ifne step5;
+@  v * 10 + (*(self+tc_next_char) - '0') set v;
+@  tc_read_char(self) set type;
+@  goto step2;
+@:step5
+@  (self+tc_next_token_data), v store;
+@  TC_INTEGER retv;
+@}
+}%toy
+
+To support the new quoted characters tokens such as ``{\tt 'a'}'' we add the
+following function. It starts by reading the first quote (the caller should
+check that the next character is a quote). It then checks if the second
+character, in $\it{value}$, is printable, and panics otherwise. Finally, it
+checks that the third character is a quote, sets the $\it{next\_token\_data}$ to
+$value$ and return the {\tt INTEGER} token type:
+
+\toy{
+fn tc_read_quoted_char(self) {
+  tc_read_char(self) pop;
+  let value *(self+tc_next_char);
+  value, 32 iflt not_printable;
+  value, 127 iflt printable;
+:not_printable
+  panic(11);
+:printable
+  tc_read_char(self), ''' ifeq ok;
+  panic(12);
+:ok
+  tc_read_char(self) pop;
+  (self+tc_next_token_data), value store;
+  TC_INTEGER retv;
+}
+}%toy
+\rust{
+  context.add_error_code(11, "Printable character expected");
+  context.add_error_code(12, "Quote character expected");
+}
+
+The remaining scanner functions are essentially unchanged compared with the
+labels compiler. We just add a new case in {\tt tc\_read\_token}, which calls
+the above function if the next character is a quote:
+
+\toy{
+@fn tc_read_identifier(self) {
+@  let start *(self+tc_src);
+@  let type *(self+tc_next_char_type);
+@:step2
+@  type, TC_IDENTIFIER ifeq step3;
+@  type, TC_INTEGER ifne step4;
+@:step3
+@  tc_read_char(self) set type; goto step2;
+@:step4
+@  let length *(self+tc_src) - start;
+@  (self+tc_next_token_data), start store;
+@  (self+tc_next_token_length), length store;
+@  tc_get_keyword(start, length) retv;
+@}
+
+@fn tc_read_token(self) {
+@  let type *(self+tc_next_char_type);
+@:step1
+@  type, ' ' ifne step3;
+@  tc_read_char(self) set type; goto step1;
+@:step3
+@  let token type;
+  type, TC_INTEGER ifne step4;
+@  tc_read_integer(self) set token; goto end;
+:step4
+  type, ''' ifne step5;
+  tc_read_quoted_char(self) set token; goto end;
+@:step5
+@  type, TC_IDENTIFIER ifne step6;
+@  tc_read_identifier(self) set token; goto end;
+@:step6
+@  type, 0 ifeq end;
+@  tc_read_char(self) pop;
+@:end
+@  (self+tc_next_token), token store;
+@  ret;
+@}
+}%toy
+
+\subsection{Backend}
+
+The backend is extended with new functions to write the opcode instructions
+needed by the parser. Its first functions are unchanged compared with the
+labels compiler:
+
+\toy{
+@fn mem_allocate(size, ptr_p) {
+@  let ptr *ptr_p;
+@  ptr_p, ptr + size store;
+@  ptr retv;
+@}
+@fn tc_write8(self, value) {
+@  store8(mem_allocate(1, self+tc_dst), value);
+@  ret;
+@}
+@fn tc_write16(self, value) {
+@  store16(mem_allocate(2, self+tc_dst), value);
+@  ret;
+@}
+@fn tc_write32(self, value) {
+@  mem_allocate(4, self+tc_dst), value store;
+@  ret;
+@}
+}%toy
+
+We then add a generic utility function to write an instruction with a single
+byte argument, used later on:
+
+\toy{
+fn tc_write_insn(self, opcode, argument) {
+  tc_write8(self, opcode);
+  tc_write8(self, argument);
+  ret;
+}
+}%toy
+
+The next two functions are unchanged ({\tt last\_placeholder} and {\tt
+new\_placeholder} refer to $x$ and $y$ in \cref{alg:toyc1-add-ref},
+respectively):
+
+\toy{
+@fn tc_add_placeholder(self, placeholder_p) {
+@  let new_placeholder *(self+tc_dst);
+@  let last_placeholder *placeholder_p;
+@  placeholder_p, new_placeholder store;
+@  last_placeholder, 0 ifne step4; new_placeholder set last_placeholder;
+@:step4
+@  new_placeholder - last_placeholder retv;
+@}
+
+@fn tc_fill_placeholders(placeholder, value) {
+@  let offset 0;
+@:step2
+@  placeholder, 0 ifeq end;
+@:step3
+@  load16(placeholder) set offset;
+@  store16(placeholder, value);
+@  offset, 0 ifne step6; ret;
+@:step6
+@  placeholder - offset set placeholder;
+@  goto step2;
+@:end
+@  ret;
+@}
+}%toy
+
+The following new function writes an instruction to push a given value on the
+stack. It encapsulates the details related to the \insn{cst\_0}, \insn{cst\_1},
+\insn{cst8} and \insn{cst} instructions by writing the appropriate instruction
+depending on $\it{value}$:
+
+\toy{
+fn tc_write_cst_insn(self, value) {
+  value, 1 ifgt not0_or_1;
+  tc_write8(self, value); ret;
+:not0_or_1
+  value, 256 ifge not_byte;
+  tc_write_insn(self, 2, value); ret;
+:not_byte
+  tc_write8(self, 3);
+  tc_write32(self, value); ret;
+}
+}%toy
+
+The next function writes the instruction to perform the arithmetic operation
+specified by $\it{token}$, which must be one of {\tt TC\_ADD}, {\tt TC\_SUB},
+{\tt TC\_MUL}, {\tt TC\_DIV}, {\tt TC\_BIT\_AND}, or {\tt TC\_BIT\_OR}. It is
+trivial since these values are equal to the corresponding opcodes:
+
+\toy{
+fn tc_write_binary_insn(self, token) {
+  tc_write8(self, token);
+  ret;
+}
+}%toy
+
+The following 3 functions write the instruction corresponding to their name.
+They encapsulate the details related to their encoding.
+
+\toy{
+fn tc_write_load_insn(self) {
+  tc_write8(self, 19);
+  ret;
+}
+fn tc_write_ptr_insn(self, variable) {
+  tc_write_insn(self, 21, variable);
+  ret;
+}
+fn tc_write_get_insn(self, variable) {
+  tc_write_insn(self, 22, variable);
+  ret;
+}
+}%toy
+
+The next function is simplified by using the new {\tt tc\_write\_insn} function:
+
+\toy{
+fn tc_write_fn_insn(self, arity) {
+  tc_write_insn(self, 25, arity);
+  ret;
+}
+}%toy
+
+The last backend function writes the instruction to call a given
+$\it{function}$, specified with a symbol. It writes the \insn{call} opcode,
+followed either by a new placeholder if the symbol is unresolved, or by the
+symbol's value. By hypothesis, this value is the \insn{call} instruction
+argument which must be used to call $\it{function}$. The following function
+encapsulates the details of its computation.
+
+\toy{
+fn tc_get_fn_value(self, fn_dst) {
+  fn_dst - *(self+tc_flash_offset) - 786432 retv;
+}
+fn tc_write_call_insn(self, function) {
+  tc_write8(self, 26);
+  *(function+sym_kind), SYM_UNRESOLVED ifne resolved;
+  tc_write16(self, tc_add_placeholder(self, function+sym_value));
+  ret;
+:resolved
+  tc_write16(self, *(function+sym_value));
+  ret;
+}
+}%toy
+
+\subsection{Parser}
+
+The start of the parser is the same as in the labels compiler:
+
+\toy{
+@fn sym_lookup(symbol, name, length) {
+@:step2
+@  symbol, 0 ifeq step7;
+@  *(symbol+sym_length), length ifne step6;
+@  mem_compare(*(symbol+sym_name), name, length), 0 ifne step6;
+@  symbol retv;
+@:step6
+@  *(symbol+sym_next) set symbol; goto step2;
+@:step7
+@  0 retv;
+@}
+
+@fn tc_add_symbol(self, name, length, kind, value) {
+@  let symbol mem_allocate(sizeof_symbol, self+tc_heap);
+@  sym_lookup(*(self+tc_symbols), name, length), 0 ifeq ok;
+@  panic(30);
+@:ok
+@  (symbol+sym_name), name store;
+@  (symbol+sym_length), length store;
+@  (symbol+sym_kind), kind store;
+@  (symbol+sym_value), value store;
+@  (symbol+sym_next), *(self+tc_symbols) store;
+@  (self+tc_symbols), symbol store;
+@  symbol retv;
+@}
+
+@fn tc_add_or_resolve_symbol(self, name, length, value) {
+@  let symbol sym_lookup(*(self+tc_symbols), name, length);
+@  symbol, 0 ifne found;
+@  tc_add_symbol(self, name, length, SYM_RESOLVED, value) retv;
+@:found
+@  *(symbol+sym_kind), SYM_UNRESOLVED ifeq ok;
+@  panic(31);
+@:ok
+@  tc_fill_placeholders(*(symbol+sym_value), value);
+@  (symbol+sym_kind), SYM_RESOLVED store;
+@  (symbol+sym_value), value store;
+@  symbol retv;
+@}
+
+@fn tc_parse_token(self, token) {
+@  *(self+tc_next_token), token ifeq ok;
+@  panic(20);
+@:ok
+@  tc_read_token(self);
+@  ret;
+@}
+@fn tc_parse_integer(self) {
+@  *(self+tc_next_token), TC_INTEGER ifeq ok;
+@  panic(21);
+@:ok
+@  let value *(self+tc_next_token_data);
+@  tc_read_token(self);
+@  value retv;
+@}
+@fn tc_parse_identifier(self, length_p) {
+@  *(self+tc_next_token), TC_IDENTIFIER ifeq ok;
+@  panic(22);
+@:ok
+@  let name *(self+tc_next_token_data);
+@  length_p, *(self+tc_next_token_length) store;
+@  tc_read_token(self);
+@  name retv;
+@}
+}%toy
+
+Here we add a new utility function to parse an identifier which must correspond
+to an existing symbol. This function parses an identifier and returns its
+corresponding symbol in the list passed as argument in $\it{symbol}$ (or panics
+if no symbol is found):
+
+\toy{
+fn tc_parse_symbol(self, symbol) {
+  let length 0;
+  let name tc_parse_identifier(self, &length);
+  sym_lookup(symbol, name, length) set symbol;
+  symbol, 0 ifne ok;
+  panic(33);
+:ok
+  symbol retv;
+}
+}%toy
+\rust{
+  context.add_error_code(33, "Undefined symbol");
+}
+
+The {\tt tc\_parse\_static} function is unchanged, but a new trivial {\tt
+  tc\_parse\_const} function is added for the new ``{\tt const} $x$ $v$''
+syntax. This function simply adds a new symbol for $x$, with value $v$.
+
+\toy{
+fn tc_parse_const(self) {
+  tc_parse_token(self, TC_CONST);
+  let length 0;
+  let name tc_parse_identifier(self, &length);
+  tc_add_symbol(self, name, length, SYM_RESOLVED, tc_parse_integer(self)) pop;
+  ret;
+}
+@fn tc_parse_static(self) {
+@  tc_parse_token(self, TC_STATIC);
+@  let length 0;
+@  let name tc_parse_identifier(self, &length);
+@  let value *(self+tc_dst) - *(self+tc_flash_offset);
+@  tc_add_symbol(self, name, length, SYM_RESOLVED, value) pop;
+@:loop
+@  *(self+tc_next_token), TC_INTEGER ifne end;
+@  tc_write8(self, tc_parse_integer(self)); goto loop;
+@:end
+@  ret;
+@}
+}%toy
+
+The {\tt parse\_argument} function is updated to match the new ``argument''
+grammar rule, which no longer allows INTEGER arguments. As a consequence, the
+start of this function, which was calling {\tt tc\_parse\_integer}, is removed.
+On the other hand, the {\tt tc\_parse\_label} function is unchanged (the
+``label'' rule has not changed):
+
+\toy{
+fn tc_parse_argument(self) {
+@  let length 0;
+@  let name tc_parse_identifier(self, &length);
+@  let symbol sym_lookup(*(self+tc_symbols), name, length);
+@  symbol, 0 ifne found;
+@  tc_add_symbol(self, name, length, SYM_UNRESOLVED, 0) set symbol;
+@:found
+@  *(symbol+sym_kind), SYM_UNRESOLVED ifne resolved;
+@  tc_add_placeholder(self, symbol+sym_value) retv;
+@:resolved
+@  *(symbol+sym_value) retv;
+@}
+
+@fn tc_parse_label(self) {
+@  tc_parse_token(self, ':');
+@  let length 0;
+@  let name tc_parse_identifier(self, &length);
+@  let value *(self+tc_dst) - *(self+tc_fn_dst);
+@  tc_add_or_resolve_symbol(self, name, length, value);
+@  ret;
+@}
+}%toy
+
+The following functions are the main new part of the compiler. They implement
+the expressions rules in reverse order, starting with ``fn\_arguments''. This
+rule uses ``expr'' but since {\tt tc\_parse\_expr} is implemented last, we need
+to declare it first.
+
+\toy{
+fn tc_parse_expr(self);
+}%toy
+
+The {\tt tc\_parse\_fn\_arguments} function parses the arguments of a function
+call $f(e_0,e_1,\ldots)$, and takes as argument the symbol corresponding to
+$f$. It first checks that this symbol is not a local variable, and panics
+otherwise. It then parses the arguments with the recursive descent method:
+after parsing the opening parenthesis, it parses a first expression unless the
+next token is a closing parenthesis. Then, while the next token is a comma, it
+reads it and parses another expression. This generates the compiled code for
+the arguments, after which we just need to write a \insn{call} instruction.
+
+\toy{
+fn tc_parse_fn_arguments(self, function) {
+  *(function+sym_kind), SYM_VARIABLE ifne ok;
+  panic(34);
+:ok
+  tc_parse_token(self, '(');
+  *(self+tc_next_token), ')' ifeq end;
+  tc_parse_expr(self);
+:loop
+  *(self+tc_next_token), ',' ifne end;
+  tc_read_token(self);
+  tc_parse_expr(self);
+  goto loop;
+:end
+  tc_parse_token(self, ')');
+  tc_write_call_insn(self, function);
+  ret;
+}
+}%toy
+\rust{
+  context.add_error_code(34, "Function name expected");
+}
+
+A primitive expression can either start with an integer, an identifier, or an
+opening parenthesis. In the first case we generate the code to push this
+integer on the stack:
+
+\toy{
+fn tc_parse_primitive_expr(self) \{
+  let symbol 0;
+  *(self+tc_next_token), TC_INTEGER ifne not_integer;
+  tc_write_cst_insn(self, tc_parse_integer(self));
+  ret;
+}%toy
+
+In the second case, there must be a symbol for this identifier. If it is
+followed by an opening parenthesis this is a function call, and we parse it
+with the above function.
+
+\toy{
+:not_integer
+  *(self+tc_next_token), TC_IDENTIFIER ifne parentheses;
+  tc_parse_symbol(self, *(self+tc_symbols)) set symbol;
+  *(self+tc_next_token), '(' ifne identifier;
+  tc_parse_fn_arguments(self, symbol);
+  ret;
+}%toy
+
+\noindent Otherwise we write the appropriate instruction depending on the kind
+of symbol referred to by the identifier (or panic if the symbol is unresolved).
+
+\toy{
+:identifier
+  *(symbol+sym_kind), SYM_VARIABLE ifne not_variable;
+  tc_write_get_insn(self, *(symbol+sym_value));
+  ret;
+:not_variable
+  *(symbol+sym_kind), SYM_RESOLVED ifne error;
+  tc_write_cst_insn(self, *(symbol+sym_value));
+  ret;
+:error
+  panic(35);
+}%toy
+\rust{
+  context.add_error_code(35, "Illegal identifier expression");
+}
+
+In the last case, we simply need to parse an expression between parentheses:
+
+\toy{
+:parentheses
+  tc_parse_token(self, '(');
+  tc_parse_expr(self);
+  tc_parse_token(self, ')');
+  ret;
+\}
+}%toy
+
+A pointer expression either starts with ``{\tt *}'' or ``{\tt \&}'', or is a
+primitive expression. Following the recursive descent method, the first case is
+trivial: we just need to read the ``{\tt *}'' token, parse a pointer expression
+recursively, and finally generate a \insn{load} instruction (recall that
+``*$e$'' means ``the value at address $e$''). The second case is also simple:
+the ``{\tt \&}'' must be followed by an identifier which must correspond to a
+local variable or function parameter $x$. If it is we must generate a
+\insn{ptr} $x$ instruction (recall that ``{\tt \&$x$}'' means ``the address of
+$x$'s stack frame slot''), otherwise this is an error:
+
+\toy{
+fn tc_parse_pointer_expr(self) {
+  let symbol 0;
+  *(self+tc_next_token), TC_MUL ifne not_mul;
+  tc_read_token(self);
+  tc_parse_pointer_expr(self);
+  tc_write_load_insn(self);
+  ret;
+:not_mul
+  *(self+tc_next_token), TC_BIT_AND ifne not_bit_and;
+  tc_read_token(self);
+  tc_parse_symbol(self, *(self+tc_symbols)) set symbol;
+  *(symbol+sym_kind), SYM_VARIABLE ifne error;
+  tc_write_ptr_insn(self, *(symbol+sym_value));
+  ret;
+:error
+  panic(36);
+:not_bit_and
+  tc_parse_primitive_expr(self);
+  ret;
+}
+}%toy
+\rust{
+  context.add_error_code(36, "Illegal address-of operator argument");
+}
+
+The remaining expression parsing functions are straightforward, again by
+following the recursive descent method. After parsing a first subexpression, a
+loop is used, while the next token is a permitted operator (\eg, ``{\tt +}'' or
+``{\tt -}'' for the ``add\_expr'' rule), to read the operator, parse a
+subexpression, and write the operator's instruction:
+
+\toy{
+fn tc_parse_mult_expr(self) {
+  tc_parse_pointer_expr(self);
+  let next_token *(self+tc_next_token);
+:loop
+  next_token, TC_MUL ifeq mul_or_div;
+  next_token, TC_DIV ifne end;
+:mul_or_div
+  tc_read_token(self);
+  tc_parse_pointer_expr(self);
+  tc_write_binary_insn(self, next_token);
+  *(self+tc_next_token) set next_token;
+  goto loop;
+:end
+  ret;
+}
+fn tc_parse_add_expr(self) {
+  tc_parse_mult_expr(self);
+  let next_token *(self+tc_next_token);
+:loop
+  next_token, TC_ADD ifeq add_or_sub;
+  next_token, TC_SUB ifne end;
+:add_or_sub
+  tc_read_token(self);
+  tc_parse_mult_expr(self);
+  tc_write_binary_insn(self, next_token);
+  *(self+tc_next_token) set next_token;
+  goto loop;
+:end
+  ret;
+}
+fn tc_parse_bit_and_expr(self) {
+  tc_parse_add_expr(self);
+:loop
+  *(self+tc_next_token), TC_BIT_AND ifne end;
+  tc_read_token(self);
+  tc_parse_add_expr(self);
+  tc_write_binary_insn(self, TC_BIT_AND);
+  goto loop;
+:end
+  ret;
+}
+fn tc_parse_expr(self) {
+  tc_parse_bit_and_expr(self);
+:loop
+  *(self+tc_next_token), TC_BIT_OR ifne end;
+  tc_read_token(self);
+  tc_parse_bit_and_expr(self);
+  tc_write_binary_insn(self, TC_BIT_OR);
+  goto loop;
+:end
+  ret;
+}
+}%toy
+
+The {\tt tc\_parse\_instruction} function is similar to its previous version in
+the labels compiler and is even simpler, since an instruction can no longer be
+a label (labels have been moved to the ``statement'' rule):
+
+\toy{
+@static ARG_SIZES
+@  0 0 1 4 0 0 0 0 0 0 0 0 2 2 2 2 2 2 2 0 0 1 1 1 0 0 2 0 0 0 0
+
+fn tc_parse_instruction(self) {
+  let opcode *(self+tc_next_token) - 128;
+  tc_write8(self, opcode);
+  tc_read_token(self);
+  let arg_size load8(ARG_SIZES + opcode);
+  arg_size, 0 ifne not0;
+  ret;
+:not0
+  let arg tc_parse_argument(self);
+  arg_size, 1 ifne not1;
+  tc_write8(self, arg); ret;
+:not1
+  arg_size, 2 ifne not2;
+  tc_write16(self, arg); ret;
+:not2
+  tc_write32(self, arg); ret;
+}
+}%toy
+
+The following function parses the new ``{\tt let $x$ $e$;}'' syntax. It takes
+as parameter the stack frame slot index of $x$ and returns the index to use for
+the next {\tt let}. The parsing itself is trivial. No code needs to be
+generated besides the one generated while parsing $e$. We just need to add $x$
+in the list of symbols, with value $\it{variable}$.
+
+\toy{
+fn tc_parse_let_stmt(self, variable) {
+  tc_parse_token(self, TC_LET);
+  let length 0;
+  let name tc_parse_identifier(self, &length);
+  tc_parse_expr(self);
+  tc_parse_token(self, ';');
+  tc_add_symbol(self, name, length, SYM_VARIABLE, variable) pop;
+  variable + 1 retv;
+}
+}%toy
+
+The next function implements the ``statement'' rule. It takes as parameter the
+stack frame slot to use if the statement is a {\tt let} construct, and returns
+the slot to use for the next statement. If the next token is a colon or the
+{\tt let} keyword, we just need to call the function to parse a label or a let
+statement. Otherwise, if the next token is not an opcode keyword ($\it{token}
+\ge 128$) or a semicolon, we need to parse an expression. Then, while the next
+token is a comma, we should read it and parse another expression. Finally, we
+should parse an instruction if the next token is not a semicolon.
+
+\toy{
+fn tc_parse_statement(self, next_variable) {
+	*(self+tc_next_token), ':' ifne not_label;
+	tc_parse_label(self);
+	goto end;
+:not_label
+	*(self+tc_next_token), TC_LET ifne expr_or_insn;
+	tc_parse_let_stmt(self, next_variable) retv;
+:expr_or_insn
+  *(self+tc_next_token), ';' ifeq insn;
+  *(self+tc_next_token), 128 ifge insn;
+	tc_parse_expr(self);
+:loop
+	*(self+tc_next_token), ',' ifne insn;
+	tc_read_token(self);
+	tc_parse_expr(self);
+	goto loop;
+:insn
+	*(self+tc_next_token), ';' ifeq insn_end;
+	*(self+tc_next_token), 128 ifge ok;
+	panic(24);
+:ok
+	tc_parse_instruction(self);
+:insn_end
+	tc_parse_token(self, ';');
+:end
+	next_variable retv;
+}
+}%toy
+\rust{
+	context.add_error_code(24, "Instruction opcode expected");
+}
+
+The {\tt tc\_parse\_fn\_name} function is the same as in the labels compiler,
+except that it now computes the symbol's value with the new {\tt
+tc\_get\_fn\_value} function:
+
+\toy{
+@fn tc_parse_fn_name(self) {
+@  let length 0;
+@  let name tc_parse_identifier(self, &length);
+@  let fn_dst *(self+tc_dst);
+@  (self+tc_fn_dst), fn_dst store;
+  let value tc_get_fn_value(self, fn_dst);
+@  tc_add_or_resolve_symbol(self, name, length, value) retv;
+@}
+}%toy
+
+The overall algorithm of the {\tt tc\_parse\_fn\_parameters} function is the
+same as the one parsing function arguments, and derives from the recursive
+descent method. This function parses an opening parenthesis and then, while the
+next token is not a closing parenthesis, parses a comma (except at the first
+iteration) and an identifier. Each identifier is added to the list of symbols
+with its index $i$ as value. $i$ is initialized to 0, incremented after each
+identifier, and finally returned to the caller.
+
+\toy{
+fn tc_parse_fn_parameters(self) {
+  let i 0;
+  let name 0;
+  let length 0;
+  tc_parse_token(self, '(');
+:loop
+  *(self+tc_next_token), ')' ifeq end;
+  i, 0 ifle identifier;
+  tc_parse_token(self, ',');
+:identifier
+  tc_parse_identifier(self, &length) set name;
+  tc_add_symbol(self, name, length, SYM_VARIABLE, i) pop;
+  i + 1 set i;
+  goto loop;
+:end
+  tc_read_token(self);
+  i retv;
+}
+}%toy
+
+The {\tt parse\_fn\_body} function is updated to parse the new curly braces,
+and no longer parses the function's arity, now passed as argument. It also
+parses statements instead of instructions, and keeps track of the stack frame
+slot to use for {\tt let} statements (initialized to $\it{arity}+4$ -- \cf
+\cref{subsection:toyc2-algorithms}).
+
+\toy{
+fn tc_parse_fn_body(self, function, arity) {
+@  *(self+tc_next_token), ';' ifne body;
+@  tc_read_token(self);
+@  (function+sym_kind), SYM_UNRESOLVED store;
+@  (function+sym_value), 0 store;
+@  ret;
+@:body
+  tc_parse_token(self, '\{');
+  tc_write_fn_insn(self, arity);
+  let next_variable arity + 4;
+:loop
+  *(self+tc_next_token), '\}' ifeq end;
+  tc_parse_statement(self, next_variable) set next_variable;
+  goto loop;
+:end
+  tc_read_token(self);
+  ret;
+}
+}%toy
+
+The {\tt tc\_check\_symbols} function is unchanged, while {\tt tc\_parse\_fn}
+is updated to parse the function parameters before parsing its body. Note that
+restoring the $\it{heap}$ and $\it{symbols}$ variables now also deletes the
+symbols added for the function parameters and for the local variables (in
+addition to the label symbols). This is what we want, so that parameters and
+local variables defined in one function cannot be used in another.
+
+\toy{
+@fn tc_check_symbols(symbol, end_symbol) {
+@:loop
+@  symbol, end_symbol ifeq end;
+@  *(symbol+sym_kind), SYM_UNRESOLVED ifne next;
+@  panic(32);
+@:next
+@  *(symbol+sym_next) set symbol; goto loop;
+@:end
+@  ret;
+@}
+@fn tc_parse_fn(self) {
+@  tc_parse_token(self, TC_FN);
+@  let function tc_parse_fn_name(self);
+@  let heap *(self+tc_heap);
+@  let symbols *(self+tc_symbols);
+  let arity tc_parse_fn_parameters(self);
+  tc_parse_fn_body(self, function, arity);
+@  tc_check_symbols(*(self+tc_symbols), symbols);
+@  (self+tc_symbols), symbols store;
+@  (self+tc_heap), heap store;
+@  ret;
+@}
+}%toy
+
+Finally, {\tt tc\_parse\_program} is updated to handle the new ``{\tt const}''
+case, while the {\tt tc\_main} function is unchanged:
+
+\toy{
+@fn tc_parse_program(self) {
+@:loop
+@  *(self+tc_next_token), TC_FN ifne not_fn;
+@  tc_parse_fn(self); goto loop;
+@:not_fn
+  *(self+tc_next_token), TC_STATIC ifne not_static;
+@  tc_parse_static(self); goto loop;
+:not_static
+  *(self+tc_next_token), TC_CONST ifne end;
+  tc_parse_const(self); goto loop;
+@:end
+@  *(self+tc_next_token), 0 ifeq ok;
+@  panic(23);
+@:ok
+@  tc_check_symbols(*(self+tc_symbols), 0); ret;
+@}
+@fn tc_main(src_buffer, dst_buffer, flash_buffer) {
+@  let fn_dst 0;
+@  let flash_offset dst_buffer - flash_buffer;
+@  let symbols 0;
+@  let heap dst_buffer + 12288;
+@  let dst dst_buffer + 4;
+@  let next_token_length 0;
+@  let next_token_data 0;
+@  let next_token 0;
+@  let next_char_type 0;
+@  let next_char 0;
+@  let src_end src_buffer + 4 + *src_buffer;
+@  let src src_buffer + 3;
+@  let panic3 0;
+@  let panic2 0;
+@  let panic1 0;
+@  let panic0 0;
+@  let error 0;
+@  panic_result(&panic0) set error;
+@  error, 0 ifeq ok;
+@  dst_buffer, src - src_buffer - 4 store;
+@  error retv;
+@:ok
+@  tc_read_char(&src) pop;
+@  tc_read_token(&src);
+@  tc_parse_program(&src);
+@  dst_buffer, dst - dst_buffer - 4 store;
+@  0 retv;
+@}
+}%toy
+
+\rust{
+  t.write_toy1("website/sources/expressions_compiler_v1.txt")?;
+  t.write_toy2("website/sources/expressions_compiler_v2.txt")?;
+  t.check_changes("website/sources/labels_compiler_v2.txt")?;
+}
+
+\section{Compilation and tests}
+
+\rust{
+  let boot_mode_address = context.memory_region("foundations")
+      .label_address("boot_mode_select_rom");
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  let mut context1 = context.clone();
+
+  // Launch the command editor
+  let command_editor_main =
+      context.memory_region("command_editor").label_address("command_editor");
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+}
+
+To compile the above source code proceed as follows (see also
+\cref{fig:compilation-and-test}). First launch the command editor by typing
+``w\rs{hex_word_low(command_editor_main)}''+Enter in the memory editor,
+followed by ``r''.
+
+\medskip \paragraph*{Edit v1} Type ``F3''+``r'' and ``F4''+``r'' to load and
+edit the current compiler version. Then update it to the $1^{st}$ version of
+the expressions compiler (that is, the above code with the parts highlighted in
+red). For convenience, we also provide this code in the {\tt
+expressions\_compiler\_v1.txt} file in \toypcurl{sources.zip}. When you are
+done, exit the text editor and type ``F5''+``r'' to save your work.
+Alternatively, you can ``cheat'' by running the following command on an
+external computer (see \cref{section:toyc1-compilation} for more details):
+
+\rust{
+  // Enter source code in RAM, as if edited with F4 command.
+  let ram_compiler_source = context.memory_region("command_editor_source")
+      .label_address("ram_compiler_source");
+  let toyc2_dot_toy1 = std::fs::read_to_string(
+      "website/sources/expressions_compiler_v1.txt")?;
+  context.store_text(ram_compiler_source, toyc2_dot_toy1.as_str());
+
+  // Save it in flash.
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Alternative method.
+  context1.micro_controller().borrow_mut().reset();
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  let compiler_source = context.memory_region("compiler_source").start;
+  write_lines("website/part3", "expressions_compiler_v1.txt",
+      &flash_helper_commands(&toyc2_dot_toy1, compiler_source))?;
+  let mut flash_helper1 = FlashHelper::from_file(context1.micro_controller(),
+      "website/", "part3/expressions_compiler_v1.txt")?;
+  let log = flash_helper1.read();
+
+  // Check that both methods give the same result.
+  context.check_equal_buffer(&mut context1, compiler_source);
+}
+\rs{host_log(log.lines().next().unwrap())}
+
+\medskip \paragraph{Compile v1} In the command editor, type ``F6''+``r'' to
+compile the code you typed. If all goes well, after about 2 seconds, you should
+get a result equal to 0 (meaning that no error was found). If this is not the
+case use \cref{appendix:compilercodes} to get the error code meaning, fix this
+error, save the program and compile it again. Repeat this process until the
+compilation is successful. Then type ``F7''+``r'' to save the result.
+
+\rust{
+  // Compile it with toyc1.
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Save it in flash memory.
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph{Test v1} Type ``F2''+``r'' to create a new program,
+``F4''+``r'' to edit it, and type the following small test program, which
+computes the factorial of 6:
+
+\rust{
+  let test_program = r"fn factorial(n);
+fn test() { factorial(6) retv; }
+fn factorial(n) {
+  n, 0 ifne not_zero; 1 retv;
+  :not_zero factorial(n - 1) * n retv;
+}";
+  // Enter source code in RAM, as if edited with F4 command.
+  context.store_text(ram_compiler_source, test_program);
+}
+\rs{code(test_program)}
+
+\noindent Then type ``F9''+``r'' to compile and run it. If the result is not
+\rs{dec_hex(720u32)} this means that the compiler is wrong. In this case, type
+``F8''+``r'' to restore the labels compiler. Then repeat the previous steps and
+double check everything until this test passes.
+
+\rust{
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "000002D0");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph*{Edit v2} Type ``F3''+``r'' to load the $1^{st}$ version of
+the expression compiler and ``F4''+``r'' to edit it. Then update it to the
+$2^{nd}$ version (that is, the code in the previous section, with the parts
+highlighted in green). For convenience, we also provide this code in the {\tt
+expressions\_compiler\_v2.txt} file. Then save this new version with the F5
+command. Alternatively, run the following command on an external computer:
+
+\rust{
+  // Enter source code in RAM, as if edited with F4 command.
+  let toyc2_dot_toy2 = std::fs::read_to_string(
+      "website/sources/expressions_compiler_v2.txt")?;
+  context.store_text(ram_compiler_source, toyc2_dot_toy2.as_str());
+
+  // Save it in flash.
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Alternative method.
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  write_lines("website/part3", "expressions_compiler_v2.txt",
+      &flash_helper_commands(&toyc2_dot_toy2, compiler_source))?;
+  let mut flash_helper1 = FlashHelper::from_file(context1.micro_controller(),
+      "website/", "part3/expressions_compiler_v2.txt")?;
+  let log = flash_helper1.read();
+
+  // Check that both methods give the same result.
+  context.check_equal_buffer(&mut context1, compiler_source);
+}
+\rs{host_log(log.lines().next().unwrap())}
+
+\medskip \paragraph*{Compile v2} Type``F6''+``r'' to compile this new code. The
+result should be 0, meaning ``no error''. If this is not the case, repeat the
+``Edit v2'' and ``Compile v2'' steps until all errors are fixed.
+
+\rust{
+  // Compile v2.
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph*{Test v2} The compilation of the $2^{nd}$ version of the
+expressions compiler should give the same code for each expression as the
+manually written code in the $1^{st}$ version. Consequently, the compiled code
+of the $2^{nd}$ version should be identical to that of the $1^{st}$ version. To
+check this type ``F10''+``r''. The result should be 0. If this is not the case,
+repeat the steps from ``Edit v2'' until this test passes.
+
+\rust{
+  // Test same code as v1.
+  context.type_keys(vec!["F10"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // return in memory editor
+  context.type_ascii("\n");
+}

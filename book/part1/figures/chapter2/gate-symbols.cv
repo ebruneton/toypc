@@ -1,0 +1,1280 @@
+{
+"name": "gate-symbols",
+"timePeriod": 500,
+"clockEnabled": true,
+"projectId": "CMTxpOOcgBDXhDRPlBh1",
+"focussedCircuit": 36514079223,
+"orderedTabs": [
+"36514079223"
+],
+"scopes": [
+{
+"layout": {
+"width": 100,
+"height": 520,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+17
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+28
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+51
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+53
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+29
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+47
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+49
+]
+},
+{
+"x": 30,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+30
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+42
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+44
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+45
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+38
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+40
+]
+},
+{
+"x": 30,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+32
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+34
+]
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+36
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+31
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+50
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+52
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+46
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+48
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+41
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+43
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+37
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+39
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+33
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+35
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+4
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+7
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+16
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+13
+]
+},
+{
+"x": 950,
+"y": 1040,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+26,
+34
+]
+},
+{
+"x": 950,
+"y": 1050,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+14,
+33
+]
+},
+{
+"x": 950,
+"y": 1080,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+27,
+36
+]
+},
+{
+"x": 950,
+"y": 1070,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+15,
+35
+]
+},
+{
+"x": 810,
+"y": 1040,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+24,
+38
+]
+},
+{
+"x": 810,
+"y": 1050,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+37,
+11
+]
+},
+{
+"x": 810,
+"y": 1080,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+25,
+40
+]
+},
+{
+"x": 810,
+"y": 1070,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+39,
+12
+]
+},
+{
+"x": 690,
+"y": 1040,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+22,
+42
+]
+},
+{
+"x": 690,
+"y": 1050,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+41,
+8
+]
+},
+{
+"x": 690,
+"y": 1080,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+23,
+44
+]
+},
+{
+"x": 690,
+"y": 1070,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+43,
+9
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+10
+]
+},
+{
+"x": 550,
+"y": 1040,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+20,
+47
+]
+},
+{
+"x": 550,
+"y": 1050,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+46,
+5
+]
+},
+{
+"x": 550,
+"y": 1080,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+21,
+49
+]
+},
+{
+"x": 550,
+"y": 1070,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+48,
+6
+]
+},
+{
+"x": 430,
+"y": 1040,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+18,
+51
+]
+},
+{
+"x": 430,
+"y": 1050,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+50,
+2
+]
+},
+{
+"x": 430,
+"y": 1080,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+19,
+53
+]
+},
+{
+"x": 430,
+"y": 1070,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+52,
+3
+]
+}
+],
+"id": 36514079223,
+"name": "Main",
+"Input": [
+{
+"x": 280,
+"y": 1060,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 17
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 20,
+"id": "NDfqiKMybHrWUOaWMoqs"
+}
+]
+}
+},
+{
+"x": 410,
+"y": 1040,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 18
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 40,
+"id": "WXbTBxCmgSb5s4LynS6T"
+}
+]
+}
+},
+{
+"x": 410,
+"y": 1080,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 19
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 60,
+"id": "uymMm7XuhP6BcISweloS"
+}
+]
+}
+},
+{
+"x": 530,
+"y": 1040,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 20
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 80,
+"id": "nNQaCZC0wmfbJBabE3AH"
+}
+]
+}
+},
+{
+"x": 530,
+"y": 1080,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 21
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 100,
+"id": "D3LB73p5ZhgSw8p1U8VA"
+}
+]
+}
+},
+{
+"x": 670,
+"y": 1040,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 22
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 120,
+"id": "t1uS0hIZnYBKBEusyRHy"
+}
+]
+}
+},
+{
+"x": 670,
+"y": 1080,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 23
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 140,
+"id": "mVKtMFBgJKUN825ks9rG"
+}
+]
+}
+},
+{
+"x": 790,
+"y": 1040,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 24
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 160,
+"id": "IGFyKlHRzv9uqjzg4gxo"
+}
+]
+}
+},
+{
+"x": 790,
+"y": 1080,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 25
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 320,
+"id": "jUMx9M16S9sogzrG5nhB"
+}
+]
+}
+},
+{
+"x": 930,
+"y": 1040,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 26
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 340,
+"id": "FUhCNVTv53vXhmspmKbO"
+}
+]
+}
+},
+{
+"x": 930,
+"y": 1080,
+"objectType": "Input",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 27
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 360,
+"id": "csa7ywHRulTclsfJkhKV"
+}
+]
+}
+}
+],
+"Output": [
+{
+"x": 360,
+"y": 1060,
+"objectType": "Output",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 28
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 20,
+"id": "WQrS6nE7SSRBiVjBJfYD"
+}
+]
+}
+},
+{
+"x": 490,
+"y": 1060,
+"objectType": "Output",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 29
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 40,
+"id": "gUERHubPdTWE2m0zI21U"
+}
+]
+}
+},
+{
+"x": 620,
+"y": 1060,
+"objectType": "Output",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 30
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 60,
+"id": "AFjO2H5UXAf3dcvdkwyQ"
+}
+]
+}
+},
+{
+"x": 1020,
+"y": 1060,
+"objectType": "Output",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 31
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 80,
+"id": "o0bNNSRNHxnFprVgA1eU"
+}
+]
+}
+},
+{
+"x": 880,
+"y": 1060,
+"objectType": "Output",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 32
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 160,
+"id": "Ts1xMADGz1orTIymmeHp"
+}
+]
+}
+},
+{
+"x": 750,
+"y": 1060,
+"objectType": "Output",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 45
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 180,
+"id": "MdAOk73UtGAIdeWIpHOO"
+}
+]
+}
+}
+],
+"NotGate": [
+{
+"x": 320,
+"y": 1060,
+"objectType": "NotGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 1,
+"inp1": 0
+}
+}
+}
+],
+"OrGate": [
+{
+"x": 710,
+"y": 1060,
+"objectType": "OrGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+2,
+1
+],
+"nodes": {
+"inp": [
+8,
+9
+],
+"output1": 10
+}
+}
+}
+],
+"AndGate": [
+{
+"x": 450,
+"y": 1060,
+"objectType": "AndGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+2,
+1
+],
+"nodes": {
+"inp": [
+2,
+3
+],
+"output1": 4
+}
+}
+}
+],
+"NorGate": [
+{
+"x": 830,
+"y": 1060,
+"objectType": "NorGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+2,
+1
+],
+"nodes": {
+"inp": [
+11,
+12
+],
+"output1": 13
+}
+}
+}
+],
+"NandGate": [
+{
+"x": 570,
+"y": 1060,
+"objectType": "NandGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+2,
+1
+],
+"nodes": {
+"inp": [
+5,
+6
+],
+"output1": 7
+}
+}
+}
+],
+"XorGate": [
+{
+"x": 980,
+"y": 1060,
+"objectType": "XorGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+2,
+1
+],
+"nodes": {
+"inp": [
+14,
+15
+],
+"output1": 16
+}
+}
+}
+],
+"Text": [
+{
+"x": 310,
+"y": 1020,
+"objectType": "Text",
+"label": "NOT",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"NOT",
+14
+]
+}
+},
+{
+"x": 440,
+"y": 1020,
+"objectType": "Text",
+"label": "AND",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"AND",
+14
+]
+}
+},
+{
+"x": 560,
+"y": 1020,
+"objectType": "Text",
+"label": "NAND",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"NAND",
+14
+]
+}
+},
+{
+"x": 700,
+"y": 1020,
+"objectType": "Text",
+"label": "OR",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"OR",
+14
+]
+}
+},
+{
+"x": 820,
+"y": 1020,
+"objectType": "Text",
+"label": "NOR",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"NOR",
+14
+]
+}
+},
+{
+"x": 970,
+"y": 1020,
+"objectType": "Text",
+"label": "XOR",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"XOR",
+14
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": [
+33,
+34,
+35,
+36,
+37,
+38,
+39,
+40,
+41,
+42,
+43,
+44,
+46,
+47,
+48,
+49,
+50,
+51,
+52,
+53
+]
+}
+]
+}

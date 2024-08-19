@@ -1,0 +1,1045 @@
+{
+"name": "not-gate",
+"timePeriod": 500,
+"clockEnabled": true,
+"projectId": "TpmrhPZvYFfImnJG1SnC",
+"focussedCircuit": 36514079223,
+"orderedTabs": [
+"36514079223",
+"2010657330",
+"74599835232"
+],
+"scopes": [
+{
+"layout": {
+"width": 30,
+"height": 20,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": false
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+3
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+5
+]
+},
+{
+"x": 0,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": [
+4
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+2
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1
+]
+}
+],
+"id": 2010657330,
+"name": "NormallyOpen",
+"Input": [
+{
+"x": 580,
+"y": 330,
+"objectType": "Input",
+"label": "     I",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 3
+},
+"values": {
+"state": 1
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 10,
+"y": 20,
+"id": "YctQGQUaIhuZbsEntAPa"
+}
+]
+}
+},
+{
+"x": 630,
+"y": 280,
+"objectType": "Input",
+"label": " ",
+"direction": "DOWN",
+"labelDirection": "UP",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 4
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"DOWN",
+1,
+{
+"x": 0,
+"y": 10,
+"id": "W3aLumMr2CIepuPj8PPJ"
+}
+]
+}
+}
+],
+"Output": [
+{
+"x": 690,
+"y": 330,
+"objectType": "Output",
+"label": "  ",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 5
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 10,
+"y": 0,
+"id": "TVF5HAiYjkNAshTuGgVF"
+}
+]
+}
+}
+],
+"TriState": [
+{
+"x": 630,
+"y": 330,
+"objectType": "TriState",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 1,
+"inp1": 0,
+"state": 2
+}
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": []
+},
+{
+"layout": {
+"width": 30,
+"height": 20,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": false
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+3
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+5
+]
+},
+{
+"x": 0,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": [
+9
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+7
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1
+]
+},
+{
+"x": 0,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+11
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+4
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+10
+]
+},
+{
+"x": 30,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+2
+]
+},
+{
+"x": 630,
+"y": 290,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+8,
+11
+]
+},
+{
+"x": 670,
+"y": 290,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+6,
+10
+]
+}
+],
+"id": 74599835232,
+"name": "NormallyClosed",
+"Input": [
+{
+"x": 570,
+"y": 360,
+"objectType": "Input",
+"label": "I",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 3
+},
+"values": {
+"state": 1
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 20,
+"y": 0,
+"id": "c73qbs9vXe9xjBbheTR3"
+}
+]
+}
+},
+{
+"x": 610,
+"y": 260,
+"objectType": "Input",
+"label": " ",
+"direction": "DOWN",
+"labelDirection": "UP",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 4
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"DOWN",
+1,
+{
+"x": 0,
+"y": 10,
+"id": "sdesztlseCDew3Ca27mt"
+}
+]
+}
+}
+],
+"Output": [
+{
+"x": 680,
+"y": 360,
+"objectType": "Output",
+"label": "  ",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 5
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 20,
+"y": 20,
+"id": "hvqYhkE0iHEIEFAlsXNB"
+}
+]
+}
+}
+],
+"NorGate": [
+{
+"x": 620,
+"y": 310,
+"objectType": "NorGate",
+"label": "",
+"direction": "DOWN",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"DOWN",
+2,
+1
+],
+"nodes": {
+"inp": [
+7,
+8
+],
+"output1": 9
+}
+}
+}
+],
+"Ground": [
+{
+"x": 670,
+"y": 310,
+"objectType": "Ground",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 6
+},
+"constructorParamaters": [
+1
+]
+}
+}
+],
+"TriState": [
+{
+"x": 620,
+"y": 360,
+"objectType": "TriState",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 1,
+"inp1": 0,
+"state": 2
+}
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": [
+10,
+11
+]
+},
+{
+"layout": {
+"width": 100,
+"height": 440,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": 0,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+7
+]
+},
+{
+"x": 0,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+8
+]
+},
+{
+"x": 0,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+11
+]
+},
+{
+"x": 0,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+9
+]
+},
+{
+"x": 570,
+"y": 350,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+12,
+10,
+13
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+6
+]
+},
+{
+"x": 540,
+"y": 350,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+5,
+7,
+8
+]
+},
+{
+"x": 540,
+"y": 370,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0,
+6
+]
+},
+{
+"x": 540,
+"y": 330,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1,
+6
+]
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+3
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+4
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+2
+]
+},
+{
+"x": 20,
+"y": 20,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+4
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+4
+]
+},
+{
+"x": 0,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+21
+]
+},
+{
+"x": 0,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+22
+]
+},
+{
+"x": 0,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+25
+]
+},
+{
+"x": 0,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+23
+]
+},
+{
+"x": 920,
+"y": 350,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+26,
+24,
+27
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+20
+]
+},
+{
+"x": 890,
+"y": 350,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+19,
+21,
+22
+]
+},
+{
+"x": 890,
+"y": 370,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+14,
+20
+]
+},
+{
+"x": 890,
+"y": 330,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+15,
+20
+]
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+17
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+18
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+16
+]
+},
+{
+"x": 20,
+"y": 20,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+18
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+18
+]
+}
+],
+"id": 36514079223,
+"name": "Main",
+"Input": [
+{
+"x": 490,
+"y": 350,
+"objectType": "Input",
+"label": "\\cvmath{p}",
+"direction": "RIGHT",
+"labelDirection": "DOWN",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 5
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 20,
+"id": "7k42aOu85uV6vmg5c4mg"
+}
+]
+}
+},
+{
+"x": 840,
+"y": 350,
+"objectType": "Input",
+"label": "\\cvmath{p}",
+"direction": "RIGHT",
+"labelDirection": "DOWN",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 19
+},
+"values": {
+"state": 1
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 40,
+"id": "OOSxtYXKHiZKD5zk01QH"
+}
+]
+}
+}
+],
+"Output": [
+{
+"x": 630,
+"y": 350,
+"objectType": "Output",
+"label": "\\cvmath{\\neg p}",
+"direction": "LEFT",
+"labelDirection": "DOWN",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 13
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 40,
+"id": "7MTj65jtuHxIFTzdteYk"
+}
+]
+}
+},
+{
+"x": 980,
+"y": 350,
+"objectType": "Output",
+"label": "\\cvmath{\\neg p}",
+"direction": "LEFT",
+"labelDirection": "DOWN",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 27
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 20,
+"id": "kOZOyPTDT2dMyWC9N0Cn"
+}
+]
+}
+}
+],
+"Power": [
+{
+"x": 570,
+"y": 300,
+"objectType": "Power",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 2
+},
+"constructorParamaters": [
+1
+]
+}
+},
+{
+"x": 920,
+"y": 300,
+"objectType": "Power",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 16
+},
+"constructorParamaters": [
+1
+]
+}
+}
+],
+"Ground": [
+{
+"x": 570,
+"y": 400,
+"objectType": "Ground",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 3
+},
+"constructorParamaters": [
+1
+]
+}
+},
+{
+"x": 920,
+"y": 400,
+"objectType": "Ground",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 17
+},
+"constructorParamaters": [
+1
+]
+}
+}
+],
+"SubCircuit": [
+{
+"x": 560,
+"y": 360,
+"id": "2010657330",
+"label": "",
+"labelDirection": "LEFT",
+"inputNodes": [
+9,
+0
+],
+"outputNodes": [
+10
+],
+"version": "2.0"
+},
+{
+"x": 550,
+"y": 320,
+"id": "74599835232",
+"label": "",
+"labelDirection": "LEFT",
+"inputNodes": [
+11,
+1
+],
+"outputNodes": [
+12
+],
+"version": "2.0"
+},
+{
+"x": 910,
+"y": 360,
+"id": "2010657330",
+"label": "",
+"labelDirection": "LEFT",
+"inputNodes": [
+23,
+14
+],
+"outputNodes": [
+24
+],
+"version": "2.0"
+},
+{
+"x": 900,
+"y": 320,
+"id": "74599835232",
+"label": "",
+"labelDirection": "LEFT",
+"inputNodes": [
+25,
+15
+],
+"outputNodes": [
+26
+],
+"version": "2.0"
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": [
+4,
+6,
+7,
+8,
+18,
+20,
+21,
+22
+]
+}
+]
+}

@@ -1,0 +1,78 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="7" height="7" x="6" y="12" fill="#0e6e8e"/>
+    <rect width="4" height="7" x="1" y="12" fill="#0e6e8e"/>
+    <rect width="1" height="7" x="5" y="12" fill="#ebebeb"/>
+    <rect width="9" height="7" x="14" y="43" fill="#bf3959"/>
+    <rect width="47" height="7" x="23" y="43" fill="#ebebeb"/>
+    <path d="m 23,43 v 7" stroke="#000000"/>
+    <text x="72" y="27" font-size="3.5px" text-anchor="end">commands</text>
+    <text x="74" y="27" font-size="3.5px">Command Editor</text>
+    <path d="m 72,24 v -4" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <path d="M 74,24 V 20" stroke="#000000" stroke-dasharray="0.4, 0.4" marker-end="url(#arrow)"/>
+    <rect width="2" height="7" x="13" y="12" fill="#ebebeb"/>
+    <rect width="53" height="7" x="19" y="12" fill="#ebebeb"/>
+    <rect width="2" height="7" x="70" y="43" fill="#bf3959"/>
+    <rect width="17" height="7" x="126" y="12" fill="#ebebeb"/>
+    <rect width="1" height="7" x="75" y="12" fill="#ebebeb"/>
+    <rect width="9" height="7" x="134" y="43" fill="#ebebeb"/>
+    <rect width="4" height="7" x="86" y="43" fill="#ebebeb"/>
+    <rect width="4" height="7" x="15" y="12" fill="#0e6e8e"/>
+    <path d="m 6,12 v 7" stroke="#000000"/>
+    <path d="m 15,12 v 7" stroke="#000000"/>
+    <path d="m 13,12 v 7" stroke="#000000"/>
+    <path d="m 19,12 v 7" stroke="#000000"/>
+    <path d="m 72,12 v 7" stroke="#000000"/>
+    <text x="-7.0710683" y="8.485281" transform="rotate(-45)" font-size="3.5px">C0000$_{16}$</text>
+    <text x="-3.5355341" y="12.020816" transform="rotate(-45)" font-size="3.5px">\mmapa</text>
+    <text x="2.8284268" y="18.384777" transform="rotate(-45)" font-size="3.5px">\mmapb</text>
+    <text x="23.33452" y="82.731491" transform="rotate(-45)" font-size="3.5px">\mmapi</text>
+    <text x="17.677666" y="77.074638" transform="rotate(-45)" font-size="3.5px">\mmaph</text>
+    <path d="M 70,43 67,42" stroke="#000000" stroke-dasharray="0.4, 0.4"/>
+    <path d="m 72,43 3,-1" stroke="#000000" stroke-dasharray="0.4, 0.4"/>
+    <text x="45.961941" y="61.518291" transform="rotate(-45)" font-size="3.5px">\mmapd</text>
+    <text x="43.840622" y="57.982758" transform="rotate(-45)" font-size="3.5px">\mmapc</text>
+    <text x="5" y="27" font-size="3.5px">Types Compiler v2</text>
+    <path d="M 6,24 V 20" stroke="#000000" stroke-dasharray="0.4, 0.4" marker-end="url(#arrow)"/>
+    <text x="0" y="58" font-size="3.5px">Native Compiler v2</text>
+    <text x="77" y="17" font-size="3.5px">Native compiler v2</text>
+    <text x="16" y="17" font-size="3.5px">Builder</text>
+    <text x="3" y="17" font-size="3.5px" text-anchor="middle">...</text>
+    <path d="M 1,55 V 51" stroke="#000000" stroke-dasharray="0.4, 0.4" marker-end="url(#arrow)"/>
+    <text x="69" y="58" font-size="3.5px">Boot loader and BIOS Vector Table backups</text>
+    <path d="M 70,55 V 51" stroke="#000000" stroke-dasharray="0.4, 0.4" marker-end="url(#arrow)"/>
+    <rect width="11" height="7" x="1" y="43" fill="#bf3959"/>
+    <rect width="0.5" height="7" x="1" y="12" fill="#bf3959"/>
+    <rect width="2" height="7" x="12" y="43" fill="#ebebeb"/>
+    <path d="m 72,43 v 7" stroke="#000000"/>
+    <path d="m 12,43 v 7" stroke="#000000"/>
+    <text x="-28.991381" y="30.405596" transform="rotate(-45)" font-size="3.5px">\mmapf</text>
+    <text x="-19.798994" y="39.59798" transform="rotate(-45)" font-size="3.5px">\mmapg</text>
+    <text x="33.941124" y="93.338089" transform="rotate(-45)" font-size="3.5px">\mmapj</text>
+    <text x="91" y="48" font-size="3.5px">Kernel</text>
+    <text x="73" y="48" font-size="3.5px">Builder</text>
+    <text x="15" y="48" font-size="3.5px">edited program</text>
+    <path d="m 14,43 v 7" stroke="#000000"/>
+    <path d="m 134,43 v 7" stroke="#000000"/>
+    <path d="m 86,43 v 7" stroke="#000000"/>
+    <path d="m 90,43 v 7" stroke="#000000"/>
+    <path d="m 76,12 v 7" stroke="#000000"/>
+    <path d="m 75,12 v 7" stroke="#000000"/>
+    <path d="m 74,12 v 7" stroke="#000000"/>
+    <path d="m 126,12 v 7" stroke="#000000"/>
+    <path d="m 71,43 v 7" stroke="#000000"/>
+    <path d="m 70,43 v 7" stroke="#000000"/>
+    <rect width="142" height="7" x="1" y="12" fill="none" stroke="#000000"/>
+    <rect width="142" height="7" x="1" y="43" fill="none" stroke="#000000"/>
+  </g>
+</svg>

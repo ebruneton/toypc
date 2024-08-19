@@ -1,0 +1,85 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="60mm" viewBox="0 0 145 60" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="143" height="1" x="1" y="37.5" fill="none"/>
+    <rect width="52" height="5" x="85" y="43" fill="#cccccc"/>
+    <rect width="52" height="5" x="1" y="43" fill="#cccccc"/>
+    <rect width="24" height="5" x="1" y="8" fill="#ebebeb"/>
+    <rect width="12" height="5" x="97" y="28" fill="#ebebeb"/>
+    <text x="59" y="17" text-anchor="middle">Branch with Link</text>
+    <text x="13" y="12" text-anchor="middle">BL ...</text>
+    <text x="19" y="17" text-anchor="middle">MUL</text>
+    <text x="7" y="17" text-anchor="middle">ADD</text>
+    <text x="8" y="32" text-anchor="middle">...</text>
+    <text x="19" y="32" text-anchor="middle">SUB</text>
+    <text x="13" y="22" text-anchor="middle">...</text>
+    <text x="26" y="12">$a$</text>
+    <text x="26" y="17">$a+4$</text>
+    <text x="26" y="32">$b$</text>
+    <path d="M 1,6 V 36" stroke="#000000"/>
+    <path d="M 25,6 V 36" stroke="#000000"/>
+    <path d="M 1,13 25,13" stroke="#000000"/>
+    <path d="M 1,8 H 25" stroke="#000000"/>
+    <path d="M 1,18 H 25" stroke="#000000"/>
+    <path d="M 1,28 H 25" stroke="#000000"/>
+    <path d="M 1,33 H 25" stroke="#000000"/>
+    <text x="97" y="12" text-anchor="middle">BL ...</text>
+    <text x="97" y="22" text-anchor="middle">...</text>
+    <text x="110" y="12">$a$</text>
+    <text x="110" y="17">$a+4$</text>
+    <text x="110" y="32">$b$</text>
+    <path d="M 85,6 V 36" stroke="#000000"/>
+    <path d="M 109,6 V 36" stroke="#000000"/>
+    <path d="M 85,13 109,13" stroke="#000000"/>
+    <path d="m 85,8 h 24" stroke="#000000"/>
+    <path d="m 85,18 h 24" stroke="#000000"/>
+    <path d="m 85,28 h 24" stroke="#000000"/>
+    <path d="m 85,33 h 24" stroke="#000000"/>
+    <path d="m 44.5,19 h 29" stroke="#000000" marker-end="url(#arrow)"/>
+    <rect width="52" height="10" x="1" y="43" fill="none" stroke="#000000"/>
+    <text x="7" y="47" text-anchor="middle">R0</text>
+    <text x="21" y="47" text-anchor="middle">...</text>
+    <text x="35" y="52" text-anchor="middle">...</text>
+    <text x="7" y="52" text-anchor="middle">42</text>
+    <text x="47" y="52" text-anchor="middle">$a$</text>
+    <text x="47" y="47" text-anchor="middle">PC</text>
+    <text x="35" y="47" text-anchor="middle">LR</text>
+    <path d="m 41,43 v 10" stroke="#000000"/>
+    <path d="M 53,48 H 1" stroke="#000000"/>
+    <path d="M 13,43 V 53" stroke="#000000"/>
+    <path d="M 29,43 V 53" stroke="#000000"/>
+    <rect width="52" height="10" x="85" y="43" fill="none" stroke="#000000"/>
+    <text x="91" y="47" text-anchor="middle">R0</text>
+    <text x="105" y="47" text-anchor="middle">...</text>
+    <text x="119" y="52" text-anchor="middle" fill="#048966">$a+5$</text>
+    <text x="91" y="52" text-anchor="middle">42</text>
+    <text x="131" y="52" text-anchor="middle" fill="#048966">$b$</text>
+    <text x="131" y="47" text-anchor="middle">PC</text>
+    <text x="119" y="47" text-anchor="middle">LR</text>
+    <path d="M 125,43 V 53" stroke="#000000"/>
+    <path d="M 137,48 H 85" stroke="#000000"/>
+    <path d="M 97,43 V 53" stroke="#000000"/>
+    <path d="m 113,43 v 10" stroke="#000000"/>
+    <text x="2" y="4" font-size="3.5px">Memory</text>
+    <text x="2" y="41" font-size="3.5px">Registers</text>
+    <text x="52" y="41" font-size="3.5px" text-anchor="end">before BL</text>
+    <text x="135" y="41" font-size="3.5px" text-anchor="end">after BL</text>
+    <path d="m 13,13 v 5" stroke="#000000"/>
+    <path d="m 13,28 v 5" stroke="#000000"/>
+    <text x="103" y="17" text-anchor="middle">MUL</text>
+    <text x="91" y="17" text-anchor="middle">ADD</text>
+    <text x="92" y="32" text-anchor="middle">...</text>
+    <text x="103" y="32" text-anchor="middle">SUB</text>
+    <path d="m 97,13 v 5" stroke="#000000"/>
+    <path d="m 97,28 v 5" stroke="#000000"/>
+  </g>
+</svg>

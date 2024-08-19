@@ -1,0 +1,35 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\begin{titlepage}
+\newgeometry{
+  body={118mm,185mm},
+  hcentering,
+  vcentering,
+  headsep=2pc}
+\color{white}
+\newpagecolor{covercolor}
+\afterpage{\color{black}\restorepagecolor\restoregeometry}
+
+\begin{flushleft}
+\sffamily\fontsize{34}{36}\bfseries\selectfont
+Programming\\
+a toy computer\\
+from scratch
+
+\vspace{12cm}
+\fontsize{16}{18}\selectfont
+A practical introduction to computer systems\\
+\vspace{1cm}
+Eric Bruneton
+\end{flushleft}
+
+\noindent
+\begin{tikzpicture}[overlay]
+  \node[anchor=north west,inner sep=0] at (0,13.85cm)
+  {\includegraphics[width=\textwidth]{cover/front}};
+\end{tikzpicture}
+
+\end{titlepage}
+

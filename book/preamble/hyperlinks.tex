@@ -1,0 +1,25 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\usepackage[unicode]{hyperref}
+\usepackage{bookmark}
+\usepackage[noabbrev,capitalize]{cleveref}
+\usepackage{xurl}
+\usepackage{latexgit}
+
+\urlstyle{same}
+
+\hypersetup{
+  bookmarksnumbered=true,
+  colorlinks=true,
+  allcolors=titlescolor,
+  pdftitle={Programming a toy computer from scratch},
+  pdfauthor={Eric Bruneton},
+  pdflang={en},
+}
+
+\newcommand{\raisedhypertarget}[1]
+  {\raisebox{\baselineskip}[0pt]{\hypertarget{#1}{}}}
+
+\newcommand{\toypcurl}[1]{\url{https://ebruneton.github.io/toypc/#1}}

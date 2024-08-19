@@ -1,0 +1,165 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="5" height="7" x="91" y="35" fill="#0e6e8e"/>
+    <rect width="2" height="7" x="76" y="35" fill="#0e6e8e"/>
+    <rect width="5" height="7" x="36" y="35" fill="#0e6e8e"/>
+    <rect width="5" height="7" x="16" y="35" fill="#0e6e8e"/>
+    <rect width="5" height="7" x="136" y="35" fill="#048966"/>
+    <rect width="1" height="7" x="121" y="35" fill="#048966"/>
+    <rect width="8" height="7" x="78" y="25" fill="#ebebeb"/>
+    <rect width="6" height="7" x="65" y="25" fill="#ebebeb"/>
+    <rect width="10" height="7" x="96" y="25" fill="#ebebeb"/>
+    <rect width="10" height="7" x="116" y="25" fill="#ebebeb"/>
+    <rect width="11" height="7" x="130" y="25" fill="#ebebeb"/>
+    <rect width="5" height="7" x="11" y="25" fill="#ebebeb"/>
+    <rect width="5" height="7" x="16" y="25" fill="#0e6e8e"/>
+    <rect width="5" height="7" x="36" y="25" fill="#0e6e8e"/>
+    <rect width="5" height="7" x="91" y="25" fill="#0e6e8e"/>
+    <rect width="2" height="7" x="76" y="25" fill="#0e6e8e"/>
+    <rect width="2" height="7" x="44" y="25" fill="#ebebeb"/>
+    <rect width="5" height="7" x="1" y="25" fill="#bf3959"/>
+    <rect width="5" height="7" x="21" y="25" fill="#bf3959"/>
+    <rect width="3" height="7" x="41" y="25" fill="#bf3959"/>
+    <rect width="5" height="7" x="6" y="25" fill="#cca752"/>
+    <rect width="5" height="7" x="56" y="25" fill="#cca752"/>
+    <rect width="5" height="7" x="86" y="25" fill="#cca752"/>
+    <rect width="4" height="7" x="61" y="25" fill="#cca752"/>
+    <rect width="5" height="7" x="26" y="25" fill="#048966"/>
+    <rect width="5" height="7" x="51" y="25" fill="#048966"/>
+    <rect width="5" height="7" x="71" y="25" fill="#062f3d"/>
+    <rect width="5" height="7" x="46" y="25" fill="#062f3d"/>
+    <rect width="5" height="7" x="31" y="25" fill="#062f3d"/>
+    <rect width="5" height="7" x="106" y="25" fill="#062f3d"/>
+    <rect width="5" height="7" x="111" y="25" fill="#062f3d"/>
+    <rect width="4" height="7" x="126" y="25" fill="#062f3d"/>
+    <path d="m 6,25 v 7" stroke="#000000"/>
+    <path d="m 11,25 v 7" stroke="#000000"/>
+    <path d="m 16,25 v 7" stroke="#000000"/>
+    <path d="m 21,25 v 7" stroke="#000000"/>
+    <path d="m 26,25 v 7" stroke="#000000"/>
+    <path d="m 31,25 v 7" stroke="#000000"/>
+    <path d="m 36,25 v 7" stroke="#000000"/>
+    <path d="m 41,25 v 7" stroke="#000000"/>
+    <path d="m 46,25 v 7" stroke="#000000"/>
+    <path d="m 51,25 v 7" stroke="#000000"/>
+    <path d="m 56,25 v 7" stroke="#000000"/>
+    <path d="m 61,25 v 7" stroke="#000000"/>
+    <path d="m 66,25 v 7" stroke="#000000"/>
+    <path d="m 71,25 v 7" stroke="#000000"/>
+    <path d="m 76,25 v 7" stroke="#000000"/>
+    <path d="m 81,25 v 7" stroke="#000000"/>
+    <path d="m 86,25 v 7" stroke="#000000"/>
+    <path d="m 91,25 v 7" stroke="#000000"/>
+    <path d="m 96,25 v 7" stroke="#000000"/>
+    <path d="m 101,25 v 7" stroke="#000000"/>
+    <path d="m 106,25 v 7" stroke="#000000"/>
+    <path d="m 111,25 v 7" stroke="#000000"/>
+    <path d="m 116,25 v 7" stroke="#000000"/>
+    <path d="m 121,25 v 7" stroke="#000000"/>
+    <path d="m 126,25 v 7" stroke="#000000"/>
+    <path d="m 131,25 v 7" stroke="#000000"/>
+    <path d="m 136,25 v 7" stroke="#000000"/>
+    <rect width="140" height="7" x="1" y="25" fill="none" stroke="#000000"/>
+    <text x="21.5" y="30" font-size="3.52777px">A$_0$</text>
+    <text x="1.5" y="30" font-size="3.52777px">A$_1$</text>
+    <text x="56.5" y="30" font-size="3.52777px">B$_1$</text>
+    <text x="86.5" y="30" font-size="3.52777px">B$_2$</text>
+    <text x="41.5" y="30" font-size="3.52777px">A$_2$</text>
+    <text x="26.5" y="30" font-size="3.52777px">C$_0$</text>
+    <text x="51.5" y="30" font-size="3.52777px">C$_1$</text>
+    <text x="36.5" y="30" font-size="3.52777px" fill="#ffffff">D$_0$</text>
+    <text x="91.5" y="30" font-size="3.52777px" fill="#ffffff">D$_1$</text>
+    <text x="16.5" y="30" font-size="3.52777px" fill="#ffffff">D$_2$</text>
+    <text x="76.5" y="30" font-size="3.52777px" fill="#ffffff">D$_3$</text>
+    <text x="46.5" y="30" font-size="3.52777px" fill="#ffffff">E$_4$</text>
+    <text x="31.5" y="30" font-size="3.52777px" fill="#ffffff">E$_2$</text>
+    <text x="71.5" y="30" font-size="3.52777px" fill="#ffffff">E$_0$</text>
+    <text x="106.5" y="30" font-size="3.52777px" fill="#ffffff">E$_1$</text>
+    <text x="111.5" y="30" font-size="3.52777px" fill="#ffffff">E$_3$</text>
+    <text x="126.5" y="30" font-size="3.52777px" fill="#ffffff">E$_5$</text>
+    <text x="61.5" y="30" font-size="3.52777px">B$_3$</text>
+    <text x="6.5" y="30" font-size="3.52777px">B$_0$</text>
+    <rect width="8" height="7" x="78" y="35" fill="#ebebeb"/>
+    <rect width="6" height="7" x="65" y="35" fill="#ebebeb"/>
+    <rect width="10" height="7" x="96" y="35" fill="#ebebeb"/>
+    <rect width="5" height="7" x="116" y="35" fill="#ebebeb"/>
+    <rect width="4" height="7" x="122" y="35" fill="#ebebeb"/>
+    <rect width="6" height="7" x="130" y="35" fill="#ebebeb"/>
+    <rect width="5" height="7" x="11" y="35" fill="#ebebeb"/>
+    <rect width="2" height="7" x="44" y="35" fill="#ebebeb"/>
+    <rect width="5" height="7" x="1" y="35" fill="#bf3959"/>
+    <rect width="5" height="7" x="21" y="35" fill="#bf3959"/>
+    <rect width="3" height="7" x="41" y="35" fill="#bf3959"/>
+    <rect width="5" height="7" x="6" y="35" fill="#cca752"/>
+    <rect width="5" height="7" x="56" y="35" fill="#cca752"/>
+    <rect width="5" height="7" x="86" y="35" fill="#cca752"/>
+    <rect width="4" height="7" x="61" y="35" fill="#cca752"/>
+    <rect width="5" height="7" x="26" y="35" fill="#048966"/>
+    <rect width="5" height="7" x="51" y="35" fill="#048966"/>
+    <rect width="5" height="7" x="71" y="35" fill="#062f3d"/>
+    <rect width="5" height="7" x="46" y="35" fill="#062f3d"/>
+    <rect width="5" height="7" x="31" y="35" fill="#062f3d"/>
+    <rect width="5" height="7" x="106" y="35" fill="#062f3d"/>
+    <rect width="5" height="7" x="111" y="35" fill="#062f3d"/>
+    <rect width="4" height="7" x="126" y="35" fill="#062f3d"/>
+    <path d="m 6,35 v 7" stroke="#000000"/>
+    <path d="m 11,35 v 7" stroke="#000000"/>
+    <path d="m 16,35 v 7" stroke="#000000"/>
+    <path d="m 21,35 v 7" stroke="#000000"/>
+    <path d="m 26,35 v 7" stroke="#000000"/>
+    <path d="m 31,35 v 7" stroke="#000000"/>
+    <path d="m 36,35 v 7" stroke="#000000"/>
+    <path d="m 41,35 v 7" stroke="#000000"/>
+    <path d="m 46,35 v 7" stroke="#000000"/>
+    <path d="m 51,35 v 7" stroke="#000000"/>
+    <path d="m 56,35 v 7" stroke="#000000"/>
+    <path d="m 61,35 v 7" stroke="#000000"/>
+    <path d="m 66,35 v 7" stroke="#000000"/>
+    <path d="m 71,35 v 7" stroke="#000000"/>
+    <path d="m 76,35 v 7" stroke="#000000"/>
+    <path d="m 81,35 v 7" stroke="#000000"/>
+    <path d="m 86,35 v 7" stroke="#000000"/>
+    <path d="m 91,35 v 7" stroke="#000000"/>
+    <path d="m 96,35 v 7" stroke="#000000"/>
+    <path d="m 101,35 v 7" stroke="#000000"/>
+    <path d="m 106,35 v 7" stroke="#000000"/>
+    <path d="m 111,35 v 7" stroke="#000000"/>
+    <path d="m 116,35 v 7" stroke="#000000"/>
+    <path d="m 121,35 v 7" stroke="#000000"/>
+    <path d="m 126,35 v 7" stroke="#000000"/>
+    <path d="m 131,35 v 7" stroke="#000000"/>
+    <path d="m 136,35 v 7" stroke="#000000"/>
+    <rect width="140" height="7" x="1" y="35" fill="none" stroke="#000000"/>
+    <text x="21.5" y="40" font-size="3.52777px">A$_0$</text>
+    <text x="1.5" y="40" font-size="3.52777px">A$_1$</text>
+    <text x="56.5" y="40" font-size="3.52777px">B$_1$</text>
+    <text x="86.5" y="40" font-size="3.52777px">B$_2$</text>
+    <text x="41.5" y="40" font-size="3.52777px">A$_2$</text>
+    <text x="26.5" y="40" font-size="3.52777px">C$_0$</text>
+    <text x="51.5" y="40" font-size="3.52777px">C$_1$</text>
+    <text x="36.5" y="40" font-size="3.52777px" fill="#ffffff">D$_0$</text>
+    <text x="91.5" y="40" font-size="3.52777px" fill="#ffffff">D$_1$</text>
+    <text x="16.5" y="40" font-size="3.52777px" fill="#ffffff">D$_2$</text>
+    <text x="76.5" y="40" font-size="3.52777px" fill="#ffffff">D$_3$</text>
+    <text x="46.5" y="40" font-size="3.52777px" fill="#ffffff">E$_4$</text>
+    <text x="31.5" y="40" font-size="3.52777px" fill="#ffffff">E$_2$</text>
+    <text x="71.5" y="40" font-size="3.52777px" fill="#ffffff">E$_0$</text>
+    <text x="106.5" y="40" font-size="3.52777px" fill="#ffffff">E$_1$</text>
+    <text x="111.5" y="40" font-size="3.52777px" fill="#ffffff">E$_3$</text>
+    <text x="126.5" y="40" font-size="3.52777px" fill="#ffffff">E$_5$</text>
+    <text x="136.5" y="40" font-size="3.52777px">C$_2$</text>
+    <text x="121.5" y="40" font-size="3.52777px">C$_3$</text>
+    <text x="61.5" y="40" font-size="3.52777px">B$_3$</text>
+    <text x="6.5" y="40" font-size="3.52777px">B$_0$</text>
+  </g>
+</svg>

@@ -1,0 +1,1210 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter5}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "graphics_card_driver.txt")?;
+}
+
+\chapter{Graphics Card Driver}\label{chapter:screen}
+
+So far we have only been able to blink a LED, using various methods. Hopefully,
+thanks to the work done in the previous chapters, we now have everything we
+need to go beyond that. This is what we do in this chapter, by connecting a
+screen to the Arduino, and by writing a program to use it. The screen cannot be
+connected directly to the Arduino, in particular because their connectors don't
+match. We therefore use an intermediate component between the two, that we call
+the graphics card. This chapter presents these two components, explain briefly
+how they work, how they communicate, how to connect them, and how programs can
+use them. We then write such a program, called the graphics card driver.
+Finally, we test it with a small application displaying the traditional
+``Hello, World!" message.
+
+\section{Liquid Crystal Display}
+
+The screen used in this book is a 7$^{\prime\prime}$ Liquid Crystal Display
+(LCD) with 800$\times$480 pixels (see \cref{table:bom}). Each pixel is made of
+3 cells with red, green and blue color filters. Each cell is made of a liquid
+crystal between two electrodes and two perpendicularly oriented light
+polarizers (see \cref{fig:lcd-structure}). The whole screen is lit from behind
+with LEDs producing a uniform white light with a constant intensity. By
+default, however, due to the polarizers, light is blocked and the screen
+appears black. To turn a red, green or blue cell on one must charge the
+capacitor made by the two electrodes around it. This creates an electric field
+in the liquid crystal, which has the property of rotating the light's
+polarization direction in such conditions. Increasing the capacitor charge
+increases the electric field and the polarization rotation. When the rotation
+angle is 90$^\circ$, no light is blocked and the cell has 100\% luminosity.
+Smaller angles lead to partially blocked light thus lower luminosity levels.
+
+In order to charge the capacitors independently from each other, one electrode
+of each cell is connected to a grid of horizontal and vertical wires via a
+transistor (see \cref{fig:lcd-structure}) -- the other electrode is shared
+between all cells. These transistors are organized in a transparent thin film,
+hence the Thin Film Transistor (TFT) name. To charge a cell at column $x$ and
+row $y$, one must set row $y$'s wire to VCC and then apply a voltage $V$ on
+column's $x$ red, green or blue wire for a short duration -- with $V$ depending
+on the desired luminosity. This process is done by the row and column driver
+circuits (see \cref{fig:lcd-structure}). For each frame, the row driver sets
+each row wire to VCC, one after the other, from top to bottom. While a row is
+active, the column driver applies the desired voltage on each column wire, one
+after the other, from left to right.
+
+These circuits use as input 40 pins, providing 40 signals in parallel. The most
+important ones are 3$\times$8 signals providing the red, green and blue
+intensity of each pixel, using one byte per color (from 0 = black to 255 =
+100\% luminosity). There are also vertical, horizontal, and clock
+synchronization signals indicating when a new frame, a new row of pixels, and a
+new pixel start, respectively. Finally, other pins provide GND and VCC, a
+driver circuit on/off signal, a backlight on/off signal, etc. The pixel and
+synchronization signals must have the form shown in \cref{fig:lcd-signals},
+subject to the constraints in \cref{table:lcd-constraints}:
+\begin{itemize}
+  \item Each frame must start with a pulse of the vertical synchronization
+  (Vsync) signal.
+
+  \item Each row must start with a pulse of the horizontal synchronization
+  (Hsync) signal.
+
+  \item Each frame must start and end with blank rows containing no data,
+  called the vertical back porch and front porch, respectively.
+
+  \item Each row must start and end with blank pixels containing no data,
+  called the horizontal back porch and front porch, respectively.
+
+  \item The Data Enable signal must indicate when the Data pins contain actual
+  data.
+
+  \item The 24 Data pins must send one pixel at each clock cycle where Data
+  Enable is 1.
+\end{itemize}
+
+\section{Graphics card}
+
+The LCD cannot be connected directly to the Arduino, since its does not have a
+40-pin connector. An adapter could theoretically be used, since the Arduino has
+enough pins controllable with the PIO controllers A, B, C and D (see
+\cref{fig:sam3x8e}). Using these controllers, we could in principle write a
+program driving these pins as output, and producing signals of the above form.
+However, even if this program could run fast enough, it would require a lot of
+memory to store the image to display. Even with only one bit per pixel,
+$800*480=384000$ bits would be needed, \ie, almost half of the 96~KB of the
+Arduino's RAM.
+
+For all these reasons we use an intermediate component to connect the screen to
+the Arduino, namely an AdaFruit RA8875 driver board (see \cref{table:bom}).
+This board provides a RAiO RA8875 chip \cite{RA8875}, with a 40-pin connector
+on one side and slots for 15 header pins on the other (see \cref{fig:ra8875}).
+The chip contains 768~KB of RAM, which is enough to store a 800$\times$480 image
+with 16 bits per pixel. It can be roughly divided in two parts:
+\begin{itemize}
+  \item the backend part reads the image stored in RAM and generates
+  corresponding signals on the 40-pin connector, to display it on the screen.
+
+  \item the frontend part updates the image stored in RAM based on drawing
+  commands received on the header pins.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter5/lcd-structure.tex}
+
+  \caption{A schematic view of the Thin Film Transistor (TFT) Liquiq Crystal
+  Display (LCD) used in this book. Each pixel is made of 3 liquid crystal cells
+  between two transparent electrodes and two polarizers, with red, green and
+  blue color filters. Each cell is connected to a grid of wires with its own
+  transistor, and lit from behind.}\label{fig:lcd-structure}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter5/lcd-signals.tex}
+
+  \caption{The input signals needed by the LCD \cite{TFTScreen}. Each frame
+  starts with a Vsync pulse, and each row with an Hsync pulse. 24 bits of pixel
+  data are required at each clock cycle where ``Data Enable'' is 1. The bottom
+  part zooms on one row of pixels.}\label{fig:lcd-signals}
+\end{Figure}
+
+\begin{Table}
+  \begin{tabular}{|l|l|l|l|l|}\hline
+    \makecell{\thead{Parameter}} & \thead{Minimum} & \thead{Typical} &
+    \thead{Maximum} &
+    \thead{Unit} \\ \hline
+
+    \makecell{Vertical pulse width} & 1 & -- & 20 & Hsync cycle \\
+
+    \makecell{Vertical back porch} & 23 & 23 & 23 & Hsync cycle \\
+
+    \makecell{Vertical front porch} & 7 & 22 & 147 & Hsync cycle \\
+
+    \makecell{Horizontal pulse width} & 1 & -- & 40 & Clock cycle \\
+
+    \makecell{Horizontal back porch} & 46 & 46 & 46 & Clock cycle \\
+
+    \makecell{Horizontal front porch} & 16 & 210 & 354 & Clock cycle \\
+
+    \makecell{Clock frequency} & -- & 33.3 & 50 & MHz \\ \hline
+  \end{tabular}
+
+  \caption{The timing constraints of the LCD input signals
+    \cite{TFTScreen}.}\label{table:lcd-constraints}
+\end{Table}
+
+The frontend can draw text, basic shapes such as lines, rectangles or
+ellipses, images, and individual pixels. It is based on 8-bit registers. For
+instance, to draw a line, one must first write the $x,y$ coordinates of its
+endpoints in specific registers called ``Draw Line/Square Horizontal Start
+Coordinate'', ``Draw Line/Square Vertical Start Coordinate'', ``Draw
+Line/Square Horizontal End Coordinate'', etc. Then, setting a specific bit to 1
+in another register called ``Draw Line/Circle/Square Control Register'' starts
+drawing a line between the two previous points. The RA8875 has about 170
+different registers but we use only a small subset of them, mostly those needed
+to configure the RA8875, and to draw text. They are presented below.
+
+\begin{Figure}
+  \input{figures/chapter5/ra8875.tex}
+
+  \caption{The AdaFruit RA8875 Driver Board used to connect the LCD to the
+  Arduino.}\label{fig:ra8875}
+\end{Figure}
+
+\subsection{Configuration registers}\label{subsection:ra8875-config}
+
+The RA8875 chip, hereafter called the graphics card, can be used with a variety
+of screens with different resolutions and signals timing constraints. Before
+using it to display images on a given screen, it must be configured for this
+specific screen.
+
+The first step is to configure the frequency $f_s$ of the internal clock,
+called the system clock, and the frequency $f_p$ of the clock signal sent to
+the screen, called the pixel clock. As the Arduino, the graphics card uses an
+external crystal, here at $f_c=20$ MHz, and a Phase Lock Loop (PLL) circuit.
+This circuit can be configured with 3 registers, whose ID, name and binary
+format are the following:
+
+\begin{Paragraph}
+\rs{RAIO_PLLC1.definition()}\\
+\rs{RAIO_PLLC2.definition()}\\
+\rs{RAIO_PCSR.definition()}
+\end{Paragraph}
+
+\rust{
+  let mut commands = Vec::<u8>::new();
+  let mut add_command = |register, value| {
+    commands.push(register);
+    commands.push(value);
+  };
+  let reg = |id| -> String {
+    format!(r"R{{{:02X}}}", id)
+  };
+  let pllc1 = 6;
+  let pllc2 = 1;
+  let pcsr_i = 1;
+  let pcsr_p = 1;
+  let pcsr = (pcsr_i << 7) | pcsr_p;
+  add_command(RAIO_PLLC1.id, pllc1);
+  add_command(0x00, 1); // delay 1ms
+  add_command(RAIO_PLLC2.id, pllc2);
+  add_command(0x00, 1); // delay 1ms
+  add_command(RAIO_PCSR.id, pcsr);
+}
+
+These registers set $f_s$ to $f_c*(n+1)/[2^k(m+1)]$ and $f_p$ to $f_s/2^p$. In
+order to get $f_p \in [33.3,50]$ MHz (see \cref{table:lcd-constraints}), we can
+use $n=\rs{dec(pllc1)}$, $m=0$, $k=\rs{dec(pllc1)}$, and $p=\rs{dec(pcsr_p)}$,
+yielding $f_s=70$ MHz and $f_p=35$ MHz. In addition, $i$ indicates if pixel
+data should be sent when the pixel clock signal is rising ($i=0$) or falling
+($i=1$). According to \cite{TFTScreen} the former case applies, but in practice
+only $i=\rs{hex_opt(pcsr_i)}$ works. In summary, in our case, we can set
+\rs{reg(RAIO_PLLC1.id)}, \rs{reg(RAIO_PLLC2.id)} and \rs{reg(RAIO_PCSR.id)} to
+\rs{hex_opt(pllc1)}, \rs{hex_opt(pllc2)} and \rs{hex_opt(pcsr)}, respectively,
+with a delay of at least 0.1ms between each step (see Section 5-9 in
+\cite{TFTScreen}).
+
+The second step is to configure the LCD signal parameters (see
+\cref{table:lcd-constraints}), with the following registers (we show only the
+bits that we use):
+
+\begin{Paragraph}
+\rs{RAIO_HDWR.definition()}\\
+\rs{RAIO_HNDFTR.definition()}\\
+\rs{RAIO_HNDR.definition()}\\
+\rs{RAIO_HSTR.definition()}\\
+\rs{RAIO_HPWR.definition()}\\
+\rs{RAIO_VHDR0.definition()}\\
+\rs{RAIO_VHDR1.definition()}\\
+\rs{RAIO_VNDR0.definition()}\\
+\rs{RAIO_VSTR0.definition()}\\
+\rs{RAIO_VPWR.definition()}
+\end{Paragraph}
+
+\rust{
+  let hdwr = 99;
+  let hndftr = 4;
+  let hndr = 3;
+  let hstr = 25;
+  let vhdr0 = 223;
+  let vhdr1 = 1;
+  let vndr0 = 21;
+  let vstr0 = 21;
+  add_command(RAIO_HDWR.id, hdwr);
+  add_command(RAIO_HNDFTR.id, hndftr);
+  add_command(RAIO_HNDR.id, hndr);
+  add_command(RAIO_HSTR.id, hstr);
+  add_command(RAIO_VHDR0.id, vhdr0);
+  add_command(RAIO_VHDR1.id, vhdr1);
+  add_command(RAIO_VNDR0.id, vndr0);
+  add_command(RAIO_VSTR0.id, vstr0);
+}
+
+Based on these register values, the graphics card generates LCD signals with
+the following parameters (see Section 5-3 and Figure 6-29 in \cite{TFTScreen}):
+\begin{itemize}
+  \item Screen width in pixels: $8(w+1)$
+  \item Horizontal pulse width: $8(hpw+1)$
+  \item Horizontal back porch: $8(hpw+1)+8(hnd+1)+hndft+2$
+  \item Horizontal front porch: $8(hst+1)$
+  \item Screen height in pixels: $256.h_1 + h_0 + 1$
+  \item Vertical pulse width: $vpw+1$
+  \item Vertical back porch: $(vpw+1)+(vnd+1)$
+  \item Vertical front porch: $vst+1$
+\end{itemize}
+In our case, in order to meet the constraints from
+\cref{table:lcd-constraints}, we can use $w=\rs{dec(hdwr)}$, $hpw=0$,
+$hndft=\rs{dec(hndftr)}$, $hnd=\rs{dec(hndr)}$, $hst=\rs{dec(hstr)}$,
+$h_0=\rs{dec(vhdr0)}$, $h_1=\rs{dec(vhdr1)}$, $vpw=0$, $vnd=\rs{dec(vndr0)}$,
+and $vst=\rs{dec(vstr0)}$. In other words, we can set \rs{reg(RAIO_HDWR.id)},
+\rs{reg(RAIO_HNDFTR.id)}, \rs{reg(RAIO_HNDR.id)}, \rs{reg(RAIO_HSTR.id)},
+\rs{reg(RAIO_VHDR0.id)}, \rs{reg(RAIO_VHDR1.id)}, \rs{reg(RAIO_VNDR0.id)}, and
+\rs{reg(RAIO_VSTR0.id)} to \rs{hex_opt(hdwr)}, \rs{hex_opt(hndftr)},
+\rs{hex_opt(hndr)}, \rs{hex_opt(hstr)}, \rs{hex_opt(vhdr0)},
+\rs{hex_opt(vhdr1)}, \rs{hex_opt(vndr0)}, and \rs{hex_opt(vstr0)}, respectively
+(and leave \rs{reg(RAIO_HPWR.id)} and \rs{reg(RAIO_VPWR.id)} to their default
+value 0).
+
+After this the graphics card memory can be cleared, to start with a black
+screen, the LCD signals can be enabled, and the screen itself can be
+turned on. This can be done with the following registers (we show only the bits
+that we use):
+
+\begin{Paragraph}
+\rs{RAIO_MCLR.definition()}\\
+\rs{RAIO_PWRR.definition()}\\
+\rs{RAIO_GPIOX.definition()}\\
+\rs{RAIO_P1CR.definition()}
+\end{Paragraph}
+
+\rust{
+  let mclr_s = 1;
+  let mclr = mclr_s << 7;
+  let pwrr_d = 1;
+  let pwrr = pwrr_d << 7;
+  let gpiox = 1;
+  let p1cr_l = 1;
+  let p1cr = p1cr_l << 6;
+  add_command(RAIO_MCLR.id, mclr);
+  add_command(0x00, 100); // delay 100ms
+  add_command(RAIO_PWRR.id, pwrr);
+  add_command(RAIO_GPIOX.id, gpiox);
+  add_command(RAIO_P1CR.id, p1cr);
+}
+
+Indeed, setting $s$, $d$, $x$, and $l$ to 1 clears the memory, enables the LCD
+signal outputs, turns on the LCD's driver circuit, and turns on the LCD's
+backlight, respectively\footnote{\rs{reg(RAIO_GPIOX.id)} and
+\rs{reg(RAIO_P1CR.id)} control output pins of the RA8875 chip which are
+connected to the ``driver circuit on/off'' and ``backlight on/off'' pins in the
+40-pin connector \cite{RA8875board}.}. In summary we can set
+\rs{reg(RAIO_MCLR.id)}, \rs{reg(RAIO_PWRR.id)}, \rs{reg(RAIO_GPIOX.id)} and
+\rs{reg(RAIO_P1CR.id)} to \rs{hex_opt(mclr)}, \rs{hex_opt(pwrr)},
+\rs{hex_opt(gpiox)}, and \rs{hex_opt(p1cr)}, respectively. Note that clearing
+the memory takes some time. When it is done, $s$ is reset to 0. One could thus
+wait for this after setting R8E, or just wait long enough, \eg, 100ms.
+
+After the above steps the graphics card is ready to draw text or images.
+Drawing text (resp. images) requires switching the card to text mode (resp.
+graphics mode) first. In both cases the {\em active window}, which restricts
+where text or graphics can be drawn, must also be configured (it is empty by
+default). This can be done with the following registers (we show only the bits
+that we use):
+
+\begin{Paragraph}
+\rs{RAIO_HEAW0.definition()}\\
+\rs{RAIO_HEAW1.definition()}\\
+\rs{RAIO_VEAW0.definition()}\\
+\rs{RAIO_VEAW1.definition()}\\
+\rs{RAIO_MWCR0.definition()}\\
+\rs{RAIO_BTCR.definition()}
+\end{Paragraph}
+
+\rust{
+  let aw_x0 = 31;
+  let aw_x1 = 3;
+  let aw_y0 = 223;
+  let aw_y1 = 1;
+  let mwcr0 = 0xE0;
+  let btcr = 30;
+  add_command(RAIO_HEAW0.id, aw_x0);
+  add_command(RAIO_HEAW1.id, aw_x1);
+  add_command(RAIO_VEAW0.id, aw_y0);
+  add_command(RAIO_VEAW1.id, aw_y1);
+  add_command(RAIO_MWCR0.id, mwcr0);
+  add_command(RAIO_BTCR.id, btcr);
+}
+
+The first 4 registers set the active window's bottom-right corner to
+$(256.X_1+X_0, 256.Y_1+Y_0)$ -- its top-left corner is $(0,0)$ by default
+(coordinates are measured as shown in \cref{fig:lcd-structure}). $t=1$ enables
+text mode, while $t=0$ enables graphics mode. In text mode, $c=1$ displays a
+cursor where the next character will be drawn, and $b=1$ makes it blink every
+$blink+1$ frame. In this book we use only text mode in full screen, so we can
+use $X_0=\rs{dec(aw_x0)}$, $X_1=\rs{dec(aw_x1)}$, $Y_0=\rs{dec(aw_y0)}$,
+$Y_1=\rs{dec(aw_y1)}$, $t=c=b=1$, and, for instance, $blink=30$. In summary we
+can set \rs{reg(RAIO_HEAW0.id)}, \rs{reg(RAIO_HEAW1.id)},
+\rs{reg(RAIO_VEAW0.id)}, \rs{reg(RAIO_VEAW1.id)}, \rs{reg(RAIO_MWCR0.id)}, and
+\rs{reg(RAIO_BTCR.id)} to \rs{hex_opt(aw_x0)}, \rs{hex_opt(aw_x1)},
+\rs{hex_opt(aw_y0)}, \rs{hex_opt(aw_y1)}, \rs{hex_opt(mwcr0)} and
+\rs{hex_opt(btcr)}, respectively.
+
+The active window can be cleared by setting $s=1$ and $a=1$ in the Memory Clear
+Control register. Using $s=1$ and $a=0$ clears the full screen, whatever the
+size of the active window.
+
+\subsection{Text drawing registers}\label{subsection:text-config}
+
+Drawing text on the screen must be done one character at a time, by writing
+each character's ASCII code (see \cref{appendix:ascii}) in the R02 register.
+Doing this draws the corresponding character at the current cursor position on
+the screen, with the current background and foreground colors. All characters
+use $8\times16$ pixels. The cursor then automatically moves to the right to
+draw the next character (at the $100^{th}$ character of a line it goes to the
+beginning of the next, and at the bottom-right corner it goes back to the
+top-left corner). Initially the cursor is at the top-left corner, and the
+foreground and background colors are black. This can be changed with the
+following registers:
+
+\begin{Paragraph}
+\rs{RAIO_F_CURXL.definition()}\\
+\rs{RAIO_F_CURXH.definition()}\\
+\rs{RAIO_F_CURYL.definition()}\\
+\rs{RAIO_F_CURYH.definition()}\\
+\rs{RAIO_FGCR0.definition()}\\
+\rs{RAIO_FGCR1.definition()}\\
+\rs{RAIO_FGCR2.definition()}
+\end{Paragraph}
+
+These registers set the cursor position to $(256.x_1+x_0, 256.y_1+y0)$ pixels,
+and the foreground color's red, green and blue components to $\mathit{fc}_r$,
+$\mathit{fc}_g$, $\mathit{fc}_b$, respectively. The maximum value of each
+component corresponds to full intensity. For instance
+$(\mathit{fc}_r,\mathit{fc}_g,\mathit{fc}_b)=(7,7,3)$ corresponds to white.
+
+\subsection{Communication protocol}\label{subsection:gpu-protocol}
+
+In order to read and write values in the above registers, the graphics card
+accepts 3 types of commands as input: Select Register, Read Data and Write
+Data. The Select Register command takes as argument a byte containing a
+register ID (\eg, \hexa{2A} to select R2A). The Read Data command returns the
+current value of the last selected register. It does not have any argument.
+Finally, the Write Data command writes its 8-bit argument in the last selected
+register. These commands are encoded on 16 bits, with the two most significant
+containing the command type, and the 8 least significant its argument. The
+command type is \bina{10} for Select Register, \bina{01} for Read Data and
+\bina{00} for Write Data. For instance, in order to set R14 to \hexa{63}, one
+must use a Select Register \hexa{14} command, followed by a Write Data
+\hexa{63} command (whose encodings are \hexa{8014} and \hexa{0063},
+respectively).
+
+These commands can be sent to the graphics card with the Chip Select
+(CS), Clock (SCK), and Master Out Slave In (MOSI) pins (see \cref{fig:ra8875}),
+as follows (see \cref{fig:spi-signals}):
+\begin{itemize}
+  \item set the CS pin to 0 to start a new command (the 3 pins must be
+  1 by default).
+
+  \item send the 16 command bits on the MOSI pin, starting with the most
+  significant and ending with the least significant. One bit must be sent each
+  time the SCK pin is rising, \ie, goes from 0 to 1. The SCK frequency must be
+  lower than the graphics card system clock frequency.
+
+  \item set the CS pin back to 1.
+\end{itemize}
+Conversely, the graphics card sends the 8-bit result of Read Data commands on
+the Master In Slave Out (MISO) pin. It sends these bits during the last 8 clock
+cycles, from the most to the least significant (see \cref{fig:spi-signals}).
+
+\begin{Figure}
+  \input{figures/chapter5/spi-signals.tex}
+
+  \caption{The signals used between the RA8875 driver board and the Arduino.
+    The Arduino must send 16-bit commands on the MOSI pin while setting the CS
+    pin to 0, one bit at each rising edge of the SCK clock signal. It can
+    optionally receive an 8-bit result on the MISO pin while sending the 8 least
+    significant command bits.}\label{fig:spi-signals}
+\end{Figure}
+
+Before sending any command, however, the board must be powered on and reset. It
+is powered with the VIN and GND pins (see \cref{fig:ra8875} -- VIN can be
+connected to 3.3V or 5V). And it can be reset with the Reset (RST) pin. This
+pin should be 1 by default. Setting it to 0 during at least 1ms starts
+resetting the graphics card, which takes less than 1ms after RST is set back
+to 1 (for safety 10ms delays are better).
+
+\section{Serial Peripheral Interface component}\label{section:spi}
+
+At this stage, ``all we have left to do'' is to generate appropriate signals on
+the graphics card pins, in order to set appropriate values in its registers, in
+turn to configure the card and display text on the screen. In theory, the
+Arduino could generate these signals with a similar method as our LED blinking
+programs. Indeed, the signal we generated to blink a LED is in fact a clock
+signal. With more effort, we could also generate the CS and MOSI signals too.
+But there is a simpler method. Indeed, the signals shown in
+\cref{fig:spi-signals} are a special case of a more general communication
+protocol called the Serial Peripheral Interface (SPI). And the Arduino
+microcontroller has a dedicated SPI component to interact with devices using
+this protocol. This section gives an overview of this component and explains
+how to use it. A complete description can be found in Chapter 32 of
+\cite{SAM3X8E}.
+
+The SPI component is a hardware circuit which can output CS, SCK, and MOSI
+signals, and read input MISO signals, using the PA28, 27, 26 and 25 pins,
+respectively (see \cref{fig:sam3x8e,fig:spi}). It does so with 3 main
+registers (see \cref{table:spi-registers}):
+\begin{itemize}
+  \item The Transmit Data Register. Writing a value (up to 16 bits) in this
+  register sends it on the MOSI pin as described above, while setting the CS
+  pin to 0.
+
+  \item The Receive Data Register. The value received on the MISO pin while
+  sending a value on the MOSI pin is stored in this register.
+
+  \item The Status Register. This read-only register has the following binary
+  format (we show only the bits that we use):
+
+  \rs{SPI_SR.bit_pattern(true)}
+
+  where $t$ is 0 while a value is being sent (and $1$ when this is done), and
+  $r$ is 1 iff a new value has been received since the last read of the Receive
+  Data register.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter5/spi.tex}
+
+  \caption{A simplified representation of the Serial Peripheral Interface (SPI)
+  circuit and registers (in gray). A shift register is used to transmit data in
+  most to least significant bit order on MOSI, while storing bits received in
+  the same order on MISO. It is left shifted after each transmitted / received
+  bit. See Figure 32-5 in \cite{SAM3X8E}.}\label{fig:spi}
+\end{Figure}
+
+\begin{Table}[ht]
+  \begin{tabular}{|l|l|l|}\hline
+    \makecell{\thead{Name}} & \thead{Type} & \thead{Address} \\ \hline
+    \makecell{Control Register} & Write-Only & \rs{hex(SPI_CR.address)} \\
+    \makecell{Mode Register} & Read-Write & \rs{hex(SPI_MR.address)} \\
+    \makecell{Receive Data Register} & Read-Only & \rs{hex(SPI_RDR.address)} \\
+    \makecell{Transmit Data Register} & Write-Only & \rs{hex(SPI_TDR.address)}
+    \\
+    \makecell{Status Register} & Read-Only & \rs{hex(SPI_SR.address)} \\
+    \makecell{Chip Select Register} & Read-Write & \rs{hex(SPI_CSR.address)} \\
+    \hline
+  \end{tabular}
+  \caption{The Serial Peripheral Interface controller registers used in this
+    book.}\label{table:spi-registers}
+\end{Table}
+
+The SPI protocol has many variants. For instance, the number of bits
+transmitted at a time can vary between 8 and 16. These bits can be transmitted
+when SCK is rising from 0 to 1, or when it is falling from 1 to 0. The clock
+frequency can vary, etc. The SPI component supports many such variants in order
+to support many SPI devices. It can also be used either in master mode, to
+control a SPI device with the Arduino, or in slave mode, to control the Arduino
+with such as device. The drawback is that it needs to be configured before
+being used. This can be done with the following registers (we show only the
+bits that we use):
+\begin{itemize}
+  \item The Mode Register. Its binary format is
+
+  \rs{SPI_MR.bit_pattern(true)}
+
+  where $m=1$ selects the master mode, and $m=0$ the slave mode.
+
+  \item The Chip Select Register. Its binary format is
+
+  \rs{SPI_CSR.bit_pattern(true)}
+
+  where $c=1$ means that data is sent when SCK is rising, $bits$ means that
+  $bits+8$ bits are sent at a time, and $divider$ sets the SCK frequency to the
+  Peripheral Clock frequency divided by $divider$.
+\end{itemize}
+
+In our case we need $m=1$, $c=1$, and $bits=8$. The SCK frequency can be set to
+4MHz, which is not too large (after reset the graphics card runs at 20MHz). We
+can thus use $divider=21=\hexa{15}$ ($84/21=4$). In summary, we can set these
+two registers to 1 and $\hexa{1582}$, respectively.
+
+Finally, in order to be used, the SPI component must be enabled, which is done
+by writing the value 1 in the Control Register. Its input clock signal, the
+Peripheral Clock 24, must also be enabled (see \cref{fig:spi}). This can be
+done by writing the value $2^{24}$ in the PMC Peripheral Clock Enable Register
+(see \cref{section:pmc}). Last but not least, the PIO controller must be
+configured to give control of the PA25, 26, 27, and 28 pins to the SPI
+component. This can be done by writing the value $2^{25}+2^{26}+2^{27}+2^{28}$
+in the PIO A Disable Register (see \cref{section:pio}).
+
+\section{Graphics card driver}\label{section:gpu-driver}
+
+\rust{
+  let driver_address = context.memory_region("foundations").end();
+  let mut b = BytecodeAssembler::new(RegionKind::Default, driver_address);
+  b.import_labels(context.memory_region("clock_driver"));
+}
+
+We now have everything we need to write functions to reset and configure the
+graphics card (or GPU, for Graphics Processing Unit), and to draw text on the
+screen. We can store them just after the clock driver functions, \ie, at
+address \rs{hex(driver_address)}.
+
+\subsection{Low-level functions}
+
+Lets start with a \verb!gpu_reset!() function, by using the RST pin. We assume
+here that RST is connected to Arduino's pin 20, corresponding PB12 (see
+\cref{fig:arduino-due}). Then, as explained above, the reset function should
+set PB12 to 0, wait for 10ms, set it to 1, and wait 10ms again. This is very
+similar to the LED blinking function, with PB27 replaced with PB12 and no loop
+(see \cref{section:clock-driver-experiments}):
+
+\begin{TwoColumns}
+\rs{b.func("gpu_reset", &[], "", &["private"])}\\
+\bytecode{
+  b.cst(PIOB_PER);
+  b.cst(0x1000);
+  b.store();
+  b.cst(PIOB_OER);
+  b.cst(0x1000);
+  b.store();
+  b.cst(PIOB_PUDR);
+  b.cst(0x1000);
+  b.store();
+  b.cst(PIOB_CODR);
+  b.cst(0x1000);
+  b.store();
+  b.cst8(10);
+  b.call("delay");
+  b.cst(PIOB_SODR);
+  b.cst(0x1000);
+  b.store();
+  b.cst8(10);
+  b.call("delay");
+  b.ret();
+}
+\end{TwoColumns}
+
+We then need a function to configure and enable the SPI component:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("spi_init", &[], "", &["private"])}
+
+Give control of the PA25, 26, 27, and 28 pins to the SPI component with the PIO
+A Disable Register.
+
+\bytecode[switchcolumn]{
+  b.cst(PIOA_PDR);
+  b.cst(0x1E000000);
+  b.store();
+}
+
+Enable the SPI component clock with the PMC Peripheral Clock Enable Register.
+
+\bytecode[switchcolumn]{
+  b.cst(PMC_PCER0);
+  b.cst(0x1000000);
+  b.store();
+}
+
+Set the SPI component in master mode with the SPI Mode Register.
+
+\bytecode[switchcolumn]{
+  b.cst(SPI_MR.address);
+  b.cst_1();
+  b.store();
+}
+
+Enable the SPI component with the SPI Control Register.
+
+\bytecode[switchcolumn]{
+  b.cst(SPI_CR.address);
+  b.cst_1();
+  b.store();
+}
+
+Configure the SPI with a 4MHz clock and 16 bits per transfer, sent when SCK is
+rising (with the SPI Chip Select Register).
+
+\bytecode[switchcolumn]{
+  b.cst(SPI_CSR.address);
+  b.cst(0x1582);
+  b.store();
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+After that we can provide a \verb!spi_transfer! function to send an arbitrary
+16-bit value on MOSI, passed as argument, and returning the received value on
+MISO:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("spi_transfer", &["value"], "response", &[])}
+
+Wait until the current transmission, if any, is done, \ie, wait until the $t$
+bit of the SPI Status Register value $x$ is 1 ($\Leftrightarrow x \wedge 2 \ne
+0$).
+
+\bytecode[switchcolumn]{
+  b.label("wait_transmit_register_empty");
+  b.cst(SPI_SR.address);
+  b.load();
+  b.cst8(2);
+  b.and();
+  b.cst_0();
+  b.ifeq("wait_transmit_register_empty");
+}
+
+Send the data in the function's $0^{th}$ argument by writing it in the SPI
+Transmit Data Register.
+
+\bytecode[switchcolumn]{
+  b.cst(SPI_TDR.address);
+  b.get("value");
+  b.store();
+}
+
+Wait until the response is received on MISO, \ie, wait until the $r$ bit of the
+SPI Status Register value $x$ is 1  ($\Leftrightarrow x \wedge 1 \ne 0$).
+
+\bytecode[switchcolumn]{
+  b.label("wait_receive_register_full");
+  b.cst(SPI_SR.address);
+  b.load();
+  b.cst_1();
+  b.and();
+  b.cst_0();
+  b.ifeq("wait_receive_register_full");
+}
+
+Read the response in the SPI Receive Data Register and return it.
+
+\bytecode[switchcolumn]{
+  b.cst(SPI_RDR.address);
+  b.load();
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+With this we can provide a function to write a value in a graphics card
+register. This function takes as arguments the register ID and the value to
+write into it:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("gpu_set_register", &["id", "value"], "", &[])}
+
+Call the \verb!spi_transfer! function with a Select Register command (bitwise
+OR of the command type \hexa{8000} and the register ID).
+
+\bytecode[switchcolumn]{
+  b.cst(0x8000);
+  b.get("id");
+  b.or();
+  b.call("spi_transfer");
+}
+
+Call the \verb!spi_transfer! function with a Write Data command, whose type is
+\hexa{00} (for safety, we keep only the 8 least significant bits of the value),
+and return.
+
+\bytecode[switchcolumn]{
+  b.get("value");
+  b.cst8(255);
+  b.and();
+  b.call("spi_transfer");
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+\rust{
+  b.u8_data(0); // padding
+  b.u8_data(0); // padding
+  b.write("part2/generated/chapter5/ignored.tex", "binary");
+
+  b.label("COMMANDS_START");
+  for x in &commands {
+    b.u8_data(*x);
+  }
+  b.label("COMMANDS_END");
+
+  let command = |i| -> String {
+    format!("\\code{{{:02X}}}", commands[i])
+  };
+}
+
+We can now use this function to configure the graphics card by writing the
+values described in \cref{subsection:ra8875-config} in its registers, in order
+(\rs{reg(commands[0])} $\leftarrow$ \rs{hex_opt(commands[1])},
+\rs{reg(commands[4])} $\leftarrow$ \rs{hex_opt(commands[5])},
+\rs{reg(commands[8])} $\leftarrow$ \rs{hex_opt(commands[9])}, etc). To reduce
+code size, we can store these bytes one after the other in memory
+(\rs{command(0)}, \rs{command(1)}, \rs{command(4)}, \rs{command(5)},
+\rs{command(8)}, \rs{command(9)}, etc). A function can then read them 2 by 2
+and, for each pair, write the register value with the previous function. Note
+however that we need to wait at least 0.1ms after setting
+\rs{reg(RAIO_PLLC1.id)} and \rs{reg(RAIO_PLLC2.id)}, and 100ms after writing in
+the Memory Clear Control register. For this we can use pairs \code{00}, $x$ to
+mean ``wait $x\,$ms'' (there is no R00 register). Our list thus becomes
+\rs{command(0)}, \rs{command(1)}, \rs{command(2)}, \rs{command(3)},
+\rs{command(4)}, \rs{command(5)}, \rs{command(6)}, \rs{command(7)},
+\rs{command(8)}, \rs{command(9)}, etc. By doing this for all the register
+values computed in \cref{subsection:ra8875-config} we get the following list,
+stored just after the previous function, \ie, in
+[\rs{hex(b.label_address("COMMANDS_START"))},
+\rs{hex(b.label_address("COMMANDS_END"))}[:
+
+\bytecode[binary]{
+  b.label("print-the-above-data");
+}
+
+In order to read this list we first need a function to read a single byte in
+memory:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("load_byte", &["address"], "value", &[])}
+
+Load the word $x$ at the given address and return its 8 least significant bits
+$x \wedge \mathit{FF}_{16}$.
+
+\bytecode[switchcolumn]{
+  b.get("address");
+  b.load();
+  b.cst8(255);
+  b.and();
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+A function to write a value in a graphics card register, or to wait for some
+time if the register ID is 0, is also useful:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("gpu_set_register_or_wait", &["id", "value"], "", &["private"])}
+
+If the register ID is equal to 0, jump to the last 3 instructions.
+Otherwise continue to the next instructions.
+
+\bytecode[switchcolumn]{
+  b.get("id");
+  b.cst_0();
+  b.ifeq("wait_case");
+}
+
+The register ID is not 0: write $value$ in register $id$ with
+\verb!gpu_set_register! and return.
+
+\bytecode[switchcolumn]{
+  b.get("id");
+  b.get("value");
+  b.call("gpu_set_register");
+  b.ret();
+}
+
+The register ID is 0: wait for $value$ ms with \verb!delay! and return.
+
+\bytecode[switchcolumn]{
+  b.label("wait_case");
+  b.get("value");
+  b.call("delay");
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+We can now implement a \verb!gpu_init! function to reset and configure the
+graphics card, by reading and setting all the register values in the above
+list. For this we use a pointer $p$ to the next pair to read in the list,
+stored in the $4^{th}$ stack frame slot:\bigskip
+
+\begin{paracol}{2}
+\rs{b.func("gpu_init", &[], "", &[])}
+
+Reset the graphic card. Configure the SPI component to communicate with it.
+
+\bytecode[switchcolumn]{
+  b.call("gpu_reset");
+  b.call("spi_init");
+}
+
+Initialize $p$ to the beginning of the list.
+
+\bytecode[switchcolumn]{
+  b.cst(b.base() + b.label_offset("COMMANDS_START"));
+  b.def("p");
+}
+
+Call \verb!load_byte! to push the byte at address $p$ on the stack (a register
+ID).
+
+\bytecode[switchcolumn]{
+  b.label("loop");
+  b.get("p");
+  b.call("load_byte");
+}
+
+Call it again to push the byte at address $p+1$ on the stack (the value to
+write in the register).
+
+\bytecode[switchcolumn]{
+  b.get("p");
+  b.cst_1();
+  b.add();
+  b.call("load_byte");
+}
+
+Call \verb!gpu_set_register_or_wait! with the above values as arguments.
+
+\bytecode[switchcolumn]{
+  b.call("gpu_set_register_or_wait");
+}
+
+Increment $p$ by 2 to prepare reading the next pair of values.
+
+\bytecode[switchcolumn]{
+  b.cst8(2);
+  b.add();
+}
+
+If $p$ is not the end of the list, go back to offset
+\rs{hex(b.label_offset("loop") - b.label_offset("gpu_init"))}. Otherwise return.
+
+\bytecode[switchcolumn]{
+  b.get("p");
+  b.cst(b.base() + b.label_offset("COMMANDS_END"));
+  b.iflt("loop");
+  b.ret();
+}
+\end{paracol}
+
+\subsection{Drawing functions}
+
+To finish the graphics card driver we provide a function to clear the screen,
+and 3 functions for drawing text. The \verb!gpu_clear_screen! function sets the
+$s$ and $a$ bits of the Memory Clear Control register to 1 to start clearing
+the active window. It then reads $s$ back repeatedly, with Read Data commands
+(\hexa{4000}), until it is 0 (which indicates that the operation is done):
+
+\begin{TwoColumns}
+\rs{b.func("gpu_clear_screen", &[], "", &[])}\\
+\bytecode{
+  b.cst8(RAIO_MCLR.id);
+  b.cst8(0xC0);
+  b.call("gpu_set_register");
+  b.label("gpu_clear_screen_loop");
+  b.cst(0x4000);
+  b.call("spi_transfer");
+  b.cst8(0x80);
+  b.and();
+  b.cst_0();
+  b.ifne("gpu_clear_screen_loop");
+  b.ret();
+}
+\end{TwoColumns}
+
+The \verb!gpu_set_cursor! function takes a column $c$ and a row $r$ as
+arguments, expressed in {\em number of characters}, and writes $8c$ and $16r$
+in the Font Write Cursor registers (see \cref{subsection:text-config} -- recall
+that each character is $8\times16$ pixels). More precisely,  it writes $8c=c
+\ll 3$ and $16r=r \ll 4$ in \rs{reg(RAIO_F_CURXL.id)} and
+\rs{reg(RAIO_F_CURXH.id)}, and $8c \gg 8 = c \gg 5$ and $16r \gg 8 = r \gg 4$
+in \rs{reg(RAIO_F_CURYL.id)} and \rs{reg(RAIO_F_CURYH.id)} (recall that
+\verb!gpu_set_register! keeps only the 8 least significant bits of its
+argument):
+
+\begin{TwoColumns}
+\rs{b.func("gpu_set_cursor", &["c", "r"], "", &[])}\\
+\bytecode{
+  b.cst8(RAIO_F_CURXL.id);
+  b.get("c");
+  b.cst8(3);
+  b.lsl();
+  b.call("gpu_set_register");
+  b.cst8(RAIO_F_CURXH.id);
+  b.get("c");
+  b.cst8(5);
+  b.lsr();
+  b.call("gpu_set_register");
+  b.cst8(RAIO_F_CURYL.id);
+  b.get("r");
+  b.cst8(4);
+  b.lsl();
+  b.call("gpu_set_register");
+  b.cst8(RAIO_F_CURYH.id);
+  b.get("r");
+  b.cst8(4);
+  b.lsr();
+  b.call("gpu_set_register");
+  b.ret();
+}
+\end{TwoColumns}
+
+The \verb!gpu_set_color! function takes 3 arguments $r$, $g$ and $b$, and
+writes them in the respective Foreground Color registers:
+
+\begin{TwoColumns}
+\rs{b.func("gpu_set_color", &["r", "g", "b"], "", &[])}\\
+\bytecode{
+  b.cst8(RAIO_FGCR0.id);
+  b.get("r");
+  b.call("gpu_set_register");
+  b.cst8(RAIO_FGCR1.id);
+  b.get("g");
+  b.call("gpu_set_register");
+  b.cst8(RAIO_FGCR2.id);
+  b.get("b");
+  b.call("gpu_set_register");
+  b.ret();
+}
+\end{TwoColumns}
+
+Finally, the \verb!gpu_draw_char! function draws the character given as
+argument by writing it in the R02 register with \verb!gpu_set_register!:
+
+\begin{TwoColumns}
+\rs{b.func("gpu_draw_char", &["c"], "", &[])}\\
+\bytecode{
+  b.cst8(2);
+  b.get("c");
+  b.call("gpu_set_register");
+  b.ret();
+}
+\end{TwoColumns}
+
+\subsection{Summary}
+
+In summary, our graphics card driver provides the functions shown in
+\cref{table:gpu_driver_functions} and its full code is:
+
+\rs{b.get_bytecode_listing(0..b.get_instruction_count() as usize, false)}
+
+\rust{
+  {
+    let mut commands = b.boot_assistant_commands();
+    commands.push(String::from("flash#"));
+    write_lines("website/part2", "graphics_card_driver.txt", &commands)?;
+  }
+}
+
+Lets store it in flash memory. To avoid you some typing we provide the
+necessary boot assistant commands in \verb!part2/graphics_card_driver.txt!.
+Run them with:
+
+\rust{
+  context.add_memory_region("graphics_card_driver", b.memory_region());
+  let mut flash_helper = FlashHelper::from_file(
+    context.micro_controller(), "website/", "part2/graphics_card_driver.txt")?;
+}
+\rs{host_log(&flash_helper.read())}
+
+\begin{Table}
+  \begin{tabular}{|l|l|} \hline
+  \makecell{\thead{Function}} & \thead{Address} \\ \hline
+  \rs{MemoryRegion::labels_table_rows(vec![&b.memory_region()])} \\ \hline
+  \end{tabular}
+
+  \caption{The most important graphics card driver
+  functions.}\label{table:gpu_driver_functions}
+\end{Table}
+
+\section{Experiments}
+
+In order to test our driver we can try to display the traditional ``Hello,
+World!" message on the screen. First of all, we need to connect together the
+Arduino, the graphics card and the LCD. For this the easiest way is to use a
+breadboard (see \cref{table:bom}). Still, this requires soldering header pins
+on the Adafruit RA8875 driver board. For this the easiest is to plug the header
+pins on the breadboard as shown in \cref{fig:lcd-connection}, place the board
+on top of them, and solder the pins in place (see more detailed instructions at
+\toypcurl{assembly.html}). Then connect the LCD 40-pin flat cable to the
+board: slide out the black ``ears'' on each side of the board connector, insert
+the flat cable with the pins oriented as shown in \cref{fig:lcd-connection},
+and slide the ears back in. Finally, using jumper wires, connect:
+
+\begin{itemize}
+  \item the VIN and GND pins to the Arduino's 3.3V and GND pins,
+
+  \item the RST pin to the Arduino pin 20 (as assumed in the \verb!gpu_reset!
+  function),
+
+  \item the MISO, MOSI and SCK pins to the Arduino's PA25, PA26 and
+  PA27 pins, respectively (near the SAM3X8E chip, see \cref{fig:arduino-due}),
+
+  \item the CS pin to the Arduino's PA28 pin, corresponding to pin 10 (see
+  \cref{fig:arduino-due}).
+\end{itemize}
+
+\rust{
+  const STARTUP_PROGRAM: u32 = 0xC2000;
+  let mut s =
+      BytecodeAssembler::new(RegionKind::Default, STARTUP_PROGRAM + 128);
+  s.label("string_start");
+  s.u8_data(b'H');
+  s.u8_data(b'e');
+  s.u8_data(b'l');
+  s.u8_data(b'l');
+  s.u8_data(b'o');
+  s.u8_data(b',');
+  s.u8_data(b' ');
+  s.u8_data(b'W');
+  s.u8_data(b'o');
+  s.u8_data(b'r');
+  s.u8_data(b'l');
+  s.u8_data(b'd');
+  s.u8_data(b'!');
+  s.label("string_end");
+}
+
+We can then write a main function, at its expected address
+\rs{hex(STARTUP_PROGRAM)} (see \cref{fig:bios-memory-map}), to display ``Hello,
+World!'' on the screen. For this we need the ASCII code of these characters:
+\hexa{48} for ``H'', \hexa{65} for ``e'', etc (see \cref{appendix:ascii}). We
+can store them in a list, starting a bit after the main function, for instance
+\rs{hex(s.label_address("string_start"))}:
+
+\rs{s.get_bytecode_listing(0..s.get_instruction_count() as usize, false)}
+
+We start the main function with calls to \verb!boot_mode_select_rom!,
+\verb!clock_init!, and \verb!gpu_init! (see
+\cref{table:clock_driver_functions,table:gpu_driver_functions}).
+
+\rust{
+  let mut b = BytecodeAssembler::new(RegionKind::Default, STARTUP_PROGRAM);
+  b.import_labels(context.memory_region("clock_driver"));
+  b.import_labels(context.memory_region("foundations"));
+  b.import_labels(context.memory_region("graphics_card_driver"));
+}
+\begin{TwoColumns}
+\bytecode{
+  b.func("main", &[], "", &[]);
+  b.call("boot_mode_select_rom");
+  b.call("clock_init");
+  b.call("gpu_init");
+}
+\end{TwoColumns}
+
+We then set the foreground color to green and the cursor position to $(20, 3)$:
+
+\begin{TwoColumns}
+\bytecode{
+  b.cst_0();
+  b.cst8(7);
+  b.cst_0();
+  b.call("gpu_set_color");
+  b.cst8(20);
+  b.cst8(3);
+  b.call("gpu_set_cursor");
+}
+\end{TwoColumns}
+
+\begin{Figure}
+  \input{figures/chapter5/lcd-connection.tex}
+
+  \caption{How to connect the Arduino Due, the Adafruit RA8875 driver board and
+    the LCD with a breadboard.}\label{fig:lcd-connection}
+\end{Figure}
+
+Finally, we draw the characters by using a loop, with a pointer $p$ to the next
+character to draw stored in the $4^{th}$ stack frame slot:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+Initialize $p$ to point to the $1^{st}$ character.
+
+\bytecode[switchcolumn]{
+  b.cst(s.base());
+  b.def("p");
+}
+
+Load the byte at address $p$ and draw it with \verb!gpu_draw_char!.
+
+\bytecode[switchcolumn]{
+  b.label("draw_char_loop");
+  b.get("p");
+  b.call("load_byte");
+  b.call("gpu_draw_char");
+}
+
+Increment $p$ by 1 to prepare drawing the next character.
+
+\bytecode[switchcolumn]{
+  b.cst_1();
+  b.add();
+}
+
+If $p$ is not the end of the list of characters, go back to offset
+\rs{hex(b.label_offset("draw_char_loop"))}. Otherwise loop forever doing
+nothing.
+
+\bytecode[switchcolumn]{
+  b.get("p");
+  b.cst(s.base() + s.get_instruction_count());
+  b.iflt("draw_char_loop");
+  b.label("infinite_loop");
+  b.goto("infinite_loop");
+}
+\end{paracol}
+\end{Paragraph}
+
+To run this main function we need to store it in flash memory and to restart
+the Arduino with the boot mode selection set to boot from flash. We provide the
+necessary boot assistant commands in {\tt
+part2/graphics\_card\_driver\_test.txt}. Run them with:
+
+\rust{
+  let mut lines = Vec::new();
+  lines.extend(b.boot_assistant_commands());
+  lines.extend(s.boot_assistant_commands());
+  lines.push(String::from("flash#"));
+  lines.push(String::from("reset#"));
+  write_lines("website/part2", "graphics_card_driver_test.txt", &lines)?;
+  let mut flash_helper = FlashHelper::from_file(
+    context.micro_controller(),
+    "website/","part2/graphics_card_driver_test.txt")?;
+}
+\rs{host_log(&flash_helper.read())}
+
+If all goes well, you should see a green ``Hello, World!'' message on the
+screen, followed by a blinking cursor! Note that if you press the RESET button
+on the Arduino, the message does not disappear, although the Arduino is now
+running the boot assistant. Indeed, the graphics card is running independently,
+and is {\em not} reset when the Arduino is. This is why we reset it explicitly
+with the \verb!gpu_reset! function. You can now turn off the Arduino, which
+also turns off the graphics card and the LCD.
+
+\rust{
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+
+  context.micro_controller().borrow_mut().run(50000);
+
+  assert_eq!(display.borrow().get_text(),
+      "\n\n\n                    Hello, World!");
+  context.micro_controller().borrow_mut().reset();
+}

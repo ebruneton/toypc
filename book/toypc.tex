@@ -1,0 +1,94 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\documentclass[twoside,10pt]{book}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{import}
+
+% Typography -------------------------------------------------------------------
+\usepackage{newtxtext}
+\usepackage[lining]{FiraSans}
+\usepackage{inconsolata}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{bm}
+\usepackage[american]{babel}
+\usepackage[protrusion=true,factor=900]{microtype}
+\usepackage{ccicons}
+
+% Page geometry, page, part, chapter, and section styles -----------------------
+\input{preamble/titles.tex}
+
+% Paragraph styles (spacing, lists, single and multicolums) --------------------
+\input{preamble/paragraph.tex}
+
+% Verbatim and highlighting styles for source code listings --------------------
+\input{preamble/verbatim.tex}
+
+% Figure, table, and algorithm styles ------------------------------------------
+\input{preamble/floats.tex}
+
+% Hyperlinks, cross references and URLs ----------------------------------------
+\input{preamble/hyperlinks.tex}
+
+% Commands for literate programming --------------------------------------------
+% The Latex code is preprocessed with a Rust program. This produces some
+% generated Rust files, which are then run. In turn, these generated Rust files
+% generate some Latex files, which are finally \input in the main Latex files.
+\input{preamble/preprocessor.tex}
+
+% Miscellaneous commands for short texts and styles used very often ------------
+\newcommand{\ie}{\textit{i.e.}}
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\cf}{cf.~}
+\newcommand*{\densedots}{.\kern-0.1em.\kern-0.1em.}
+\newcommand{\bina}[1]{#1\ensuremath{_2}}
+\newcommand{\hexa}[1]{#1\ensuremath{_{16}}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\arm}[1]{#1}
+\newcommand{\insn}[1]{\texttt{#1}}
+\newcommand{\unchanged}[1]{{\color{gray} #1}}
+
+
+\begin{document}
+
+\renewcommand\thepart{}
+\frontmatter
+\input{cover/front.tex}
+\input{frontmatter.tex}
+
+\mainmatter
+\renewcommand\thepart{\arabic{part}}
+
+\part{A Toy Microprocessor}\label{part:processor}
+
+\import{part1/}{part1.tex}
+
+\part{A Basic Input Output System}\label{part:computer}
+
+\import{part2/}{part2.tex}
+
+\part{A Toy Compiler}\label{part:compiler}
+
+\import{part3/}{part3.tex}
+
+\part{A Toy Operating System}\label{part:operating-system}
+
+\import{part4/}{part4.tex}
+
+\renewcommand\thepart{}
+\bookmarksetup{startatroot}
+
+\nocite{*}
+\bibliographystyle{plain}
+\renewcommand{\bibname}{References}
+\addtocontents{toc}{\vspace{1cm}}
+\bibliography{toypc}
+
+\input{appendix.tex}
+
+\backmatter
+\input{cover/back.tex}
+
+\end{document}

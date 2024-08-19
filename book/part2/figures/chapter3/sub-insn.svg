@@ -1,0 +1,31 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="30mm" viewBox="0 0 145 30" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <text x="32" y="17" text-anchor="middle">sub</text>
+    <text x="2" y="4" font-size="3.5px">stack</text>
+    <text x="9" y="21.5" text-anchor="middle">$x$</text>
+    <text x="9" y="16.5" text-anchor="middle">$y$</text>
+    <text x="9" y="27" text-anchor="middle">...</text>
+    <path d="M 1,6 V 28" stroke="#000000"/>
+    <path d="M 17,6 V 28" stroke="#000000"/>
+    <path d="M 1,23 H 17" stroke="#000000"/>
+    <path d="M 1,18 H 17" stroke="#000000"/>
+    <path d="M 1,13 H 17" stroke="#000000"/>
+    <text x="55" y="21.5" text-anchor="middle" fill="#048966">$x-y$</text>
+    <text x="55" y="27" text-anchor="middle">...</text>
+    <path d="M 47,6 V 28" stroke="#000000"/>
+    <path d="M 63,6 V 28" stroke="#000000"/>
+    <path d="m 47,23 h 16" stroke="#000000"/>
+    <path d="m 47,18 h 16" stroke="#000000"/>
+    <path d="M 20,18 H 44" stroke="#000000" marker-end="url(#arrow)"/>
+  </g>
+</svg>

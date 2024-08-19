@@ -1,0 +1,63 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="2" height="2" x="67" y="34" fill="#ffffff"/>
+    <rect width="21" height="7" x="108" y="20" fill="#ebebeb"/>
+    <rect width="1" height="7" x="134" y="20" fill="#ebebeb"/>
+    <rect width="14" height="7" x="67" y="20" fill="#ebebeb"/>
+    <rect width="12" height="7" x="96" y="20" fill="#ffda85"/>
+    <rect width="15" height="7" x="81" y="20" fill="#f26c8c"/>
+    <path d="m 96,20 v 7" stroke="#000000"/>
+    <path d="m 108,20 v 7" stroke="#000000"/>
+    <text x="82" y="25" font-size="3.5px">Q</text>
+    <rect width="9" height="7" x="58" y="20" fill="#ffd166"/>
+    <rect width="12" height="7" x="46" y="20" fill="#ef476f"/>
+    <path d="m 58,20 v 7" stroke="#000000"/>
+    <path d="m 67,20 v 7" stroke="#000000"/>
+    <path d="m 62,20 v 7" stroke="#000000" stroke-dasharray="0.8, 0.2"/>
+    <path d="m 64,20 v 7" stroke="#000000" stroke-dasharray="0.8, 0.2"/>
+    <path d="m 81,20 v 7" stroke="#000000"/>
+    <text x="47" y="25" font-size="3.5px">P</text>
+    <rect width="5" height="7" x="129" y="20" fill="#06d6a0"/>
+    <path d="m 129,20 v 7" stroke="#000000"/>
+    <path d="m 134,20 v 7" stroke="#000000"/>
+    <rect width="9" height="7" x="135" y="20" fill="#05ab80"/>
+    <path d="m 135,20 v 7" stroke="#000000"/>
+    <rect width="98" height="7" x="46" y="20" fill="none" stroke="#000000"/>
+    <path d="m 129,23.5 h -4" stroke="#000000" stroke-dasharray="0.2, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 112,23.5 h -4" stroke="#000000" stroke-dasharray="0.2, 0.2" marker-start="url(#arrow)"/>
+    <text x="44" y="15" font-size="3.9px" text-anchor="end">spawn(dst, ..., output\_p)</text>
+    <text x="44" y="38" font-size="3.5px" text-anchor="end" fill="#048966">after</text>
+    <text x="44" y="25" font-size="3.5px" text-anchor="end" fill="#bf3959">before</text>
+    <path d="M 17,12 V 10 H 81 V 20" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 34,16 v 1 h 28 v 3" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 63,21 v -4 h 5 v 3" fill="none" stroke="#bf3959" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <circle cx="63" cy="21" r="0.5" fill="#bf3959"/>
+    <rect width="70" height="7" x="67" y="33" fill="#ebebeb"/>
+    <rect width="9" height="7" x="58" y="33" fill="#ffd166"/>
+    <rect width="7" height="7" x="68" y="33" fill="#cca752"/>
+    <rect width="12" height="7" x="46" y="33" fill="#ef476f"/>
+    <path d="m 58,33 v 7" stroke="#000000"/>
+    <path d="m 67,33 v 7" stroke="#000000"/>
+    <path d="m 68,33 v 7" stroke="#000000"/>
+    <path d="m 75,33 v 7" stroke="#000000"/>
+    <path d="m 62,33 v 7" stroke="#000000" stroke-dasharray="0.8, 0.2"/>
+    <path d="m 64,33 v 7" stroke="#000000" stroke-dasharray="0.8, 0.2"/>
+    <text x="47" y="38" font-size="3.5px">P</text>
+    <rect width="9" height="7" x="135" y="33" fill="#05ab80"/>
+    <path d="m 135,33 v 7" stroke="#000000"/>
+    <rect width="98" height="7" x="46" y="33" fill="none" stroke="#000000"/>
+    <path d="m 135,36.5 h -4" stroke="#000000" stroke-dasharray="0.2, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 63,34 v -4 h 12 v 3" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <circle cx="63" cy="34" r="0.5" fill="#048966"/>
+  </g>
+</svg>

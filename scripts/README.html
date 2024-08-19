@@ -1,0 +1,112 @@
+<html>
+
+<head>
+    <title>Installation instructions</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel='stylesheet' type='text/css'
+        href='https://framework.web.cern.ch/framework/2.0/fonts/PTSansWeb/PTSansWeb.css' />
+    <style>
+        body {
+            font-family: 'PT Sans', sans-serif;
+            margin: 4ch auto 4ch auto;
+            max-width: 75ch;
+        }
+
+        code {
+            font-size: 0.875rem;
+        }
+    </style>
+    </meta>
+</head>
+
+<body>
+    <h1>Installation instructions</h1>
+
+    <p>This file describes how to run the Python scripts which are used in the book <a
+            href="https://ebruneton.github.io/toypc/toypc.pdf">"Programming a toy computer from scratch"</a>. These
+        scripts require <a href="https://www.python.org/">Python3</a> and the <a
+            href="https://pypi.org/project/pyserial/">pyserial</a> package, which must be
+        installed first. The serial port used to communicate with the Arduino must also be configured.
+
+    <h2>Ubuntu</h2>
+
+    <h3>pyserial</h3>
+
+    <p>Python3 should be installed by default on your computer. To install the <code>pyserial</code> package, first
+        install <a href="https://pip.pypa.io/en/stable/">pip</a> if it is not already installed. For this, type
+
+    <blockquote>
+        sudo apt install python3-pip
+    </blockquote>
+
+    <p>in a terminal. Then install the <code>pyserial</code> package with
+
+    <blockquote>
+        pip install pyserial
+    </blockquote>
+
+    <h3>serial port</h3>
+
+    <p>Connect the Arduino's USB <em>native</em> port (see Figure 6.1 in the book) to your computer, and type
+
+    <blockquote>
+        ls /dev/ttyACM*
+    </blockquote>
+
+    <p>in a terminal. You should get a result such as <code>/dev/ttyACM0</code>. The number at the end might differ. If
+        this is the case, edit <code>boot_helper.py</code> with a text editor and replace <code>/dev/ttyACM0</code> (on
+        line 18) with the result you got. Finally, type
+
+    <blockquote>
+        python3 boot_helper.py
+    </blockquote>
+
+    <p>to test the connection to the Arduino. If you get a "could not open serial port" error, this is probably a
+        permission
+        issue to acces the <code>dialout</code> group. Follow the instructions on the <a
+            href="https://support.arduino.cc/hc/en-us/articles/360016495679-Fix-port-access-on-Linux#dialout">Arduino's
+            website</a> to fix them. Once this is done, the above command should work. Then type <code>V#</code>
+        followed by Enter. You should get a version number, such as "v1.1 Dec 15 2010 19:25:04". Finally, type
+        <code>exit#</code> to quit the boot helper program.
+
+    <h2>Windows</h2>
+
+    <h3>Python3</h3>
+
+    Type <code>python3</code> in the Windows <a
+        href="https://www.google.com/search?q=windows+powershell">PowerShell</a>. If Python3 is not installed, this
+    should open the <a href="https://www.microsoft.com/en-us/store">Microsoft Store</a>. Then follow the
+    instructions to install this software. Back in the PowerShell, typing <code>python3</code> again should work.
+    Finally, type <code>quit()</code> followed by enter to exit.
+
+    <h3>pyserial</h3>
+
+    Install the <code>pyserial</code> package by typing the following command in the PowerShell:
+
+    <blockquote>
+        pip install pyserial
+    </blockquote>
+
+    <h3>serial port</h3>
+
+    <p>Connect the Arduino's USB <em>native</em> port (see Figure 6.1 in the book) to your computer, and open the <a
+            href="https://www.google.com/search?q=windows+device+manager">device manager</a>. Note the port number of
+        the Arduino in the COM ports section (here <code>COM5</code>):
+
+        <center><img src="https://ebruneton.github.io/toypc/figures/device-manager.png"></center>
+
+    <p>Then edit <code>boot_helper.py</code> with a text editor and replace <code>/dev/ttyACM0</code> (on
+        line 18) with <code>COM</code><em>i</em>, where <em>i</em> is the number you found with the device manager.
+        Finally, type
+
+    <blockquote>
+        python3 boot_helper.py
+    </blockquote>
+
+    <p>in the PowerShell to test the connection to the Arduino. Type <code>V#</code> followed by Enter. You should get a
+        version number, such as "v1.1 Dec 15 2010 19:25:04". Finally, type <code>exit#</code> to quit the boot helper
+        program.
+
+</body>
+
+</html>

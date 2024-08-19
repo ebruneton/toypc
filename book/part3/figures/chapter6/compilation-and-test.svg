@@ -1,0 +1,92 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="26" height="6" x="115" y="12" fill="#0e6e8e" stroke="#cccccc"/>
+    <rect width="26" height="6" x="115" y="21" fill="#0e6e8e" stroke="#cccccc"/>
+    <rect width="26" height="6" x="115" y="30" fill="#0e6e8e" stroke="#cccccc"/>
+    <rect width="26" height="6" x="19" y="12" fill="#0e6e8e" stroke="#cccccc"/>
+    <rect width="26" height="6" x="19" y="21" fill="#0e6e8e" stroke="#cccccc"/>
+    <rect width="26" height="6" x="19" y="30" fill="#0e6e8e" stroke="#cccccc"/>
+    <text x="32" y="16" font-size="3.5px" text-anchor="middle" fill="#ffffff">v1</text>
+    <text x="64" y="16" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="96" y="16" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="128" y="16" font-size="3.5px" text-anchor="middle" fill="#ffffff">test</text>
+    <text x="32" y="25" font-size="3.5px" text-anchor="middle" fill="#ffffff">v1</text>
+    <text x="64" y="25" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="96" y="25" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="128" y="25" font-size="3.5px" text-anchor="middle" fill="#ffffff">v2</text>
+    <text x="32" y="34" font-size="3.5px" text-anchor="middle" fill="#ffffff">v2</text>
+    <text x="64" y="34" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="96" y="34" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="128" y="34" font-size="3.5px" text-anchor="middle" fill="#ffffff">v2</text>
+    <text x="2" y="21" font-size="3.5px">Compile v2</text>
+    <text x="2" y="30" font-size="3.5px">Test v2</text>
+    <path d="M 13,16 H 0 v 7 H 13" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="M 13,25 H 0 v 7 H 13" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <rect width="4" height="6" x="46" y="12" fill="#0e6e8e"/>
+    <rect width="4" height="6" x="46" y="12" fill="none" stroke="#cccccc"/>
+    <rect width="4" height="6" x="46" y="21" fill="#0e6e8e"/>
+    <rect width="4" height="6" x="46" y="21" fill="none" stroke="#cccccc"/>
+    <rect width="4" height="6" x="46" y="30" fill="#0e6e8e"/>
+    <rect width="4" height="6" x="46" y="30" fill="none" stroke="#cccccc"/>
+    <rect width="26" height="6" x="51" y="12" fill="none" stroke="#cccccc"/>
+    <rect width="26" height="6" x="83" y="12" fill="none" stroke="#cccccc"/>
+    <rect width="26" height="6" x="51" y="21" fill="none" stroke="#cccccc"/>
+    <rect width="26" height="6" x="83" y="21" fill="none" stroke="#cccccc"/>
+    <rect width="26" height="6" x="51" y="30" fill="none" stroke="#cccccc"/>
+    <rect width="26" height="6" x="83" y="30" fill="none" stroke="#cccccc"/>
+    <text x="80" y="27.5" font-size="3.5px" text-anchor="middle">F7</text>
+    <text x="112" y="18.5" font-size="3.5px" text-anchor="middle">F6</text>
+    <path d="m 64,22 v -2.5" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 128,31 v -2.5 H 32 l 0,2.5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 128,22 v -2.5 H 32 v 2.5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-start="url(#arrow)"/>
+    <path d="m 64,40 v -2.5" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <rect width="26" height="6" x="115" y="39" fill="#0e6e8e" stroke="#cccccc"/>
+    <rect width="26" height="6" x="19" y="39" fill="#0e6e8e" stroke="#cccccc"/>
+    <text x="32" y="43" font-size="3.5px" text-anchor="middle" fill="#ffffff">v2</text>
+    <text x="64" y="43" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="96" y="43" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="128" y="43" font-size="3.5px" text-anchor="middle" fill="#ffffff">v2'</text>
+    <rect width="4" height="6" x="46" y="39" fill="#0e6e8e"/>
+    <rect width="4" height="6" x="46" y="39" fill="none" stroke="#cccccc"/>
+    <rect width="26" height="6" x="51" y="39" fill="none" stroke="#cccccc"/>
+    <rect width="26" height="6" x="83" y="39" fill="none" stroke="#cccccc"/>
+    <text x="112" y="36.5" font-size="3.5px" text-anchor="middle">F6</text>
+    <path d="m 128,40 v -2.5 H 32 v 2.5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-start="url(#arrow)"/>
+    <rect width="26" height="7" x="19" y="2" fill="#0e6e8e"/>
+    <path d="m 45,2 h 3 L 47,6 H 48 l -1,3 H 45" fill="#ebebeb"/>
+    <path d="m 19,2 h -2 l -1,3 h 1 l -1,4 3,0" fill="#ebebeb"/>
+    <path d="M 48,2 H 17 l -1,3 h 1 l -1,4 31,0 1,-3 h -1 z" fill="none" stroke="#000000"/>
+    <path d="M 19,2 V 9" stroke="#000000"/>
+    <text x="32" y="7" font-size="3.5px" text-anchor="middle" fill="#ffffff">saved program</text>
+    <path d="M 45,2 V 9" stroke="#000000"/>
+    <path d="m 77,2 h 3 L 79,6 H 80 l -1,3 H 77" fill="#ebebeb"/>
+    <path d="m 51,2 h -2 l -1,3 h 1 l -1,4 3,0" fill="#ebebeb"/>
+    <path d="M 80,2 H 49 l -1,3 h 1 l -1,4 31,0 1,-3 h -1 z" fill="none" stroke="#000000"/>
+    <path d="M 51,2 V 9" stroke="#000000"/>
+    <text x="64" y="7" font-size="3.5px" text-anchor="middle">saved program</text>
+    <path d="M 77,2 V 9" stroke="#000000"/>
+    <path d="m 109,2 h 3 L 111,6 h 1 l -1,3 h -2" fill="#ebebeb"/>
+    <path d="m 83,2 h -2 l -1,3 h 1 l -1,4 3,0" fill="#ebebeb"/>
+    <path d="M 112,2 H 81 l -1,3 h 1 l -1,4 31,0 1,-3 h -1 z" fill="none" stroke="#000000"/>
+    <path d="M 83,2 V 9" stroke="#000000"/>
+    <text x="96" y="7" font-size="3.5px" text-anchor="middle">edited program</text>
+    <path d="M 109,2 V 9" stroke="#000000"/>
+    <rect width="26" height="7" x="115" y="2" fill="#0e6e8e"/>
+    <path d="m 141,2 h 3 L 143,6 h 1 l -1,3 h -2" fill="#ebebeb"/>
+    <path d="m 115,2 h -2 l -1,3 h 1 l -1,4 3,0" fill="#ebebeb"/>
+    <path d="m 144,2 h -31 l -1,3 h 1 l -1,4 31,0 1,-3 h -1 z" fill="none" stroke="#000000"/>
+    <path d="M 115,2 V 9" stroke="#000000"/>
+    <text x="128" y="7" font-size="3.5px" text-anchor="middle" fill="#ffffff">edited program</text>
+    <path d="M 141,2 V 9" stroke="#000000"/>
+  </g>
+</svg>

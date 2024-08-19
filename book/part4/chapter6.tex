@@ -1,0 +1,670 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter6}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "memory_protection.txt")?;
+}
+
+\chapter{Memory Protection}\label{chapter:memory-protection}
+
+Our operating system is now self-hosting, which means that we can edit and
+recompile its entire source code with itself. But the kernel is not finished.
+Indeed, a bug in a process can currently crash everything, instead of exiting
+this process with an error code, as required in \cref{chapter:processes}. To
+meet this requirement the plan was to make sure that a process can only access
+its own memory region (see \cref{subsection:process-design}). This chapter
+implements this strategy with the help of the microprocessor's Memory
+Protection Unit, which is presented first.
+
+\section{Memory Protection Unit}
+
+The Memory Protection Unit (MPU) is a component of the Cortex M3 microprocessor
+inside the microcontroller (see \cref{fig:sam3x8e}). As briefly introduced in
+\cref{section:cortex-m3}, it can divide the memory into regions, and can
+associate different access rights with each region. For instance, one region
+can be made inaccessible, another read-only, etc. If an instruction tries to
+read memory in an inaccessible region, or to write a value in a read-only one,
+a Memory Management exception is triggered. If the handler for this type of
+exceptions is not explicitly enabled, the generic Hard Fault handler is called
+instead.
+
+\subsection{Regions}
+
+The MPU uses 8 configurable regions, numbered from 0 to 7, plus a
+non-configurable ``background region''. Each of the 8 regions has the following
+configurable properties:
+\begin{itemize}
+  \item a {\em base address} and a {\em size}. These properties define the
+  region boundaries, namely $[\mathit{base\ address}, \mathit{base\
+  address}+\mathit{size}[$. {\em size} must be a power of 2 larger than or
+  equal to 32, and {\em base address} must be a multiple of {\em size}.
+
+  \item some {\em attributes}, which include {\em access permissions} such as
+  ``no access'', ``read-only'' or ``full access''.
+
+  \item an {\em enabled} bit. A disabled region does not have any effect on any
+  memory access.
+\end{itemize}
+
+The background region can only be enabled or disabled. If enabled, it allows
+full access to all memory addresses (\ie, its base address is 0, its size is
+4~GB, and its access permissions are ``full access'').
+
+Finally, the MPU as a whole can be enabled or not. If it is disabled, which is
+the default after a reset, all memory accesses are permitted. If it is enabled,
+a memory access at an address $a$ is checked as follows:
+\begin{itemize}
+  \item if $a$ is inside at least one enabled region, access is checked against
+  the permissions of the enabled region containing $a$ with the largest number.
+  For instance, if $a$ is inside region 1, enabled with ``no access'', and also
+  inside region 3, enabled as ``read-only'', then reading the value at $a$ is
+  permitted. As another example, if the background region is enabled and if $a$
+  is inside region 2, enabled with ``no access'', then any access to $a$ is
+  rejected (configurable regions take precedence over the background region).
+
+  \item if $a$ is outside the boundaries of all enabled regions, access is
+  rejected.
+\end{itemize}
+
+\subsection{Subregions}
+
+Regions whose size is larger than or equal to 256 bytes are divided in 8
+subregions of equal size. For instance, a 32~KB region starting at address
+512~KB is divided in 8 subregions of 4~KB each: subregion 0 in
+$[512~\rm{KB},516~\rm{KB}[$, subregion 1 in $[516~\rm{KB},520~\rm{KB}[$, etc.
+These subregions have the same attributes as the enclosing region, but can be
+independently enabled or disabled. For the above access checking rules, an
+address $a$ is inside an enabled region $R$ if $R$ is enabled, and if $a$ is
+inside an enabled subregion of $R$.
+
+\subsection{Privilege level}
+
+The MPU regions are configured with some registers, presented in the next
+section, inside the ``System'' memory region (see \cref{fig:boot-memory-map}).
+If the MPU is configured to forbid all memory accesses outside the RAM region
+of a process, then these registers become inaccessible. In other words, it
+becomes impossible to reconfigure the MPU to switch to another process. A
+solution to this problem could be to allow only memory accesses to the memory
+region of a process {\em or} to the ``System'' region. But then, due to a bug
+or an intentional ``attack'', the process could access the MPU registers and
+reconfigure them to allow all memory accesses!
+
+To solve these issues the Cortex M3 can run at one of two {\em privilege
+levels}: privileged or unprivileged. At the privileged level the MPU registers
+are always accessible, even if the MPU would otherwise forbid this. The above
+problems can thus be solved if 1) the kernel executes at the privileged level
+and 2) processes execute at the unprivileged level and have no way to change
+this level. Indeed, in this case:
+\begin{itemize}
+  \item the MPU can be configured to forbid any memory access outside a
+  process's memory region, while this process is running. The process is then
+  unable to reconfigure the MPU because it cannot access its registers, and
+  because it cannot switch to privileged level.
+
+  \item when the kernel is running it can access the MPU registers thanks to
+  its privileges, and can thus reconfigure the MPU to switch to another process.
+\end{itemize}
+
+Exception and interrupt handlers always execute at the privileged level, which
+ensures 1) above (after its initialization, the kernel always runs inside some
+exception or interrupt handler, such as the USART or SVC handler). Outside
+exception and interrupt handlers, \ie, in Thread mode, the microprocessor can
+run at any privilege level. This is configured with a bit of the CONTROL
+register (see \cref{subsection:process-stack-pointer}), which can only be
+modified at the privileged level (thus ensuring 2) above).
+
+In fact the CONTROL register, which can be accessed with the \arm{MRS} and
+\arm{MSR} instructions (see \cref{subsection:process-stack-pointer}), has the
+following binary format:
+
+\rs{CONTROL.bit_pattern(true)}
+
+\noindent where $p$ specifies the privilege level in Thread mode, and $s$
+selects the current Stack Pointer. More precisely, the default value $p=0$
+configures Thread mode to run at privileged level, and $p=1$ to run at
+unprivileged level. $s=1$ selects the Process Stack Pointer, and $s=0$ selects
+the Main Stack Pointer (see \cref{subsection:process-stack-pointer}). Setting
+$s$ in Handler mode has no effect since this mode always uses the Main Stack
+Pointer.
+
+\subsection{MPU registers}
+
+\begin{Table}
+  \begin{tabular}{|l|l|l|}\hline
+    \makecell{\thead{Name}} & \thead{Type} & \thead{Address} \\ \hline
+    \makecell{Control Register} & Read-Write & \rs{hex(MPU_CONTROL.address)} \\
+    \makecell{Region Number Register} & Read-Write &
+    \rs{hex(MPU_RNR.address)} \\
+    \makecell{Region Base Address Register} & Read-Write &
+    \rs{hex(MPU_RBAR.address)} \\
+    \makecell{Region Attribute and Size Register} & Read-Write &
+    \rs{hex(MPU_RASR.address)} \\ \hline
+  \end{tabular}
+  \caption{The Memory Protection Unit registers used in this
+    book.}\label{table:mpu-registers}
+\end{Table}
+
+The Memory Protection Unit is configured with the following registers (see
+\cref{table:mpu-registers}):
+\begin{itemize}
+  \item The Control Register enables or disables the MPU and the background
+  region. Its binary format is the following (we show only the bits that we
+  use):
+
+  \rs{MPU_CONTROL.bit_pattern(true)}
+
+  where $e=1$ enables the MPU, $e=0$ disables it, $b=1$ enables the background
+  region at the privileged level, and $b=0$ disables it. {\em The background
+  region is always disabled at the unprivileged level}.
+
+  \item The Region Number Register defines a ``current region number'', used by
+  the next registers ($\mathit{region}$ must be between 0 and 7 included):
+
+  \rs{MPU_RNR.bit_pattern(true)}
+
+  \item The Region Base Address Register defines the base address of a region:
+
+  \rs{MPU_RBAR.bit_pattern(true)}
+
+  If $v=1$ then writing into this register stores $\mathit{region}$ in the
+  Region Number Register, and sets the base address of this region. If $v=0$
+  writing into this register sets the base address of the region whose number
+  is stored in the Region Number Register. In both cases, the region's base
+  address is set to $32 * \mathit{base\ address}$. For instance, setting this
+  register to \hexa{B3}, \ie, setting $\mathit{base\ address}$ to 5, $v$ to 1
+  and $\mathit{region}$ to 3 sets the base address of region 3 to $32*5=160$.
+
+  \item The Region Attribute and Size Register defines the size, access
+  permissions and subregions of the region whose number is stored in the Region
+  Number Register. Its binary format is the following (we show only the bits
+  that we use):
+
+  \rs{MPU_RASR.bit_pattern(true)}
+
+  \begin{itemize}
+    \item $e=1$ enables this region, and $e=0$ disables it.
+
+    \item $\mathit{size}$ sets the region size to $2^{\mathit{size}+1}$
+    ($\mathit{size}$ must be larger than or equal to 4).
+
+    \item $\mathit{subregions}$ specifies which subregions are {\em disabled}:
+    the $i^{th}$ subregion, counting from 0, is disabled if the $i^{th}$ bit of
+    $\mathit{subregions}$ is 1. For instance,
+    $\mathit{subregions}=5=\bina{101}$ disables subregions 0 and 2 and enables
+    the others.
+
+    \item $\mathit{attributes}$ depends on the region type (Flash, RAM, etc).
+    For a RAM region, the recommended value is 6 (see Sections 10.23.5 and
+    10.23.9.1 in \cite{SAM3X8E}).
+
+    \item $\mathit{access}$ defines the region's access permissions.
+    $\mathit{access}=0$ means ``no access'', $3$ means ``full access'', and $7$
+    means ``read-only'' (see Table 10.39 in \cite{SAM3X8E}).
+  \end{itemize}
+\end{itemize}
+
+Note that, with the above registers, it is possible to set a base address which
+is not a multiple of the region size, as required. In this case the MPU uses
+this base address, rounded down to a multiple of the region size, to perform
+the access checks. For instance, if a region is set to $[96,96+64[$, the MPU
+internally uses $[64, 64+64[$ to check memory accesses.
+
+\section{Algorithm}
+
+Thanks to the Memory Protection Unit and the privilege levels we can make sure
+that a process can only access its own memory region as follows:
+\begin{itemize}
+  \item enable the MPU and the background region with the MPU Control Register.
+  The background region, only enabled in privileged mode, allows the kernel to
+  access any memory address, and in particular its own data structures.
+
+  \item set the privilege level of Thread mode to unprivileged with the CONTROL
+  register, so that processes run at this privilege level. This must not be
+  done during the kernel initialization, which runs in Thread mode. Otherwise
+  the kernel would loose its privileges. In particular, this would disable the
+  background region, and the kernel might no longer be able to access its own
+  data structures. Instead, this step can be done just before spawning the
+  initial process, in the spawn system call handler.
+
+  \item just before switching to a child process, or back to a parent process,
+  configure the MPU registers to forbid any memory access outside this
+  process's memory region, hereafter noted $[\mathit{begin},\mathit{end}[$.
+\end{itemize}
+
+The first two steps are trivial to implement, but the last one is not. Indeed,
+we cannot simply configure an MPU region with base address $\mathit{begin}$ and
+size $\mathit{end}-\mathit{begin}$. This is because the base address must be a
+multiple of the region size, which must itself be a power of 2 (larger than or
+equal to 32). For instance, $[\mathit{begin},\mathit{end}[\ = [32,128[$ is not
+a valid MPU region because $32$ is not a multiple of $96=128-32$, and because
+$96$ is not a power of 2. However, this interval can be {\em covered} with two
+MPU regions, namely $[32,64[$ and $[64,128[$. It can also be covered with
+subregions 1, 2, and 3 of the MPU region $[0,256[$. This example shows that, in
+general, several MPU regions or subregions are needed to cover a given interval.
+
+The problem is now to find a way to compute the base address, size, and enabled
+subregions of each MPU region so that they cover a given
+$[\mathit{begin},\mathit{end}[$ interval. A prerequisite is that ${begin}$ and
+$\mathit{end}$ are multiple of 32, since the smallest possible MPU region or
+subregion is 32 bytes. This is why we rounded these values to multiples of 32
+in \cref{chapter:processes}. If the MPU had a large enough number of regions we
+could then cover the $[\mathit{begin},\mathit{end}[$ interval with many 32
+bytes regions. But it has only 8. To solve this problem we need to use regions
+with the largest possible sizes.
+
+Consider for instance an interval $I_0=[32,\ldots[$, ignoring the
+$\mathit{end}$ part for now. The largest region which can cover its beginning
+part is $[0,256[$, with subregion $[0,32[$ disabled. This leaves an interval
+$I_1=[256,\ldots[$ to cover. The largest region which can cover its beginning
+part is $[0,2048[$, with subregion $[0,256[$ disabled. By repeating this
+process we then get the MPU regions $[0,16~\rm{KB}[$ and $[0,128~\rm{KB}[$,
+with their subregion 0 disabled. Note that the $4^{th}$ region is larger than
+the RAM (96~KB). Hence, with this method, we never need more than 4 regions to
+cover the beginning part of a process's memory interval (contained in RAM). The
+same method, applied to the end part, shows that the 4 remaining MPU regions
+are sufficient to cover the rest.
+
+\subsection{Definition}\label{subsection:mpu-regions-algorithm}
+
+The above ideas can be formalized as follows. To cover the
+$[\mathit{begin},\mathit{end}[$ interval, where $\mathit{begin}$ and
+$\mathit{end}$ are multiples of $2^{\mathit{level}-3}$ (with $\mathit{level}
+\ge 8$ and $\mathit{begin} < \mathit{end}$):
+\begin{itemize}
+  \item configure a region of size $s=2^{\mathit{level}}$, with base address
+  $b_0$ equal to $\mathit{begin}$ rounded down to a multiple of $s$, and with
+  subregions covering $[\mathit{begin}, \mathit{gap\_begin}[$, where
+  $\mathit{gap\_begin} = \min(b_0 + s, \mathit{end}) > \mathit{begin}$.
+
+  \item configure a region of size $s$, with base address $b_1$ equal to
+  $\mathit{end}$ rounded up to a multiple of $s$, minus $s$, and with
+  subregions covering $[\mathit{gap\_end}, \mathit{end}[$, where
+  $\mathit{gap\_end} = \max(\mathit{begin}, \mathit{b_1}) < \mathit{end}$.
+
+  \item if $\mathit{gap\_begin} < \mathit{gap\_end}$, repeat the above steps
+  with $\mathit{begin}$, $\mathit{end}$, and $\mathit{level}$ replaced with
+  $\mathit{gap\_begin}$, $\mathit{gap\_end}$, and $\mathit{level}+3$,
+  respectively.
+\end{itemize}
+
+The first two steps configure regions which satisfy the MPU constraints since,
+by construction, $s$ is a power of 2, and $b_0$ and $b_1$ are multiples of $s$.
+Moreover, by construction too, $\mathit{gap\_begin}$ and $\mathit{gap\_end}$
+are inside their respective region, and are multiples of
+$2^{\mathit{level}-3}=s/8$ (since $\mathit{begin}$, $\mathit{end}$, $b_0$,
+$b_1$, and $s$ are). This ensures that $[\mathit{begin}, \mathit{gap\_begin}[$
+and $[\mathit{gap\_end}, \mathit{end}[$ can be covered with subregions.
+
+Finally, if $\mathit{gap\_begin}=\mathit{end}$ then $\mathit{gap\_begin} >
+\mathit{gap\_end}$ since $\mathit{end} > \mathit{gap\_end}$. Hence, if
+$\mathit{gap\_begin}$ is less than $\mathit{gap\_end}$ it is necessarily equal
+to $b_0+s$, and is thus a multiple of $s$. A similar argument shows that, in
+this case, $\mathit{gap\_end}$ is necessarily a multiple of $s$ too. The third
+step above thus satisfies the required hypotheses to repeat the process with
+$\mathit{level}+3$.
+
+For an interval inside the 96~KB of RAM, and starting with $\mathit{level}=8$,
+this process can be repeated at most 4 times. Indeed, a fifth repetition would
+imply a non-empty $[\mathit{gap\_begin}, \mathit{gap\_end}[$ region whose size
+is a multiple of $s=2^{17}=128$~KB. And this is not possible since this is
+larger than the RAM.
+
+\subsection{Example}
+
+To illustrate this, consider the case
+$[\mathit{begin},\mathit{end}[\ = [672,4448]$ (see \cref{fig:mpu-regions}).
+
+At the first iteration, with $\mathit{level}=8$, the first step gives $s=256$,
+$b_0 = \lfloor 672/256 \rfloor * 256 = 512$, and $\mathit{gap\_begin} = b_0 + s
+= 768$. We thus configure a region with base address 512, size 256, and with
+its last 3 subregions enabled so that they cover $[\mathit{begin},
+\mathit{gap\_begin}[\ = [672,768[$. The second step gives $b_1 = \lfloor
+(4448+255)/256 \rfloor * 256 - 256 = \lfloor (4448-1)/256 \rfloor * 256 = 4352$
+and $\mathit{gap\_end} = b_1 = 4352$. We thus configure a second region with
+base address 4352, size 256, and with its first 3 subregions enabled so that
+they cover $[\mathit{gap\_end}, \mathit{end}[\ = [4352,4448[$.
+
+At the second iteration, with $\mathit{begin}=768$, $\mathit{end}=4352$, and
+$\mathit{level}=11$, the first step gives $s=2048$, $b_0 = \lfloor 768/2048
+\rfloor * 2048 = 0$, and $\mathit{gap\_begin} = b_0 + s = 2048$. We thus
+configure a third region with base address 0, size 2048, and with its last 5
+subregions enabled so that they cover $[\mathit{begin}, \mathit{gap\_begin}[ =
+[768,2048[$. The second step gives $b_1 = \lfloor (4352-1)/2048 \rfloor * 2048
+= 4096$ and $\mathit{gap\_end}=b_1=4096$. We thus configure a fourth region
+with base address 4096, size 2048, and with its first subregion enabled so that
+it covers $[\mathit{gap\_end}, \mathit{end}[\ = [4096,4352[$.
+
+At the third and last iteration, with $\mathit{begin}=2048$,
+$\mathit{end}=4096$, and $\mathit{level}=14$, the first step gives $s=16384$,
+$b_0 = \lfloor 2048/16384 \rfloor * 16384 = 0$, and $\mathit{gap\_begin} =
+\min(b_0 + s, \mathit{end}) = 4096$. We thus configure a fifth region with base
+address 0, size 16384, and with its subregion 1 enabled so that it covers
+$[\mathit{begin}, \mathit{gap\_begin}[\ = [2048,4096[$. The second step gives
+exactly the same region and subregion.
+
+\begin{Figure}
+  \input{figures/chapter6/mpu-regions.tex}
+
+  \caption{The MPU regions used to forbid any memory access outside the
+  $[672,4448[$ memory interval (blue). Enabled regions are shown with their
+  enabled subregions in green, and their disabled subregions in
+  gray.}\label{fig:mpu-regions}
+\end{Figure}
+
+\section{Implementation}
+
+\rust{
+  let mut t = Transpiler5::new_str(&context.get_file_content("toys.toy"));
+  t.add_unchanged("fn os_init(code: &u32, heap: &u32, stack: &u32);",
+      "fn get_process_stack_pointer(");
+}
+
+The above algorithm uses the $\min$ and $\max$ mathematical functions. The
+former is already implemented in our kernel, but the latter is not. We also
+need a function to set the CONTROL register with a Move to Special Register
+from Register (MSR) instruction (see \cref{subsection:process-stack-pointer}).
+We add them just after the {\tt min} function:
+
+\toy{
+fn max(x: u32, y: u32) -> u32 {
+  if x > y { return x; } else { return y; }
+}
+
+fn set_control_register(value: u32) [
+  /*MSR_CONTROL_R0*/ 2283074432;
+  /*MOV_PC_LR*/ 18167;
+]
+}%toy
+
+\rust{
+  t.add_unchanged("fn get_process_stack_pointer(",
+      "fn os_set_current_process(");
+}
+
+The MPU regions must be configured when the current process is changed to a new
+one (a child or a parent). This is done in {\tt os\_set\_current\_process}. We
+thus implement the above algorithm just before this function.
+
+The following function configures the MPU region whose number is $\it{id}$. It
+enables it, sets its size to $s=2^{\mathit{level}}$, and sets its base address
+and subregions in order to cover the $[\mathit{begin},\mathit{end}[$ interval.
+It assumes that $\mathit{begin}$ and $\mathit{end}$ are multiple of $s/8$, that
+$\mathit{begin} > \mathit{end}$, and that $\mathit{end}-\mathit{begin} \le s$.
+It sets the base address to $\mathit{begin}$ rounded down to a multiple of $s$,
+\ie, to $\lfloor \mathit{begin}/s \rfloor * s = (\mathit{begin} \gg
+\mathit{level}) \ll \mathit{level}$. It then sets the attributes, size and
+disabled sub regions as follows:
+\begin{itemize}
+  \item $\mathit{access}$ is set to 3 (``full access''), $\mathit{attributes}$
+  to 6 (``RAM''), and $e$ to 1 (``enabled''), yielding
+  \rs{hex_dec(0x03060001u32)},
+
+  \item $\mathit{size}$ is set to $\mathit{level}-1$ (recall that the region
+  size is $2^{\mathit{size}+1}$),
+
+  \item the disabled subregions are set to $255 - ((2^e-1) - (2^b-1)) = 255 -
+  2^e + 2^b = 255 - (1 \ll e) + (1 \ll b)$, where $[b,e[$ are
+  the indices of the enabled subregions. For instance, if $b=2$ and $e=5$, this
+  gives $2^e-1=\bina{11111}$, $2^b-1=\bina{11}$, $(2^e-1) - (2^b-1) =
+  \bina{11100}$, and $255 - ((2^e-1) - (2^b-1)) = \bina{11111111} -
+  \bina{11100} = \bina{11100011}$, which disables the subregions other than 2,
+  3, or 4.
+\end{itemize}
+
+\toy{
+fn mpu_set_region(id: u32, begin: u32, end: u32, level: u32) {
+  const MPU_REGION_BASE_ADDRESS_REGISTER: &u32 = 3758157212;
+  const MPU_REGION_ATTRIBUTE_AND_SIZE_REGISTER: &u32 = 3758157216;
+  const RAM_FULL_ACCESS_ENABLED: u32 = 50724865;
+  let base_address = (begin >> level) << level;
+  begin = (begin - base_address) >> (level - 3);
+  end = (end - base_address) >> (level - 3);
+  *MPU_REGION_BASE_ADDRESS_REGISTER = base_address | 16 | id;
+  *MPU_REGION_ATTRIBUTE_AND_SIZE_REGISTER = RAM_FULL_ACCESS_ENABLED |
+      (255 - (1 << end) + (1 << begin)) << 8 | (level - 1) << 1;
+}
+}%toy
+
+We use this function in the following one, which performs one iteration of the
+algorithm in \cref{subsection:mpu-regions-algorithm}. It assumes that {\tt
+*}$\mathit{begin}$ and {\tt *}$\mathit{end}$ are multiple of
+$2^{\mathit{level}-3}$, and that {\tt *}$\mathit{begin} >$ {\tt
+*}$\mathit{end}$. It configures the MPU regions with number $\mathit{id}$ and
+$\mathit{id}+1$ to cover as much as possible of the $[${\tt *}$\mathit{begin},$
+{\tt *}$\mathit{end}[$ interval, and updates these variables to the (possibly
+empty) uncovered gap.
+
+\toy{
+fn mpu_set_end_regions(id: u32, begin: &u32, end: &u32, level: u32) {
+  let gap_begin = min(((*begin >> level) + 1) << level, *end);
+  let gap_end = max(*begin, ((*end - 1) >> level) << level);
+  mpu_set_region(id, *begin, gap_begin, level);
+  mpu_set_region(id + 1, gap_end, *end, level);
+  *begin = min(gap_begin, gap_end);
+  *end = gap_end;
+}
+}%toy
+
+The next function calls it 4 times, with increasing $\mathit{level}$ values and
+distinct region numbers, to cover the whole $[\mathit{begin}, \mathit{end}[$
+interval (whose bounds must be multiple of 32 and whose size must be less than
+128~KB). Note that, for some of these calls, $\mathit{begin}$ and
+$\mathit{end}$ might be equal. The above functions actually support this, even
+if this common value is not a multiple of $2^{\mathit{level}-3}$. In such
+cases, they give MPU regions whose all subregions are disabled. Thus, by always
+calling {\tt mpu\_set\_end\_regions} exactly 4 times, we make sure that
+unneeded regions are disabled (not doing so could keep unwanted regions
+configured for the previous process).
+
+\toy{
+fn mpu_set_regions(begin: u32, end: u32) {
+  mpu_set_end_regions(0, &begin, &end, 8);
+  mpu_set_end_regions(2, &begin, &end, 11);
+  mpu_set_end_regions(4, &begin, &end, 14);
+  mpu_set_end_regions(6, &begin, &end, 17);
+}
+}%toy
+
+We finally call the above function in {\tt os\_set\_current\_process} to forbid
+all memory accesses outside the memory region of the new current process:
+
+\toy{
+@fn os_set_current_process(kernel: &Kernel, process: &Process) {
+@  set_process_stack_pointer(process.saved_context as &u32);
+  mpu_set_regions(process.begin as u32, process.end as u32);
+@  kernel.current_process = process;
+@}
+}%toy
+
+\rust{
+  t.add_unchanged("const FALSE: u32 = 0;",
+      "\tcontext.status_register = 1 << 24;");
+}
+
+To make sure that this process cannot change the MPU registers to grant itself
+more access rights, we also need to set the privilege level of Thread mode to
+unprivileged. For that we set the $p$ bit of the CONTROL register to 1 in {\tt
+os\_spawn}, just before spawning the initial process (which has no parent by
+definition):
+
+\toy{
+@  context.status_register = 1 << 24;
+@  if parent != null {
+@    parent.saved_context = get_process_stack_pointer() as &Context;
+  } else {
+    set_control_register(/*unprivileged*/1);
+  }
+}%toy
+
+\rust{
+  t.add_unchanged("\tlet process = kernel.heap as &Process;",
+    "\tconst SVC_HANDLER_PRIORITY_REGISTER:");
+}
+
+Last but not least, we need to enable the MPU and the background region with
+the MPU Control Register. We do this at the end of the {\tt os\_init} function,
+but only if the user presses 'y':
+
+\toy{
+@  const SVC_HANDLER_PRIORITY_REGISTER: &u32 = 3758157084;
+  const MPU_CONTROL_REGISTER: &u32 = 3758157204;
+@  *SVC_HANDLER_PRIORITY_REGISTER = 255 << 24;
+  if keyboard_wait_char() == 'y' { *MPU_CONTROL_REGISTER = 5; }
+@\}
+}%toy
+
+Without this precaution, a bug in the above implementation could cause a crash
+in the kernel, the shell, the text editor or the compiler. We would then have
+no way to fix the error. Instead, with this precaution, and if a problem
+occurs, we can reboot with the MPU disabled and fix the issue.
+
+\rust{
+  t.add_unchanged("fn system_call(", "EOF");
+}
+
+\section{Compilation and tests}
+
+Type ``{\tt edit toys.toy}'' and Enter to edit the current kernel source code,
+and update it as described above. For reference, we also provide this code in
+the {\tt toys\_v3.txt} file in \toypcurl{sources.zip}. Then save it and compile
+it with ``{\tt toyc toys toys.toy}''. Repeat these steps until the compilation
+is successful.
+
+\rust{
+  t.write_toy5("website/sources/toys_v3.txt")?;
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  assert_eq!(display.borrow().get_text(), ">");
+
+  // Recompile kernel with MPU protection added.
+  context.type_ascii("EDIT TOYS.TOY\n");
+  let kernel_source = t.get_toy5();
+  context.enter_text_editor_text(&kernel_source);
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  context.type_ascii("TOYC TOYS TOYS.TOY\n");
+  assert_eq!(display.borrow().get_text(), ">toyc toys toys.toy\n>");
+
+  let mut t = Transpiler5::new_str(&context.get_file_content("hello.toy"));
+  t.add_unchanged("fn main();", "fn main() ");
+}
+
+To test these changes we can introduce a voluntary bug in our ``{\tt hello}''
+program. Type ``{\tt edit hello.toy}'' to edit it and update its main function
+as follows:
+
+\toy{
+@fn main() {
+@  write(1 /*standard output*/, HELLO, 13);
+  const KERNEL_POINTER_REGISTER: &u32 = 1074666140;
+  *KERNEL_POINTER_REGISTER = 0;
+@  exit(0);
+@}
+}%toy
+
+Then type ``{\tt toyc hello hello.toy}'' to compile it. This bug sets to 0 the
+General Purpose Backup Register containing the address of the {\tt Kernel} data
+structure (see its definition in ``{\tt toys.toy}''). It could thus make the
+kernel unable to access its own data structures. To confirm this, type ``{\tt
+hello}'' to run this program. The shell should become unresponsive, because the
+kernel crashed. Indeed, we haven't restarted it yet, and the MPU is thus not
+yet enabled.
+
+\rust{
+  context.type_ascii("EDIT HELLO.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  // Step 2: compile it
+  context.type_ascii("TOYC HELLO HELLO.TOY\n");
+  assert_eq!(display.borrow().get_text(), ">toyc hello hello.toy\n>");
+  // Step 3: run it -> crash of kernel
+
+  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    context.type_ascii("HELLO\n");
+  }));
+  assert!(result.is_err());
+  assert_eq!(
+      context.micro_controller().borrow_mut().debug_get32(1074666140), 0);
+}
+
+Now reset the Arduino, and type ``{\tt y}'' to enable the MPU. This should
+launch the shell, and you should be able to launch the text editor and compile
+programs. If not reset the Arduino again and type any key other than ``{\tt
+y}'' to launch the kernel without MPU. Then repeat the steps from the beginning
+of this section.
+
+\rust{
+  // Restart to test new kernel with MPU
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  context.type_ascii("Y"); // enable MPU
+  assert_eq!(display.borrow().get_text(), ">");
+}
+
+Finally, type ``{\tt hello}'' to run this program again. This time the MPU
+should trigger a Hard Fault when the process attempts to set the {\tt
+KERNEL\_POINTER\_REGISTER} to 0. This should cause the kernel to terminate this
+process with an {\tt INTERNAL\_ERROR} status. In turn, the shell should print
+``{\tt Hello, World!}'' followed by the message ``{\tt hello crashed}''. But
+the shell and the kernel should now continue to work.
+
+\rust{
+  // Retry re-run, no crash of kernel
+  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    context.type_ascii("HELLO\n");
+  }));
+  assert!(result.is_err());
+  assert_ne!(
+      context.micro_controller().borrow_mut().debug_get32(1074666140), 0);
+
+  // Restart (only needed in emulator)
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  context.type_ascii("Y"); // enable MPU
+
+  let mut t = Transpiler5::default();
+}
+
+At this stage we no longer need the possibility to disable the MPU when
+launching the kernel. Type ``{\tt edit toys.toy}'' and replace the line
+
+\toy{
+  if keyboard_wait_char() == 'y' { *MPU_CONTROL_REGISTER = 5; }
+}%toy
+
+\noindent with
+
+\toy{
+  *MPU_CONTROL_REGISTER = 5; /*Enable MPU and background region*/
+}%toy
+
+\noindent Then recompile the kernel with ``{\tt toyc toys toys.toy}'' and reset
+the Arduino. The shell should start without having to press any key.
+
+\rust{
+  // Remove temporary security measure.
+  context.type_ascii("EDIT TOYS.TOY\n");
+  context.enter_text_editor_text(&kernel_source.replace(
+    "if keyboard_wait_char() == 'y' { *MPU_CONTROL_REGISTER = 5; }",
+    "*MPU_CONTROL_REGISTER = 5; /*Enable MPU and background region*/"));
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  context.type_ascii("TOYC TOYS TOYS.TOY\n");
+  assert_eq!(display.borrow().get_text(), ">toyc toys toys.toy\n>");
+
+  // Check security measure removed.
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  assert_eq!(display.borrow().get_text(), ">");
+}

@@ -1,0 +1,1009 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter2}
+\setcounter{rustid}{0}
+
+\chapter[First Steps with the Cortex M3]{First Steps with the\\Cortex
+M3}\label{chapter:microprocessor}
+
+This chapter gives a short overview of the Arduino Due microprocessor, the ARM
+Cortex M3. This knowledge is necessary to go beyond our first steps with the
+Arduino, in the previous chapter. We use it at the end to write our first
+program, to blink a LED.
+
+\section{Overview of the Cortex M3}\label{section:cortex-m3}
+
+The Cortex M3 microprocessor has a core instruction processing part and a few
+other internal components (see \cref{fig:sam3x8e}). The instruction processing
+part loads instructions from memory, decodes them and executes them, in an
+endless loop. These instructions form the Cortex M3 {\em machine language}.
+They are encoded in 16 or 32 bits, and must always start at even addresses.
+They can be divided in 3 main categories, namely {\em data processing}, {\em
+load and store}, and {\em conditional and jump} instructions:
+\begin{itemize}
+  \item The data processing instructions perform arithmetic and logic
+  operations (addition, multiplication, bitwise and, etc). They can only
+  operate on values stored in registers (or encoded in the instruction itself),
+  and can only store the result in registers. The Cortex M3 has 16 32-bit
+  registers available for this purpose, named R0 to R15. An example data
+  processing instruction is ``add the values in R1 and R2, and store the result
+  in R5''.
+
+  \item The load and store instructions load values from memory into registers,
+  and store values from registers in memory. An example load instruction is
+  ``load the value from memory at the address in R3, offset by 10, and put the
+  result in R0''. If R3 contains $60$, this instruction loads the value at
+  address $70$ and store it in R0.
+
+  \item The conditional and jump instructions can modify the normal flow of
+  execution. Instructions are normally executed sequentially, in increasing
+  address order. In other words, in the normal case, after the instruction $i$
+  at address $a$ is executed, the instruction at address $a+2$ (or $a+4$ if $i$
+  is a 32-bit instruction) is executed. This can be changed with conditional
+  instructions or jump instructions. As their name suggest, conditional
+  instructions are skipped if some condition is met. And jump instructions
+  cause the execution flow to {\em jump}, \ie, to continue at an arbitrary
+  address.
+\end{itemize}
+
+The other components of the Cortex M3 include a timer, an interrupt controller,
+and a memory protection unit (they are presented in more details later in this
+book):
+\begin{itemize}
+  \item The timer component, called SysTick, can be used to measure time. It
+  decrements a 24 bit counter by 1 at each clock cycle, and restarts it to a
+  configurable value when it reaches 0.
+
+  \item The interrupt controller, called the Nested Vector Interrupt Controller
+  (NVIC), provides another way to modify the normal execution flow, other than
+  the conditional and jump instructions. It handles errors, also called {\em
+  exceptions}, such as trying to read the memory at a reserved address. It also
+  handles external events, also called {\em interrupts}, such as the reception
+  of some data on an input pin. When an error or event occurs, the NVIC causes
+  the execution flow to jump to a predefined {\em handler} address, associated
+  with each error or event source.
+
+  \item The memory protection unit can be used to control memory accesses. It
+  can divide the memory into regions, and can associate different access rights
+  with each region. For instance, one region can be made inaccessible, another
+  read-only, etc. This can be used to protect programs from each other, \ie, to
+  avoid a crash in a program to crash another one, or to prevent a program from
+  reading sensitive data (\eg, passwords) in another program's memory (see
+  \cref{chapter:memory-protection}).
+\end{itemize}
+
+\section{Registers}\label{section:registers}
+
+As said above, the Cortex M3 instructions can use 16 registers named R0 to R15.
+The first 13 registers can be used for any purpose, but the last 3 have
+specific usages. They are called the Program Counter, Link Register and Stack
+Pointer, and their main goal is to make it easier to split programs into
+smaller building blocks called {\em subroutines}. This section presents these
+registers and how subroutines work.
+
+\subsection{Program Counter}\label{subsection:program-counter}
+
+The R15 register is also called the {\em Program Counter} (PC). This register
+contains the address of the currently executing instruction. More precisely,
+just before executing an instruction at address $a$, it contains the value $a$.
+However, {\em during the execution of an instruction at address $a$, the PC
+contains the value $a+4$}.
+
+Writing into the PC is also possible, and causes a jump. Since instructions
+must start at even addresses, the least significant bit of the jump address is
+always ignored. For instance, attempting to write 17 into the PC actually
+writes 16, and jumps to address 16. In fact, due to historical
+reasons\footnote{Some ARM processors support two instruction sets. They use
+this bit to specify the instruction set to use after the jump. The Cortex M3
+supports only one instruction set but still uses this mechanism.}, some
+instructions {\em require} writing $a+1$ into the PC in order to jump to the
+instruction at address $a$. $a+1$ is called the instruction's {\em interworking
+address}.
+
+\subsection{Link Register}
+
+\begin{Figure}
+  \input{figures/chapter2/branch-with-link.tex}
+
+  \caption{The Link Register. Branch with Link (\arm{BL}) instructions set the
+  LR to the interworking address of the next instruction (here \arm{MUL}) when
+  jumping to another instruction (here \arm{SUB}). Copying the LR into the PC
+  ``resumes'' execution (here at \arm{MUL}).}\label{fig:branch-with-link}
+\end{Figure}
+
+The R14 register is also called the {\em Link Register} (LR). Some jump
+instructions, called {\em branch with link}, set this register to the {\em
+interworking} address of the next instruction in sequential order. For
+instance, a 32-bit branch with link instruction at address $a$, jumping to
+address $b$, sets the LR to $a+5$. This allows the code starting at $b$, when
+its task is done, to ``resume'' the execution of the initial code sequence,
+\ie, to jump to the instruction at $a+4$. For this, it just needs to write the
+value stored in the LR into the PC (see \cref{fig:branch-with-link}).
+
+\subsection{Stack Pointer}\label{subsection:stack-pointer}
+
+\begin{Figure}
+  \input{figures/chapter2/descending-stack.tex}
+
+  \caption{The Stack Pointer. When the SP contains the value $a$, pushing a
+    32-bit value, here \hexa{31415926}, stores it at address $a-4$ and updates
+    the SP to $a-4$. Popping gets the value stored at the address given by the
+    SP, and adds 4 to the SP.}\label{fig:descending-stack}
+\end{Figure}
+
+The R13 register is also called the {\em Stack Pointer} (SP). A {\em stack} is
+similar to a pile of plates: one can only add, or {\em push}, a value (a plate)
+on top of the stack (the pile), not inside it. Similarly, one can only remove,
+or {\em pop}, a value from the top of the stack. A {\em pointer} is a register
+or memory location which contains the address of some value, called the pointer
+target. The Stack Pointer contains the address of the top stack value. It is
+used by two instructions called \arm{PUSH} and \arm{POP}, which can push the
+values in some registers into the stack, and pop values from the stack into
+registers. This stack is called {\em descending}\footnote{Note that it may {\em
+look} ascending, if addresses are representing in ascending order from top to
+bottom.} because pushing a new value {\em decreases} the Stack Pointer's value.
+For instance, if the SP contains the value $a$, pushing $x$ means storing $x$
+in memory at address $a-4$, and updating the SP value to $a-4$ (see
+\cref{fig:descending-stack}).
+
+Note: from now on we use register names to designate either the register
+itself, or the value it contains, depending on the context. For instance, in
+``add R1 and R2 and store the result in R3'', R1 and R2 designate the values
+stored in these registers, while R3 designates the register itself.
+
+\subsection{Subroutines}\label{subsection:subroutines}
+
+\begin{Figure}
+  \input{figures/chapter2/subroutine-calls.tex}
+
+  \caption{Nested subroutine calls. Before doing a branch with link to $c$ (3),
+  subroutine B pushes the LR (\ie, the interworking return address $a+5$ in A)
+  onto the stack (2).}\label{fig:subroutine-calls}
+\end{Figure}
+
+The main goal of the above registers is to organize programs into smaller
+subprograms of increasingly higher abstraction levels, in a similar way as
+digital circuits, or even living organisms, are organized (made of atoms,
+grouped in molecules, grouped in cells, grouped in organs, grouped into
+organisms). For instance, a program to draw figures could have a subprogram to
+draw text, which could itself use a ``sub'' subprogram to draw characters. The
+advantage of this method is that each level can be understood and
+programmed without knowing how the lower levels work internally.
+
+At the machine code level considered here, these subprograms are called {\em
+subroutines}. A subroutine is a list of instructions, some of which can {\em
+call} other subroutines. After it has been executed, a subroutine {\em returns}
+to the subroutine which called it. A call from an instruction at address $a$ in
+subroutine A (\eg, ``draw figure''), to subroutine B (\eg, ``draw text''), is a
+jump to B's first instruction, preceded by instructions allowing B to return in
+subroutine A. This includes storing the (interworking) {\em return address}
+$a+5$ in the Link Register, as described above. However, this is generally not
+sufficient. Consider the case where subroutine B needs to call a third
+subroutine C (\eg, ``draw character''), from address $b+4$ (see
+\cref{fig:subroutine-calls}). It cannot simply store its own (interworking)
+return address $b+9$ in the Link Register, otherwise it would loose the value
+$a+5$ already stored there, and would no longer be able to return to A! To
+solve this, B needs to save the current LR value first. The solution is to push
+it on the stack. This is generally done at the very beginning of each
+subroutine (see \cref{fig:subroutine-calls}). Returning to the {\em caller},
+\ie, to A, can then be done by popping this value from the stack, into the PC.
+
+\section{Instruction set}\label{section:instruction-set}
+
+The Cortex M3 machine language has about 100 instructions. However, some
+instructions have several variants and several encodings, on 16 or 32 bits. For
+instance, the \arm{ADD} instruction has 4 variants and 14 encodings. In total,
+there are more than 350 different encodings. Here we present only the main
+instructions and encodings used in this book (about 40 -- a few more are
+presented later), and we give only a short overview for each. All the details
+about all the instructions can be found in \cite{ARMv7}.
+
+\subsection{Data processing instructions}\label{subsection:data-insns}
+
+\begin{Paragraph}[]
+\rs{ADD_RDN_IMM8.definition()}\\
+\rs{ADD_RD_RN_RM.definition()}\\
+\rs{ADD_SP_SP_IMM7.definition()}\\
+\rs{ADD_RD_SP_IMM8.definition()}
+\end{Paragraph}
+
+\rust{
+  let add = &ADD_RDN_IMM8;
+  let mov = &MOV_RD_RM;
+  let z = 3;
+  let c = 45;
+  let encoding = add.encode(&[z, c]);
+  let operation = &add.concrete_semantics(encoding, false);
+}
+
+The \arm{ADD} instruction adds two registers, or a register and a constant,
+depending on the variant used, and stores the result in a register. For
+instance, the first variant, \rs{ADD_RDN_IMM8.semantics()}, adds the constant
+$\rs{add.fields[1].name}$ to register $\mathrm{R}\rs{add.fields[0].name}$ and
+stores the result in $\mathrm{R}z$. It is encoded on 16 bits. The most
+significant ones are fixed to \bina{00110}. The next 3 bits define which
+register is used, from R0 to R7. The last 8 bits define the constant to add to
+this register. For instance, by replacing $\rs{add.fields[0].name}$ with
+\rs{bin_dec(z)} and $\rs{add.fields[1].name}$ with \rs{bin_dec(c)} we get the
+instruction \rs{operation}. Its encoding is obtained by replacing
+$\rs{add.fields[0].name}$ and $\rs{add.fields[1].name}$ with their values in
+the encoding schema, yielding \rs{bin_hex16(encoding)}.
+
+\begin{Paragraph}
+\rs{SUB_RDN_IMM8.definition()}\\
+\rs{SUB_RD_RN_RM.definition()}\\
+\rs{SUB_SP_SP_IMM7.definition()}\\
+\rs{MUL_RDM_RN.definition()}
+\end{Paragraph}
+
+The \arm{SUB} and \arm{MUL} instructions perform subtractions and
+multiplications. Note that additions, subtractions, and multiplications are
+done modulo $2^{32}$, and can thus overflow (see
+\cref{subsection:int-overflow}).
+
+\begin{Paragraph}
+\rs{UDIV_RD_RN_RM.definition()}
+\end{Paragraph}
+
+The \arm{UDIV} instruction, encoded on 32-bit, performs integer divisions, such
+as $\lfloor 14 / 4 \rfloor = 3$. $\mathrm{R}x$, $\mathrm{R}y$, and
+$\mathrm{R}z$ must not be the SP or the PC.
+
+\begin{Paragraph}
+\rs{AND_RDN_RM.definition()}\\
+\rs{ORR_RDN_RM.definition()}
+\end{Paragraph}
+
+The \arm{AND} instruction performs bitwise AND operations, such as \bina{1010}
+$\wedge$ \bina{1100} = \bina{1000}. Similarly, the \arm{ORR} instruction
+performs bitwise OR operations, such as \bina{1010} $\vee$ \bina{1100} =
+\bina{1110}.
+
+\begin{Paragraph}
+\rs{LSL_RD_RM_IMM5.definition()}\\
+\rs{LSL_RDN_RM.definition()}
+\end{Paragraph}
+
+The Logical Shift Left (\arm{LSL}) instruction shifts the 32 bits of a register
+to the left by a certain amount. For instance, shifting the value
+\bina{1011101} to the left by 3 inserts 3 zeros on the right (and drops the 3
+most significant bits), yielding \bina{1011101{\em 000}}. Shifting to the left
+by $n$ bits is equivalent to multiplying by $2^n$ (modulo $2^{32}$).
+
+\begin{Paragraph}
+\rs{LSR_RD_RM_IMM5.definition()}\\
+\rs{LSR_RDN_RM.definition()}
+\end{Paragraph}
+
+The Logical Shift Right (\arm{LSR}) instruction shifts the 32 bits of a
+register to the right by a certain amount. For instance, shifting the value
+\bina{1011101} to the right by 3 drops the 3 least significant bits, yielding
+\bina{1011}. Shifting to the right by $n$ bits is equivalent to dividing by
+$2^n$.
+
+\begin{Paragraph}
+\rs{MOV_RD_IMM8.definition()}\\
+\rs{MOV_RD_RM.definition()}
+\end{Paragraph}
+
+The Move (\arm{MOV}) instructions ``move'' (or more precisely copy) a value
+from a register or a constant into a register. The
+$\rs{mov.fields[0].name}{:}\rs{mov.fields[1].name}$ notation above denotes a
+concatenation of binary numbers. For instance, replacing
+$\rs{mov.fields[0].name}$ with \bina{1} and $\rs{mov.fields[1].name}$ with
+\bina{011} gives \bina{1011}, and thus
+$\mathrm{R}\rs{mov.fields[0].name}{:}\rs{mov.fields[1].name}=\mathrm{R}11$. The
+\rs{mov.operation()} instruction can thus access the 16 registers R0 to R15.
+
+\begin{Paragraph}
+\rs{MOVW_RD_IMM16.definition()}
+\end{Paragraph}
+
+The Move Wide (\arm{MOVW}) instruction copies a 16-bit constant into a
+register, which must not be the SP or the PC. It can copy values up to 65535,
+whereas the \arm{MOV} instruction is restricted to values up to 255.
+
+\begin{Paragraph}
+\rs{MOVT_RD_IMM16.definition()}
+\end{Paragraph}
+
+The Move Top (\arm{MOVT}) instruction copies a 16-bit constant into the 16 most
+significant bits of a register (which must not be the SP or the PC), leaving
+the others unchanged. Together with \arm{MOVW}, it can be used to load a 32-bit
+constant in a register. For this, first load the least significant bits with
+\arm{MOVW} (which erases the most significant bits), then load the most
+significant bits with \arm{MOVT}.
+
+\begin{Paragraph}
+\rs{CMP_RN_IMM8.definition()}\\
+\rs{CMP_RN_RM.definition()}
+\end{Paragraph}
+
+The Compare (\arm{CMP}) instructions compare two registers, or a register and a
+constant. They store the comparison result, \eg, whether $\mathrm{R}x$ is less
+than, equal to, or greater than $\mathrm{R}y$ in a special register, different
+from the R0-R15 ones. This special register, similar to the Carry register in
+\cref{subsection:alu-and-ram-example}, is used by conditional
+instructions\footnote{Other instructions can store results in this special
+register. For simplicity, we don't use this feature.} (see
+\cref{subsection:conditional-insns}).
+
+\begin{Paragraph}
+\rs{ADR_RD_MINUS_IMM12.definition()}
+\end{Paragraph}
+
+The Address To Register (\arm{ADR}) instruction subtracts a constant from the
+PC and stores the result in a register (which must not be the SP or the PC).
+More precisely, it subtracts a constant from the largest multiple of 4 which is
+less than or equal to the PC, noted $\lfloor\mathrm{PC}\rfloor_4$. For
+instance, if the PC value is $102=4*25+2$, then
+$\lfloor\mathrm{PC}\rfloor_4=100$. If the PC value is $100$, then
+$\lfloor\mathrm{PC}\rfloor_4=100$. Do not forget also that when an instruction
+executes, the PC value is the address of this instruction plus 4. Hence, an
+\arm{ADR} instruction at address $a$ subtracts a constant from $\lfloor a+4
+\rfloor_4=\lfloor a\rfloor_4+4$.
+
+Incidentally, this raises the question of how 16 and 32-bit instructions are
+stored in memory. We saw in \cref{section:boot-assistant-first-steps} that
+32-bit values are stored in little endian order. In fact everything is stored
+in this order, including instructions. When a 16-bit instruction of the form
+
+\vspace{1pt}
+\noindent\hfill\rs{GENERIC_16BIT.bit_pattern()}
+\vspace{3pt}
+
+\noindent is stored at address $a$, then $byte_0$ is stored at address $a$, and
+$byte_1$ at address $a+1$. Similarly, when a 32-bit instruction of the form
+
+\vspace{1pt}
+\noindent\hfill\rs{GENERIC_32BIT.bit_pattern()}
+\vspace{3pt}
+
+\noindent is stored at address $a$, then $byte_0$ is stored at address $a$,
+$byte_1$ at address $a+1$, $byte_2$ at address $a+2$, and $byte_3$ at address
+$a+3$\footnote{These bytes are displayed in a different order in \cite{ARMv7},
+see Figure A3-5, pA3-68.}.
+
+\subsection{Load and store instructions}\label{subsection:load-store-insns}
+
+\begin{Paragraph}[]
+\rs{LDR_RT_RN_IMM5.definition()}\\
+\rs{LDR_RT_SP_IMM8.definition()}\\
+\rs{LDR_RT_PC_IMM8.definition()}\\
+\rs{LDRH_RT_RN_IMM5.definition()}\\
+\rs{LDRB_RT_RN_IMM5.definition()}
+\end{Paragraph}
+
+The Load Register (\arm{LDR}*) instructions load a value from memory and store
+it in a register. There are 3 variants, \arm{LDR}, \arm{LDRH}(alf), and
+\arm{LDRB}(yte), to load 32-bit, 16-bit, and 8-bit values from memory. The
+address from which the value must be loaded can be in one of the R0-R7
+registers, in the SP, or in the PC (in this case the memory address actually
+used is $\lfloor \mathrm{PC} \rfloor_4 = \lfloor a+4 \rfloor_4$, where $a$ is
+the instruction's address). In all cases, a constant offset $c$ can be added to
+this address.
+
+\begin{Paragraph}
+\rs{STR_RT_RN_IMM5.definition()}\\
+\rs{STR_RT_SP_IMM8.definition()}\\
+\rs{STRH_RT_RN_IMM5.definition()}\\
+\rs{STRB_RT_RN_IMM5.definition()}
+\end{Paragraph}
+
+The Store Register (\arm{STR}*) instructions read a value in a register and
+store it in memory. There are 3 variants, \arm{STR}, \arm{STRH}(alf), and
+\arm{STRB}(yte), to store the 32-bits of the register's value, only its 16
+least significant bits, or only its 8 least significant bits. The address at
+which these bits must be stored can be in one of the R0-R7 registers, or in the
+SP. In all cases, a constant offset $c$ can be added to this address.
+
+\begin{Paragraph}
+\rs{PUSH.definition()}
+\end{Paragraph}
+
+The \arm{PUSH} instruction pushes one or more of the R0-R7 registers, and
+optionally the LR, onto the stack. A register R$n$ is pushed if and only if bit
+$n$ of the $\rs{PUSH.fields[0].name}$ field is 1. For instance, if
+$\rs{PUSH.fields[0].name}$=\bina{11010} then registers R1, R3 and R4 are
+pushed. The LR is pushed if the $\rs{PUSH.fields[1].name}$ field is 1. These
+registers are pushed in {\em decreasing index order} (\ie, first the LR if it
+is selected, then R7 if selected, and so on down to R0). The selected register
+with the smallest index thus ends up on top of the stack (see
+\cref{fig:push-pop-insns}).
+
+\begin{Paragraph}
+\rs{POP.definition()}
+\end{Paragraph}
+
+The \arm{POP} instruction pops some values from the stack, and stores them in
+one or more of the R0-R7 registers, and optionally in the PC. A popped value is
+stored in register R$n$ if and only if bit $n$ of the $\rs{POP.fields[0].name}$
+field is 1. A popped value is stored in the PC if the $\rs{POP.fields[1].name}$
+field is 1. In this case, it must be an interworking address. The number of
+values popped from the stack is equal to the number of bits set to 1 in the
+previous fields. The popped values are stored in registers in {\em increasing
+index order} (\ie, first in R0 if it is selected, then in R1 if selected, and
+so on up to the PC -- see \cref{fig:push-pop-insns}).
+
+\begin{Figure}
+  \input{figures/chapter2/push-pop-insns.tex}
+
+  \caption{The \arm{PUSH} and \arm{POP} instructions. Registers are pushed in
+  decreasing index order (here LR, then R3, then R2). They are popped in
+  increasing index order (here R0, then R1, then PC -- set to 18 = 19 - 1
+  because of interworking addresses).}\label{fig:push-pop-insns}
+\end{Figure}
+
+\subsection{Jump instructions}\label{subsection:jump-insns}
+
+\begin{Paragraph}[]
+\rs{B_IMM11.definition()}
+\end{Paragraph}
+
+The Branch (\arm{B}) instruction jumps to an address which is obtained by
+adding a constant $2 * c$ to the PC. More precisely:
+\begin{itemize}
+  \item if $2 * c < 2^{12-1}$, \ie, if $2 * c < 2048$, $2 * c$ is added to the
+  PC,
+
+  \item otherwise, $2 * c - 2^{12} = 2 * c - 4096$, which is negative, is added
+  to the PC.
+\end{itemize}
+
+\begin{Paragraph}
+\rs{BX_RM.definition()}
+\end{Paragraph}
+
+The Branch and Exchange (\arm{BX}) instruction jumps to an {\em interworking}
+target address stored in a register. It thus jumps to the instruction at
+address $t$ if the register contains an odd value $t+1$.
+
+\begin{Paragraph}
+\rs{BLX_RM.definition()}
+\end{Paragraph}
+
+The Branch with Link and Exchange (\arm{BLX}) instruction does a branch {\em
+with link} operation. It does the same jump as the \arm{BX} instruction, but it
+also sets the LR to the {\em interworking address} of the instruction just
+after itself. This is done so that the LR can be directly copied into the PC to
+return from the called subroutine, without having to think about
+interworking addresses. $\mathrm{R}x$ must not be the PC.
+
+\begin{Paragraph}
+\rs{BL_IMM22.definition()}
+\end{Paragraph}
+
+The Branch with Link (\arm{BL}) instruction\footnote{For simplicity, we use a
+restricted version of the \arm{BL} instruction, with 2 bits fixed to 1. The
+unrestricted instruction can support $\pm$16~MB jumps.} jumps to an address
+which is obtained by adding a constant $2 * c$ to the PC (where $c=c_1{:}c_0$).
+More precisely:
+\begin{itemize}
+  \item if $2 * c < 2^{23-1}$, \ie, if $2 * c < 4\ \mathrm{MB}$, $2 * c$ is
+  added to the PC,
+
+  \item otherwise, $2 * c - 2^{23} = 2 * c - 8\ \mathrm{MB}$, which is
+  negative, is added to the PC.
+\end{itemize}
+In addition, the \arm{BL} instruction sets the LR to the {\em interworking
+address} of the instruction just after itself. This is done so that the LR can
+be directly copied into the PC to return from the called subroutine, without
+having to think about interworking addresses.
+
+\begin{Paragraph}
+\rs{TBB_RN_RM.definition()}
+\end{Paragraph}
+
+The Table Branch Byte (\arm{TBB}) instruction jumps to an address which is
+obtained by adding to the PC (the double of) a byte offset, read in a table.
+For instance, suppose there is a list of 5 bytes, [$12, 34, 56, 78, 90$],
+starting at address $a$ in memory. If
+$\mathrm{R}\rs{TBB_RN_RM.fields[0].name}=a$ and
+$\mathrm{R}\rs{TBB_RN_RM.fields[1].name}=3$, then this instruction adds to the
+PC the double of the $3^{rd}$ value in this table (counting from 0), \ie,
+$2*78$. Note that $\mathrm{R}\rs{TBB_RN_RM.fields[0].name}$ can be the PC (but
+not $\mathrm{R}\rs{TBB_RN_RM.fields[1].name}$ -- none of them can be the SP).
+In this case the table must start at the PC, \ie, just after the \arm{TBB}
+instruction itself (because the PC is the instruction's address plus 4).
+
+\subsection{Conditional instructions}\label{subsection:conditional-insns}
+
+\begin{Paragraph}[]
+\rs{IT.definition()}
+\end{Paragraph}
+
+The If Then (\arm{IT}) instruction makes the following one to four instructions
+conditional. This means that these instructions, noted I1, I2, I3, and I4, can
+either be executed normally, or skipped. For instance, I1 and I3 could be
+executed, while I2 and I4 are skipped (\ie, after I1, execution would continue
+with I3, ignoring I2). Whether I$n$ is executed or skipped depends on $c_0$,
+$c_1$, etc, and on the result of the last \arm{CMP} instruction\footnote{For
+simplicity, we use \arm{IT} instructions only immediately after a \arm{CMP}
+instruction.}, as explained below.
+
+First, I1 is always made conditional by the \arm{IT} instruction, but I2, I3,
+and I4 can be made conditional or not. This depends on $c_2{:}c_3{:}c_4{:}c_5$,
+which must not be 0:
+\begin{itemize}
+  \item if $c_2{:}c_3{:}c_4{:}c_5=1000_2$, then only I1 is made conditional,
+
+  \item if $c_2{:}c_3{:}c_4{:}c_5=c_2100_2$, then only I1 and I2 are made
+  conditional,
+
+  \item if $c_2{:}c_3{:}c_4{:}c_5=c_2c_310_2$, then only I1, I2 and I3 are made
+  conditional,
+
+  \item if $c_2{:}c_3{:}c_4{:}c_5=c_2c_3c_41_2$, then I1, I2, I3 and I4 are
+  made conditional.
+\end{itemize}
+
+Second, if an instruction I$n$ is made conditional, it is executed if and only
+if the last comparison result is the one corresponding to $c_0{:}c_n$ (noted
+$cond_n$), as defined in \cref{table:cond-values}. As an example, if the
+\arm{IT} instruction follows a \arm{CMP} R1 R2 instruction, then to execute I1
+if R1$\ <\ $R2, and I2 and I3 otherwise (with I4 unconditional), we must use
+$c_0=001_2$, $c_1=1_2$ and $c_2{:}c_3{:}c_4{:}c_5=0010_2$.
+
+Finally, it should be noted that I1, I2, I3, I4 cannot be arbitrary
+instructions. For instance, they cannot be \arm{IT} instructions themselves.
+Jump instructions are also forbidden, except for the last conditional
+instruction.
+
+\begin{Table}
+  \renewcommand\cellgape{\Gape[2pt][0pt]}
+  \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+    \makecell{\thead{Value}} &
+    \rs{bin4(Condition::EQ as u32)} &
+    \rs{bin4(Condition::NE as u32)} &
+    \rs{bin4(Condition::GE as u32)} &
+    \rs{bin4(Condition::LT as u32)} &
+    \rs{bin4(Condition::GT as u32)} &
+    \rs{bin4(Condition::LE as u32)}\\ \hline
+    \makecell{\thead{Meaning}} &
+    $a = b$ &
+    $a \ne b$ &
+    $a \ge b$ &
+    $a < b$ &
+    $a > b$ &
+    $a \le b$\\ \hline
+  \end{tabular}
+  \caption{Meaning of the $cond_n=c_0{:}c_n$ values used in this book, for an
+  \arm{IT} instruction following a \arm{CMP} $compare(a,b)$
+  instruction.}\label{table:cond-values}
+\end{Table}
+
+\section{Vector Table}\label{section:vector-table}
+
+When it {\em boots}, \ie, when it is powered on or after a reset, the Cortex M3
+starts by reading the {\em Vector Table}, a list of 32 bit words beginning at
+address \hexa{0}. More precisely, the microprocessor initializes the Link
+Register to \hexa{FFFFFFFF}, the Stack Pointer to the value at offset \hexa{0}
+in this table, and the Program Counter to the interworking address at offset
+\hexa{4}, also called the {\em Reset handler}. It then starts executing
+instructions from there.
+
+When the boot selection bit (\cf \cref{subsection:boot-mode}) is 0, addresses
+\hexa{0} and \hexa{4} are mapped to the ROM, and the Vector Table is thus read
+from ROM. The Cortex M3 then starts executing the boot assistant program stored
+in ROM. When the boot selection bit is 1, these addresses are mapped to the
+flash memory, and the Vector Table is thus read from flash. In this case, the
+flash memory must contain valid initial values for the Stack Pointer and the
+Program Counter, at addresses \hexa{80000} and \hexa{80004}, respectively.
+
+The other values in the Vector Table are either reserved for future use, or
+contain interworking addresses used to handle errors and external events. There
+is one value for each type of error (also called exceptions) and external
+events (also called interrupts). For instance, the value at offset \hexa{14} is
+used to handle ``bus faults'', such as trying to access a reserved memory
+address. When such an error occurs, execution jumps to the interworking address
+stored at this offset (this process is described in more details in
+\cref{section:nvic}). Another value, at offset \hexa{84}, is used to handle
+events occuring in the Universal Synchronous Asynchronous Receiver Transmitter
+(USART) -- such as the reception of new data. When such an interrupt occurs,
+execution jumps to the interworking address stored at offset \hexa{84}. By
+default, however, these specific exception and interrupt handlers are not
+enabled (they must be enabled explicitly). Instead, all exceptions and
+interrupts are handled by a generic ``hard fault'' handler, at offset \hexa{C}.
+In other words, by default, if any exception or interrupt occurs (other than a
+reset), execution jumps to the interworking address stored at offset \hexa{C}.
+
+The Vector Table can be moved to another location in memory, for instance in
+RAM. For this a new table must first be written somewhere in memory, starting
+at an address which is multiple of 256. This address must then be written in
+the Vector Table Offset Register, at address \hexa{E000ED08} in the ``System''
+memory region (see \cref{fig:boot-memory-map}).
+
+\section{First program}\label{section:blink-led}
+
+We now know enough about the Arduino to be able to write our first program. We
+have already seen how to turn a LED on and off ``manually'', with a wire or by
+writing values in memory with the boot assistant. Lets now do the same with a
+program. More precisely, lets write a program to blink the ``L'' LED on the
+Arduino. At a high level, this program should execute the following steps:
+\begin{enumerate}
+  \item initialize the PIO controller to control the LED,
+  \item turn the LED on with the PIO controller,
+  \item wait some time,
+  \item turn the LED off with the PIO controller,
+  \item wait some time,
+  \item go back to step 2.
+\end{enumerate}
+
+We see that steps 3 and 5 are the same. To avoid duplicating the instructions
+doing this, we can put them in a subroutine, called twice from the main program.
+
+\subsection{Subroutine}
+
+Lets start by writing the subroutine. The most basic method to wait for some
+time is to count to some value, as in a hide and seek game. To do this we can
+use two registers, say R0 and R1, with R0 containing the current count, and R1
+the value at which the count must be stopped. At a high level, we can thus
+use the following algorithm for our subroutine:
+\begin{enumerate}
+  \item set R0 to 0,
+  \item set R1 to the maximum counter value,
+  \item add 1 to R0,
+  \item if R0 $\ne$ R1 go back to step 3,
+  \item return to the caller.
+\end{enumerate}
+
+Each step can be implemented with Cortex M3 instructions, as follows:
+\begin{itemize}
+  \item Step 1 can be done with a \arm{MOV} R0 $\leftarrow$ 0 instruction.
+
+  \item Step 2 needs to store a large value in R1, lets say 1 million (the
+  Cortex M3 counts fast). This can't be done with a \arm{MOV} instruction, nor
+  with a \arm{MOVW} instruction. We could use \arm{MOVW} and a \arm{MOVT}, but
+  using a \arm{LDR} instruction with the PC as a base address is simpler and
+  shorter. The maximum counter value can then be put at the end of the
+  subroutine, after the instruction for step 5.
+
+  \item Step 3 is a simple \arm{ADD} R0 $\leftarrow$ R0 + 1 instruction.
+
+  \item Step 4 must be done with a \arm{CMP} R0 R1 instruction, followed by an
+  \arm{IT} instruction to make the ``go back to step 3'' part conditional. This
+  optional jump is a simple \arm{B} instruction.
+
+  \item Step 5 must move the LR into the PC. This could be done with a
+  \arm{MOV} instruction, but lets use a \arm{POP} instruction instead, for
+  illustrative purpose. For this the LR must be pushed on the stack first. We
+  can add a step 0 for this. This step can also push R0 and R1 at the same
+  time. These registers can then be restored at the end, so that calling the
+  subroutine has no ``side effect''.
+\end{itemize}
+
+\rust{
+  let mut a = Assembler::default();
+  const R0: u32 = 0;
+  const R1: u32 = 1;
+  const WAIT_CYCLES: u32 = 1000000;
+  const START_ADDRESS: u32 = 0x20071000;
+
+  // subroutine:
+  a.label("wait");
+  a.push_list(&[R0, R1], true);
+  a.mov_rd_imm8(R0, 0);
+  a.ldr_rt_pc_imm8(R1, "wait_cycles");
+  a.label("loop");
+  a.add_rdn_imm8(R0, 1);
+  a.cmp_rn_rm(R0, R1);
+  a.if_then(Condition::NE, &[]);
+  a.b_imm11("loop");
+  a.pop_list(&[R0, R1], true);
+  a.label("wait_cycles");
+  a.u32_data(WAIT_CYCLES, "maximum counter value");
+
+  // main:
+  a.label("start");
+  a.ldr_rt_pc_imm8(R0, "controller");
+  a.ldr_rt_pc_imm8(R1, "pb27");
+  a.str_rt_rn_imm5(R1, R0, 0); // PIOB_PER = PIO_PB27;
+  a.str_rt_rn_imm5(R1, R0, 0x10); // PIOB_OER = PIO_PB27;
+  a.str_rt_rn_imm5(R1, R0, 0x60); // PIOB_PUDR = PIO_PB27;
+  a.label("main_loop");
+  a.str_rt_rn_imm5(R1, R0, 0x30); // PIOB_SODR = PIO_PB27;
+  a.bl_imm22("wait");
+  a.str_rt_rn_imm5(R1, R0, 0x34); // PIOB_CODR = PIO_PB27;
+  a.bl_imm22("wait");
+  a.b_imm11("main_loop");
+  a.label("controller");
+  a.u32_data(PIOB_PER, "Start address of PIO B registers");
+  a.label("pb27");
+  a.u32_data(1 << 27, "Pin 27");
+}
+
+Going down to the machine code level, steps 0 and 1 give
+
+\rs{a.get_listing(0..2)}
+
+\noindent where the first column is the instruction's name and high level
+description, the second one is its binary encoding (obtained from the patterns
+in \cref{section:instruction-set}), the third is the corresponding hexadecimal
+value, and the fourth is the instruction's offset from the beginning of the
+program, in hexadecimal too. For step 2 we need to know where the maximum
+counter value will be stored. Since we don't know this yet, lets skip this
+instruction for now. We know it will use 2 bytes, so the instruction for step
+3 starts at offset $6$:
+
+\rs{a.get_listing(3..4)}
+
+For step 4, the optional jump must go back to step 3, \ie, at offset $6$. This
+can be done with a \arm{B} instruction after the CMP and IT instructions, at
+offset $12$. When this instruction executes, the PC contains $12+4=16$.
+Hence, this instruction must subtract $16-6=10$ from the PC to jump back to
+step 3. Due to the encoding format of the \arm{B} instruction, we must then use
+$c=2043$ (because $2*2043-4096=-10$):
+
+\rs{a.get_listing(4..7)}
+
+We finish the subroutine with a POP instruction for step 5, as discussed above,
+followed by the maximum counter value (\hexa{F4240}=1000000):
+
+\rs{a.get_listing(7..9)}
+
+\noindent We now know that this maximum value is at offset $16$, and we want to
+load it with a \arm{LDR} instruction at offset $4$. When this instruction
+executes, the PC contains $4+4=8$. {\em Assuming that the subroutine starts at
+an address which is a multiple of 4}, then $\lfloor PC \rfloor_4$ is also equal
+to $8$. This instruction must thus add $16-8=8=4*2$ to the PC to load the above
+value. This gives our missing \arm{LDR} instruction:
+
+\rs{a.get_listing(2..3)}
+
+Putting all this together, we get the following machine code for the subroutine:
+
+\rs{a.get_machine_code_listing(0..9)}
+
+\noindent where bytes are shown, in increasing address order, {\em from right
+to left}. Indeed, the left to right order would show all the bytes in the
+reverse order, which would make it hard to recognize the above instruction
+encodings. It would also make it harder to store this program in memory with
+the boot assistant word by word. Indeed, we would have to reverse each group of
+4 bytes to get a value which could be entered in the boot assistant. With the
+right to left order, we get these values directly.
+
+\subsection{Main program}\label{subsection:blink-led-main}
+
+We can now implement the main program. Its first step consists in initializing
+the PIO controller so that the pin to which the LED is connected, PB27, is
+configured as an output pin, controlled by the microprocessor. In such cases we
+don't need the pull-up resistor, so we want to disable it as well. Going back
+to \cref{section:pio}, this requires to write the value $2^{27}$ in the PIO
+Enable Register, Output Enable Register, and Pull-up Disable Register of the
+PIO B controller (\ie, at addresses \rs{hex(PIOB_PER)}, \rs{hex(PIOB_OER)}, and
+\rs{hex(PIOB_PUDR)}). For this we must load this value and the 3 addresses in
+registers first\footnote{In the following, for brevity, we often use ``we''
+instead of ``the program'' or ``some instructions''. For instance, here, this
+sentence means ``For this {\em the program} must load $\ldots$''.}. We can then
+use 3 \arm{STR} instructions to store the value at the 3 addresses. In fact,
+since \arm{STR} instructions can store a value at an address {\em plus an
+offset}, we just need to load one address in a register, namely
+\rs{hex(PIOB_PER)}. We can then get the other 2 addresses with the offsets
+\hexa{10} and \hexa{60}. As for the subroutine, lets use 2 \arm{LDR}
+instructions to load the \rs{hex(PIOB_PER)} and $2^{27}$ values, stored at the
+end of the program, in registers R0 and R1 respectively. Since we don't know
+the program size yet, lets skip these two \arm{LDR} instructions for now. We
+thus start with the 3 \arm{STR} instructions instead, at offset 24=\hexa{18}
+(\ie, 4 bytes after the end of the subroutine, to leave space for the 2
+\arm{LDR} instructions):
+
+\rs{a.get_listing(11..14)}
+
+The second step of the main program is to turn the LED on. This requires
+writing the value $2^{27}$ in the Set Output Data Register, \ie, at address
+\rs{hex(PIOB_SODR)}. This can be done with another \arm{STR} instruction:
+
+\rs{a.get_listing(14..15)}
+
+We now want to wait some time, by calling the subroutine. For this we need a
+Branch with Link instruction. This instruction is at offset $32$, and the
+subroutine starts at offset $0$, so we need to subtract $32+4=36$ from the PC
+to jump there. Due to the encoding format of the \arm{BL} instruction, this
+means we need to use $c=4194286$ (because $2*4194286-8*1024*1024=-36$):
+
+\rs{a.get_listing(15..16)}
+
+After that we want to turn the LED off and wait some time again. This requires
+writing the value $2^{27}$ in the Clear Output Data Register, \ie, at address
+\rs{hex(PIOB_CODR)}, and calling the subroutine again. Following the same
+method as
+above, we get:
+
+\rs{a.get_listing(16..18)}
+
+The last step of the main program is go back to step 2, with a \arm{B}
+instruction. Following the same reasoning as we did for the subroutine, we find
+that we need to use $c=2040$, to jump from offset 42 to offset 30. With the two
+values \rs{hex(PIOB_PER)} and $2^{27}$ just after this last instruction we
+obtain:
+
+\rs{a.get_listing(18..21)}
+
+Knowing the location of these two values, \ie, offsets 44 and 48, we can now
+implement the two \arm{LDR} instructions we skipped at the beginning (for the
+two \arm{LDR} instructions, $\lfloor PC \rfloor_4$ contains $24=14_{16}+4$):
+
+\rs{a.get_listing(9..11)}
+
+Putting everything together, we obtain the complete machine code for the main
+program and its subroutine, with the main program starting at offset \hexa{14}:
+
+\rs{a.get_machine_code_listing(0..21)}
+
+\subsection{Run from RAM}\label{subsection:blink-led-boot-assistant}
+
+As mentioned in \cref{section:boot-assistant}, the boot assistant has a
+\code{G}$address$\code{\#} command to run a program. We show here how to use it
+to run our ``blink LED'' program.
+
+The \code{G}$address$\code{\#} command seems to take as argument the start
+address of a ``mini Vector Table'' (this is not documented in \cite{SAM3X8E}).
+Indeed, this command does not jump to $address$, but to the {\em interworking
+address} stored at $address+4$ (just as the Cortex M3 starts by jumping to the
+interworking address stored at address $4$). Presumably, the value at $address$
+is meant to contain an initial Stack Pointer value, as in the Vector Table.
+However, experiments show that this is not the case, \ie, programs run with
+this command execute on the stack used by the boot assistant itself. They can
+return to the boot assistant by moving the LR to the PC, but the SP must be the
+same on return as what it was on entry.
+
+To run our program with the boot assistant, the easiest way is to store it in
+RAM. Lets put it after the first 4~KB, used by the boot assistant, at address
+\hexa{20071000} (a multiple of 4, as we assumed when we wrote it). To run it
+with the \code{G} command we must have the interworking address of its first
+instruction (\hexa{20071000} + \hexa{14} + 1) somewhere in memory too. We can
+put it just after our program, at address \hexa{20071034}. We should then be
+able to run the program with the \code{G20071030\#} command. To verify this,
+connect the Arduino to your computer and open a terminal as you did in
+\cref{section:boot-assistant-first-steps}. Then write the program into RAM with
+the following commands:
+
+\rust{
+  let micro_controller = RefCell::new(MicroController::default());
+  let blink_counter = Rc::new(RefCell::new(BlinkLedCounter::default()));
+  micro_controller.borrow_mut().set_max_boot_program_go_cycles(1000);
+  micro_controller.borrow_mut().set_pio_device(blink_counter.clone());
+  let mut boot_helper = BootHelper::new(&micro_controller);
+  let words = a.machine_code();
+  for line in boot_assistant_commands(&words, START_ADDRESS) {
+    boot_helper.write(line.as_str());
+  }
+  boot_helper.write(format!("W{:08X},{:08X}#",
+    START_ADDRESS + 4 * words.len() as u32,
+    START_ADDRESS + a.label_offset("start") + 1).as_str());
+}
+\rs{host_log_multicols(&boot_helper.read(), 2)}
+
+\noindent And launch it with
+
+\rust{
+  boot_helper.write(&format!("W{:X},0000000A#",
+      START_ADDRESS + a.label_offset("wait_cycles")));
+  boot_helper.read();
+  boot_helper.write("G20071030#");
+  assert!(blink_counter.borrow().blink_count >= 8);
+}
+\rs{host_log(&boot_helper.read())}
+
+\indent If you didn't make any typo in the above commands, you should see the
+LED blinking! After 5 seconds the \code{boot\_helper.py} program exits because
+it hasn't received any response from the boot assistant, but our program
+continues to run on the Arduino. You can then reset the Arduino to go back to
+the boot assistant (at this point our program is lost).
+
+\subsection{Run from flash}\label{subsection:blink-led-flash}
+
+To avoid losing our program after it is run, we can store it in flash memory.
+We can even run it directly when the Arduino boots, without going through the
+boot assistant. This requires two things: storing a proper Vector Table in
+flash memory (\cf \cref{section:vector-table}), and setting the boot mode
+selection bit to boot from flash (\cf \cref{section:flash-controller}).
+
+By default, only the first, second and fourth words of the Vector Table are
+used (for the initial SP, initial PC, and the “hard fault” handler -- the third
+one is “reserved”), since the exception and interrupt handlers are disabled by
+default. We can thus store our program after these 4 words, \ie, starting at
+offset \hexa{10} (a multiple of 4, as needed). The initial PC must then be set
+to \hexa{80000} (the beginning of the flash memory region), plus \hexa{10},
+plus \hexa{14} (the offset of the main program after the subroutine), plus 1
+(an interworking address is required here). The initial SP can be set to almost
+any address in RAM (our program pushes at most 3 words on the stack, so any
+value larger than 12 bytes after the beginning of the RAM region is fine). Lets
+use the end of the contiguous RAM region, \hexa{20088000} (see
+\cref{fig:boot-memory-map}). Finally, the ``hard fault'' handler can be set to
+the same value as the initial PC, \hexa{80025}, so that, in case of errors, our
+program restarts from the beginning.
+
+The above Vector Table and our program use 17 words in total, much less than
+the 64 words of a flash memory page. However, as we have seen in
+\cref{section:flash-controller}, writing a page in flash memory requires
+writing 64 words in all cases. To avoid this extra work, we provide a program
+called \code{flash\_helper.py}. This program extends \code{boot\_helper.py}
+with an additional command named \code{flash\#}. When it runs on the host
+computer, this program does the following:
+\begin{itemize}
+  \item When it receives a \code{W}{\em address},{\em value}\code{\#} command
+  with an address in flash memory, {\em instead of sending it to the Arduino},
+  \code{flash\_helper.py} sends 64 \code{w} commands to read the corresponding
+  page. It stores the result in memory (on the host computer), and writes {\em
+  value} in this copy of the page.
+
+  \item When it receives the \code{flash\#} command, \code{flash\_helper.py}
+  writes the (modified) page copies in the Arduino's flash memory. For this,
+  for each page, it sends 64 \code{W} commands, followed by a \code{W} command
+  in the Flash Controller Command Register to write the page, followed by
+  \code{w} commands to read the Status Register until the write is done (\cf
+  \cref{section:flash-controller}).
+
+  \item When it receives any other boot assistant command,
+  \code{flash\_helper.py} sends it directly to the Arduino.
+\end{itemize}
+
+Note that with this program, we can modify a single word in flash memory,
+without modifying the 63 other words of the page, with only two commands
+(namely a \code{W} and a \code{flash\#} -- with \code{boot\_helper.py} more
+than 128 commands would be needed). Lets use it to write our program:
+
+\rust{
+  const FLASH_ADDRESS: u32 = 0x80010;
+  let micro_controller = RefCell::new(MicroController::default());
+  let blink_counter = Rc::new(RefCell::new(BlinkLedCounter::default()));
+  micro_controller.borrow_mut().set_pio_device(blink_counter.clone());
+  let mut flash_helper = FlashHelper::new(&micro_controller);
+  let init_pc = FLASH_ADDRESS + a.label_offset("start") + 1;
+  flash_helper.write("W80000,20088000#");
+  flash_helper.write(format!("W80004,{init_pc:08X}#").as_str());
+  flash_helper.write(format!("W8000C,{init_pc:08X}#").as_str());
+  let words = a.machine_code();
+  for line in boot_assistant_commands(&words, FLASH_ADDRESS) {
+    flash_helper.write(line.as_str());
+  }
+  let mut log = flash_helper.read();
+  flash_helper.write(&format!("W{:X},0000000A#",
+      FLASH_ADDRESS + a.label_offset("wait_cycles")));
+  flash_helper.read();
+  flash_helper.write("flash#");
+  log.push('\n');
+  log.push_str(flash_helper.read().as_str());
+  context.add_program("machine_code_blink", a);
+}
+\rs{host_log_multicols(&log, 2)}
+
+At this point we could run our program with a \code{G80000\#} command, and we
+would no longer loose it after a reset. Instead, lets set the boot mode
+selection bit to boot from flash (\cf \cref{section:flash-controller}):
+
+\rust{
+  flash_helper.write(&format!("W{:X},5A00010B#", EEFC0_FCR.address));
+  micro_controller.borrow_mut().reset();
+  micro_controller.borrow_mut().run(1000);
+  assert!(blink_counter.borrow().blink_count >= 8);
+}
+\rs{host_log(&flash_helper.read())}
+
+\noindent Then press the RESET button on the Arduino: if you didn't make any
+typo in the above commands, you should see the LED blinking. However, two
+things can be noticed. First, the LED blinks slower than before (about 1 blink
+every 2 seconds). This is because, by default, the Arduino's clock runs at
+4MHz. But when the boot assistant starts, it sets the clock to a larger
+frequency. Second, if you watch the LED at least 30 seconds, you can see that
+some blinks are shorter than others. This is because our program is reset by
+the Watchdog Timer (\cf \cref{section:overview-sam3x8e}). The boot assistant
+disables it when it starts, which is why we didn't have this issue before. We
+explain in \cref{chapter:clock} how to configure the clock and how to disable
+the Watchdog Timer.
+
+Our program is now persistent and runs autonomously, without needing the boot
+assistant. But what if we want to modify it, for instance to make it blink
+faster? For this we need to go back to the boot assistant. The only way to do
+this at this point is to do a full ERASE, in order to reset the boot mode
+selection bit to boot from ROM. Unfortunately, this also erases the flash
+memory, and thus our program too. We would then need to flash the whole program
+again, even if we just need to change one word (the one containing the maximum
+counter value). To avoid this issue, the solution is to add a few instructions
+at the beginning of our program, in order to set the boot mode selection to boot
+from ROM as soon as our program starts. In this way, when we reset it, we will
+automatically run the boot assistant again, without needing to do an ERASE.

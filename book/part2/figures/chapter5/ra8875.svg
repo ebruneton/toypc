@@ -1,0 +1,135 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="70mm" viewBox="0 0 145 70" version="1.1">
+  <defs/>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="M 81,63 V 5 H 5 V 63 Z" fill="#0e6e8e" fill-opacity="0.86544" stroke-width="0"/>
+    <text x="-59" y="17" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">VIN</text>
+    <text x="-59" y="21" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">GND</text>
+    <text x="-59" y="25" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">3Vo</text>
+    <text x="-59" y="29" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">LITE</text>
+    <text x="-59" y="33" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">SCK</text>
+    <text x="-59" y="37" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">MISO</text>
+    <text x="-59" y="41" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">MOSI</text>
+    <text x="-59" y="45" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">CS</text>
+    <text x="-59" y="49" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">RST</text>
+    <text x="-59" y="53" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">WAIT</text>
+    <text x="-59" y="57" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">INT</text>
+    <text x="-59" y="61" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">Y+</text>
+    <text x="-59" y="65" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">Y-</text>
+    <text x="-59" y="69" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">X-</text>
+    <text x="-59" y="73" transform="rotate(-90)" font-size="3.88056px" fill="#ffffff">X+</text>
+    <text x="19" y="9.5" font-size="3.88056px" text-anchor="middle" fill="#ffffff">RA8875</text>
+    <text x="16" y="13" font-size="2.82222px" text-anchor="middle" fill="#ffffff">SPI-&gt;40p TFT</text>
+    <text x="14" y="16" font-size="2.82222px" text-anchor="middle" fill="#ffffff">with Touch</text>
+    <text x="17" y="19" font-size="2.82222px" text-anchor="middle" fill="#ffffff">800x480 max</text>
+    <rect width="1" height="2" x="55" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="22" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="24" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="26" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="28" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="30" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="32" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="34" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="36" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="38" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="40" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="42" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="56" y="44" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="22" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="24" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="26" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="28" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="30" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="32" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="34" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="36" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="38" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="40" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="42" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="1" x="31" y="44" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="53" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="51" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="49" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="47" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="45" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="43" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="41" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="39" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="37" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="35" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="33" y="20" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="31" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="33" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="35" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="37" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="39" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="41" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="43" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="45" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="47" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="49" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="51" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="53" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="55" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="57" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="59" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="61" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="63" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="65" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="1" x="67" y="11" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="55" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="53" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="51" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="49" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="47" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="45" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="43" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="41" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="39" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="37" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="35" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="2" x="33" y="45" fill="#cccccc" stroke-width="0"/>
+    <rect width="25" height="25" x="32" y="21" stroke-width="0"/>
+    <rect width="2" height="2" x="69" y="5" stroke-width="0"/>
+    <rect width="2" height="4" x="69" y="7" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="4" x="28" y="7" fill="#cccccc" stroke-width="0"/>
+    <rect width="2" height="2" x="28" y="5" stroke-width="0"/>
+    <text x="34" y="36" font-size="3.88056px" fill="#ffffff">RA8875L3N</text>
+    <text x="34" y="31" font-size="3.88056px" fill="#ffffff">RAiO</text>
+    <rect width="39" height="6" x="30" y="5" fill="#ebebeb" stroke-width="0"/>
+    <path d="m 16,63 -1,-1 -1,1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 28,63 -1,-1 -1,1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 32,63 -1,-1 -1,1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 40,63 -1,-1 -1,1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 44,63 -1,-1 -1,1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 48,63 -1,-1 -1,1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 52,62 -1,1 -1,-1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 56,62 -1,1 -1,-1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 36,62 -1,1 -1,-1 z" fill="#cccccc" stroke-width="0"/>
+    <path d="m 24,62 -1,1 -1,-1 z" fill="#cccccc" stroke-width="0"/>
+    <circle cx="35" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="31" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="27" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="23" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="19" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="15" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="59" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="55" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="51" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="71" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="67" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="63" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="47" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="43" cy="61" r="1" fill="#ffd166"/>
+    <circle cx="39" cy="61" r="1" fill="#ffd166"/>
+    <text x="49.5" y="9.5" font-size="3.88056px" text-anchor="middle">40-pin connector</text>
+    <circle cx="8" cy="8" r="1.5" fill="#ffffff"/>
+    <circle cx="78" cy="8" r="1.5" fill="#ffffff"/>
+    <circle cx="8" cy="60" r="1.5" fill="#ffffff"/>
+    <circle cx="78" cy="60" r="1.5" fill="#ffffff"/>
+  </g>
+</svg>

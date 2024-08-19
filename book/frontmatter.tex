@@ -1,0 +1,156 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+% Title page -------------------------------------------------------------------
+
+\begin{titlepage}
+
+\begin{flushleft}
+\sffamily\fontsize{34}{36}\bfseries\selectfont
+Programming\\
+a toy computer\\
+from scratch
+
+\vspace{12cm}
+\fontsize{16}{18}\selectfont
+A practical introduction to computer systems\\
+\vspace{1cm}
+Eric Bruneton
+\end{flushleft}
+\end{titlepage}
+
+% Copyright page ---------------------------------------------------------------
+
+\thispagestyle{empty}
+
+\vspace*{\fill}
+
+\begin{flushleft}
+\textcopyright\ 2024 \, Eric Bruneton
+
+\medskip
+
+\ccbyncsa\ This book is available under the
+\href{https://creativecommons.org/licenses/by-nc-sa/4.0/}{Creative Commons
+BY-NC-SA 4.0 License}. The programs it contains are also available separately,
+under the \href{https://www.gnu.org/licenses/gpl-3.0.en.html}{GNU General
+Public License v3}.
+
+\medskip
+
+\textbf{Version} \\ This book was built from commit
+\gitcommithash[shortHash=false]\ on \gitcommitdate[formatDate] in the source
+code repository. The latest version can be downloaded at \toypcurl{}.
+
+\medskip
+
+\textbf{Source code} \\
+The source code of this book, in \href{https://www.latex-project.org/}{\LaTeX}\
+and \href{https://www.rust-lang.org/}{Rust}, is available at \\
+\url{https://github.com/ebruneton/toypc}. \\
+The programs it describes are also available separately, at \\
+\toypcurl{}.
+
+\medskip
+
+\textbf{Feedback} \\
+Please report errors or potential improvements at \\
+\url{https://github.com/ebruneton/toypc/issues}.
+\end{flushleft}
+
+\clearpage
+
+% Table of contents ------------------------------------------------------------
+
+\setcounter{tocdepth}{1}
+\tableofcontents
+
+\chapter*{Introduction}
+\addcontentsline{toc}{chapter}{Introduction}
+
+Billions of people are using computers or smartphones, which are computers
+before being phones. One doesn't need to understand how computers work to use
+them, but if you want to know, this book might help you.
+
+Popular science books about this topic intentionally leave out many details. On
+the other hand, textbooks emphasize theoretical aspects and focus on a narrow
+topic. This book is different. Its goal is to introduce how computer hardware
+and common programming languages and operating systems work, via a practical
+example which can be understood down to the smallest detail.
+
+For this it proposes you to assemble and program your own toy computer. And to
+make sure not to omit any details, it explains how you can do this from scratch,
+without using any existing programming tool. It is organized in four parts:
+\begin{itemize}
+  \item the first part briefly presents the main basic ideas used to design
+  microprocessors, which are the core component of a computer. This is
+  necessary to understand the main concepts used in the next parts. It ends
+  with the presentation of a virtual, toy microprocessor, which can be
+  simulated online, and of a few programs using it.
+
+  \item the second part explains how the components of your toy computer work,
+  how they can be programmed, and how to assemble them. Based on this, it then
+  describes how to build a basic system allowing programs to use the computer's
+  keyboard and screen. Finally, it presents how an initial program can read and
+  execute other programs, based on this input and output system.
+
+  \item the third part explains how a computer can be programmed in a language
+  which can be ``easily'' understood by humans, unlike the 0s and 1s used by
+  its microprocessor. For this it describes how to progressively build a toy
+  language, and a program which can translate it into 0s and 1s that the
+  microprocessor can execute. In order to give you an idea of what common
+  programming languages look like, this toy language is an extremely simplified
+  version of real and popular ones.
+
+  \item the fourth part explains how users can easily store files and launch
+  applications on their computer, thanks to a (set of) program(s) called an
+  operating system. For this it describes how to progressively build a toy
+  operating system for your toy computer. For the same reason as above, this
+  system is an extremely simplified version of real, frequently used ones.
+\end{itemize}
+
+\subsubsection{Target audience}
+
+This book is designed for people looking for a practical and fully detailed
+example introducing how microprocessors, programming languages and operating
+systems work. It does not explain the theories and principles behind this. If
+you want to learn them, you should read computer science textbooks instead
+(some references are provided at the end of each part). Conversely, if you only
+want to understand the general ideas, it is better to read popular science
+books instead.
+
+\subsubsection{How to read this book}
+
+You can read this book without actually assembling or programming a toy
+computer, just to understand how this could be done. In this case you can skip
+the tutorial-like sections, which describe concrete steps to follow (plug this
+wire here, type this on the keyboard, press this button, etc). This is the
+case, in particular, of the ``Experiments'' and ``Compilation and tests''
+sections.
+
+Alternatively, you can read this book while following the instructions on an
+emulator. In this case you do not need to assemble a toy computer, nor to buy
+the necessary components for this (described in \cref{appendix:bom}). Instead,
+simply use the emulator provided at \toypcurl{emulator.html}. For this you need
+a desktop or laptop computer (tablets and smartphones are not really usable for
+this task).
+
+Finally, you can buy the components, assemble them, and follow the instructions
+for real. This is more costly but probably more fun than the previous methods.
+This method also requires a desktop or laptop computer, with a USB port and
+capable of running python3. You can also use all three methods: start with the
+first one, then re-read the book with the second method and optionally with the
+third, if you feel that you need to (typing a program is slower than reading it
+-- this can trigger some questions, and finding the answers yourself can give
+you a better understanding).
+
+Note also that, if you are stuck or simply want to skip some steps, you can
+follow the instructions of any chapter without doing those of the previous ones
+(once the computer is physically assembled, if you choose this method). Hence,
+for instance, you can skip the instructions of part 2, do those of part 3 on
+the emulator, and those of part 4 for real. You can also already have a look at
+the final programs and operating system obtained at the end of this book, on
+the emulator, by opening the following link:
+\toypcurl{emulator.html?script=backups/final.txt}. See the companion website of
+this book for more details (\toypcurl{}).

@@ -1,0 +1,71 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="35mm" viewBox="0 0 145 35" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="143" height="1" x="1" y="27" fill="none"/>
+    <text x="71" y="28" text-anchor="middle">$pop$</text>
+    <text x="71" y="3" text-anchor="middle">$push$</text>
+    <text x="2" y="3" font-size="3.5px">Memory</text>
+    <text x="4" y="19" text-anchor="middle">12</text>
+    <text x="10" y="19" text-anchor="middle">34</text>
+    <text x="16" y="19" text-anchor="middle">56</text>
+    <text x="22" y="19" text-anchor="middle">78</text>
+    <text x="4" y="24" text-anchor="middle">A1</text>
+    <text x="10" y="24" text-anchor="middle">B2</text>
+    <text x="13" y="29" text-anchor="middle">...</text>
+    <text x="16" y="24" text-anchor="middle">C3</text>
+    <text x="22" y="24" text-anchor="middle">D4</text>
+    <text x="43" y="19">SP</text>
+    <text x="138" y="14" fill="#048966">SP</text>
+    <text x="26" y="19">$a$</text>
+    <text x="2.8284271" y="22.627417" transform="rotate(-45)" font-size="3.5px">$a+1$</text>
+    <text x="-5.6961184" y="14.047344" transform="rotate(-45)" font-size="3.5px">$a+3$</text>
+    <text x="-1.4508951" y="18.296219" transform="rotate(-45)" font-size="3.5px">$a+2$</text>
+    <text x="26" y="24">$a+4$</text>
+    <text x="121" y="14" fill="#048966">$a-4$</text>
+    <path d="M 1,5 V 30" stroke="#000000"/>
+    <path d="M 25,5 V 30" stroke="#000000"/>
+    <path d="M 7,15 V 25" stroke="#ebebeb"/>
+    <path d="M 13,15 V 25" stroke="#ebebeb"/>
+    <path d="M 19,15 V 25" stroke="#ebebeb"/>
+    <path d="M 1,20 25,20" stroke="#000000"/>
+    <path d="M 1,25 H 25" stroke="#000000"/>
+    <path d="M 1,15 H 25" stroke="#000000"/>
+    <text x="99" y="19" text-anchor="middle">12</text>
+    <text x="105" y="19" text-anchor="middle">34</text>
+    <text x="111" y="19" text-anchor="middle">56</text>
+    <text x="117" y="19" text-anchor="middle">78</text>
+    <text x="99" y="14" text-anchor="middle" fill="#048966">31</text>
+    <text x="105" y="14" text-anchor="middle" fill="#048966">41</text>
+    <text x="111" y="14" text-anchor="middle" fill="#048966">59</text>
+    <text x="117" y="14" text-anchor="middle" fill="#048966">26</text>
+    <text x="99" y="24" text-anchor="middle">A1</text>
+    <text x="105" y="24" text-anchor="middle">B2</text>
+    <text x="108" y="29" text-anchor="middle">...</text>
+    <text x="111" y="24" text-anchor="middle">C3</text>
+    <text x="117" y="24" text-anchor="middle">D4</text>
+    <text x="121" y="19">$a$</text>
+    <text x="121" y="24">$a+4$</text>
+    <path d="M 96,5 V 30" stroke="#000000"/>
+    <path d="M 120,5 V 30" stroke="#000000"/>
+    <path d="M 102,10 V 25" stroke="#ebebeb"/>
+    <path d="M 108,10 V 25" stroke="#ebebeb"/>
+    <path d="M 114,10 V 25" stroke="#ebebeb"/>
+    <path d="M 96,20 120,20" stroke="#000000"/>
+    <path d="M 96,15 H 120" stroke="#000000"/>
+    <path d="M 96,25 H 120" stroke="#000000"/>
+    <path d="m 96,10 h 24 v 0 0" fill="none" stroke="#000000"/>
+    <path d="M 42,18 H 36" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 56,5 h 29" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 86,30 h -30" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 137,13 h -6" stroke="#048966" marker-end="url(#arrow)"/>
+  </g>
+</svg>

@@ -1,0 +1,39 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="4" height="7" x="42" y="20" fill="#41a1c1" stroke-dasharray="0.6 0.6"/>
+    <rect width="20" height="7" x="80" y="20" fill="#0e6e8e"/>
+    <path d="m 22,20 0,7" stroke="#000000"/>
+    <path d="m 28,20 v 7" stroke="#000000"/>
+    <path d="m 34,20 v 7" stroke="#000000"/>
+    <path d="m 40,20 v 7" stroke="#000000"/>
+    <path d="M 46,20 V 27" stroke="#000000"/>
+    <path d="M 80,20 80,27" stroke="#000000"/>
+    <path d="m 86,20 0,7" stroke="#000000"/>
+    <path d="m 92,20 0,7" stroke="#000000"/>
+    <path d="m 98,20 0,7" stroke="#000000"/>
+    <path d="m 104,20 0,7" stroke="#000000"/>
+    <text x="132" y="25" text-anchor="end">RAM</text>
+    <text x="62" y="25" text-anchor="end">Flash</text>
+    <text x="25" y="34" text-anchor="middle">1 page</text>
+    <rect width="64" height="7" x="0" y="20" fill="none" stroke="#000000"/>
+    <rect width="64" height="7" x="70" y="20" fill="none" stroke="#000000"/>
+    <path d="M 64,20 H 67 l -1,4 H 67 l -1,3 h -2 z" fill="#ebebeb" stroke="#000000"/>
+    <path d="M 70,20 H 68 L 67,23 h 1 L 67,27 h 3 v -7" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 22,28 1,1 h 4 l 1,-1" fill="none" stroke="#000000" stroke-dasharray="0.4 0.2"/>
+    <path d="M 83,20 C 83,20 81,10 54,10 27,10 25,20 25,20" fill="none" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 45,27 c 0,0 2,5 -1,5 -3,0 -1,-5 -1,-5" fill="none" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 89,20 c 0,0 -2,-8 -29,-8 -27,0 -29,8 -29,8" fill="none" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 95,20 c 0,0 -2,-6 -29,-6 -27,0 -29,6 -29,6" fill="none" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 99,20 c 0,0 -2,-4 -29,-4 -27,0 -29,4 -29,4" fill="none" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+  </g>
+</svg>

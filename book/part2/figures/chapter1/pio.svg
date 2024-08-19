@@ -1,0 +1,96 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs/>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="28" height="5" x="56" y="78" fill="#ebebeb" stroke="#000000"/>
+    <rect width="28" height="5" x="56" y="50" fill="#ebebeb" stroke="#000000"/>
+    <rect width="28" height="5" x="6" y="50" fill="#ebebeb" stroke="#000000"/>
+    <rect width="28" height="5" x="56" y="22" fill="#ebebeb" stroke="#000000"/>
+    <rect width="28" height="5" x="56" y="6" fill="#ebebeb" stroke="#000000"/>
+    <text x="70" y="59" text-anchor="middle">PIO Status</text>
+    <path d="m 93,63 4,4 v 10 l -4,4 z" fill="none" stroke="#000000"/>
+    <text x="94" y="69" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 93,24 4,4 v 10 l -4,4 z" fill="none" stroke="#000000"/>
+    <text x="94" y="30" font-size="3.5px" text-anchor="middle">1</text>
+    <path d="m 43,59 4,4 v 10 l -4,4 z" fill="none" stroke="#000000"/>
+    <text x="44" y="65" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 43,28 4,4 v 10 l -4,4 z" fill="none" stroke="#000000"/>
+    <text x="44" y="34" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="44" y="42" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="94" y="38" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="94" y="77" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="44" y="73" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="135" y="79" text-anchor="middle">pin $i$</text>
+    <text x="70" y="87" text-anchor="middle">Output Data Status</text>
+    <text x="20" y="59" text-anchor="middle">Peripheral AB Select</text>
+    <text x="70" y="4" text-anchor="middle">Pull-up Status</text>
+    <rect width="6" height="6" x="132" y="69" fill="none" stroke="#000000"/>
+    <rect width="4" height="4" x="133" y="70" fill="none" stroke="#000000"/>
+    <path d="m 124,6 v 4 l 2,0.5 -4,1 4,1 -4,1 4,1 -4,1 2,0.5 v 56" fill="none" stroke="#000000"/>
+    <path d="M 93,68 H 47" stroke="#000000"/>
+    <path d="M 93,37 H 47" stroke="#000000"/>
+    <path d="m 64,78 v 5" stroke="#000000"/>
+    <path d="m 68,78 v 5" stroke="#000000"/>
+    <path d="m 64,50 v 5" stroke="#000000"/>
+    <path d="m 68,50 v 5" stroke="#000000"/>
+    <path d="m 14,50 v 5" stroke="#000000"/>
+    <path d="m 18,50 v 5" stroke="#000000"/>
+    <path d="m 66,78 v -2 l 27,0" fill="none" stroke="#000000"/>
+    <text x="70" y="20" text-anchor="middle">Output Status</text>
+    <text x="2" y="67" font-size="3.5px">Output A</text>
+    <text x="124" y="5" font-size="3.5px" text-anchor="middle">VCC</text>
+    <text x="2" y="75" font-size="3.5px">Output B</text>
+    <text x="2" y="32" font-size="3.5px">Output A Enable</text>
+    <text x="2" y="40" font-size="3.5px">Output B Enable</text>
+    <path d="m 64,22 v 5" stroke="#000000"/>
+    <path d="m 68,22 v 5" stroke="#000000"/>
+    <path d="m 64,6 v 5" stroke="#000000"/>
+    <path d="m 68,6 v 5" stroke="#000000"/>
+    <text x="65" y="14" font-size="3.5px" text-anchor="end">bit $i$</text>
+    <text x="65" y="30" font-size="3.5px" text-anchor="end">bit $i$</text>
+    <text x="65" y="49" font-size="3.5px" text-anchor="end">bit $i$</text>
+    <text x="65" y="77" font-size="3.5px" text-anchor="end">bit $i$</text>
+    <text x="15" y="49" font-size="3.5px" text-anchor="end">bit $i$</text>
+    <text x="66" y="9.5" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="60" y="9.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="76" y="9.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="66" y="25.5" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="60" y="25.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="76" y="25.5" font-size="3.5px" text-anchor="middle">...</text>
+    <path d="m 66,27 v 2 h 27" fill="none" stroke="#000000"/>
+    <path d="m 66,50 v -2 h 29" fill="none" stroke="#000000"/>
+    <path d="m 16,50 v -2 h 29" fill="none" stroke="#000000"/>
+    <path d="M 45,61 45,44" stroke="#000000"/>
+    <path d="M 43,64 2,64" stroke="#000000"/>
+    <path d="M 43,33 2,33" stroke="#000000"/>
+    <path d="M 43,41 H 2" stroke="#000000"/>
+    <path d="M 43,72 2,72" stroke="#000000"/>
+    <path d="m 95,65 v -25" stroke="#000000"/>
+    <path d="M 97,72 H 110" stroke="#000000"/>
+    <path d="M 97,33 113,33 v 38" fill="none" stroke="#000000"/>
+    <path d="m 110,69 6,3 -6,3 z" fill="#ffffff" stroke="#000000"/>
+    <path d="m 116,72 h 16" stroke="#000000"/>
+    <circle cx="45" cy="48" r="0.5" stroke="#000000"/>
+    <circle cx="95" cy="48" r="0.5" stroke="#000000"/>
+    <circle cx="124" cy="72" r="0.5" stroke="#000000"/>
+    <path d="m 66,11 v 2 H 121" fill="none" stroke="#000000"/>
+    <path d="M 121,10 V 16" stroke="#000000"/>
+    <path d="m 121,6 h 6" stroke="#000000"/>
+    <text x="66" y="81.5" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="60" y="81.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="76" y="81.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="66" y="53.5" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="60" y="53.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="76" y="53.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="16" y="53.5" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="10" y="53.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="26" y="53.5" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="113" y="79" font-size="3.5px" text-anchor="middle" fill="#9a9a9a">tristate</text>
+    <text x="113" y="83" font-size="3.5px" text-anchor="middle" fill="#9a9a9a">buffer</text>
+    <text x="96" y="25" font-size="3.5px" fill="#9a9a9a">multiplexer</text>
+  </g>
+</svg>

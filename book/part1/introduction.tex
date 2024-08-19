@@ -1,0 +1,40 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter*{Introduction}
+\addcontentsline{toc}{chapter}{Introduction}
+
+Before programming a toy computer from scratch it is useful to have some basic
+ideas about how computers work. For this, one method is to build a toy computer
+from scratch. It is possible to build one for real from individual
+electromagnetic relays~\cite{MerciaRelay} or transistors~\cite{Megaprocessor}.
+But this requires a lot of time and space, and a significant budget. Moreover,
+the resulting computer would be too small to run or even store the toy programs
+of this book. For this reason, this part presents how a toy computer {\em
+could} be built, but does not give all the details necessary to physically
+build one. It is organized as follows:
+\begin{itemize}
+  \item \cref{chapter:binary-numbers} briefly presents binary numbers, which
+  are the basis of how computers work, and how to compute with them.
+
+  \item \cref{chapter:logic-gates} explains how an electric circuit can compute
+  additions and subtractions of binary numbers.
+
+  \item \cref{chapter:memory-circuits} shows how loops in circuits can be used
+  to memorize numbers, and in particular the (intermediate) results obtained
+  with the above arithmetic circuits.
+
+  \item \cref{chapter:control-circuits} shows how a circuit can control
+  another, in order to make it perform a series of computations, specified by a
+  {\em program}.
+
+  \item \cref{chapter:toy-microprocessor} puts everything together to obtain a
+  toy microprocessor, and shows how it can be programmed with a few examples.
+\end{itemize}
+
+\paragraph{Note} Most of the circuits presented in this part are also available
+on CircuitVerse (\url{https://circuitverse.org/}), an online digital circuit
+simulator. Thanks to it you can interact with the circuits presented in this
+part, which helps getting a better and more practical understanding of how they
+work. See the companion website of this book for more details (\toypcurl{}).

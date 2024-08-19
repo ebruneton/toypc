@@ -1,0 +1,489 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter4}
+\setcounter{rustid}{0}
+
+\chapter[Control Circuits]{Control Circuits}\label{chapter:control-circuits}
+
+Thanks to registers and memory circuits we can use an Arithmetic and Logic Unit
+to perform computations without having to mentally memorize intermediate
+results. Instead, as shown in the previous chapter, we can simply send a series
+of pulse signals on the correct inputs, and in the correct order. But this
+requires to memorize this procedure. And executing it manually is very slow and
+error-prone, even if the circuit does each operation very quickly. To solve the
+first issue a solution is to store some description of the desired procedure in
+Random Access Memory. To solve the second one we can use new circuits to
+execute this procedure for us, by sending the appropriate pulses. This chapter
+explains how this can be done.
+
+\section{Instructions}
+
+A procedure such as the one presented in \cref{subsection:alu-and-ram-example}
+could be described in an abstract way as ``read 3 numbers $a$, $b$, and $c$ in
+input, compute $a+b-c$, and write the result in RAM at address $x$''. However,
+representing such descriptions with one or more numbers which can be stored in
+RAM is not easy. And figuring out which pulses to send to execute them would
+also be quite complicated.
+
+This procedure can also be described as a sequence of elementary actions:
+``wait an input value'', ``send a pulse on selectInput'', ''send a pulse on
+writeR0'', ``wait an input value'', ''send a pulse on writeR1'', etc. Each
+action can easily be represented with a small number (\eg, 0 for ``wait an
+input value'', 1 for ``send a pulse on selectInput'', etc). And each action is
+easy to execute. However, such a description is hard to design and to
+understand for humans (because its high level meaning is lost in the details).
+
+A trade-off is to describe this procedure with more abstract actions, but not
+too abstract either, called {\em instructions}. For instance, an instruction
+could be ``wait an input value and store it in R0'', ``add the values in R0 and
+R1 and store the result in R0'', or ``copy the value in R0 in RAM, at address
+3''. As shown below, such instructions are not too complex to represent with a
+number, called their {\em encoding} (to store them in memory). And they are
+still quite simple to execute (each instruction only requires sending 2 or 3
+pulses at most). Finally, a sequence of instructions is less hard to design and
+to understand than the corresponding sequence of pulses (but still quite hard;
+we address this problem in \cref{part:compiler}).
+
+Simple procedures, also called {\em programs}, can be described with a sequence
+of instructions, to be executed one after the other. For this we can store
+their encoding one after the other in memory, \ie, at consecutive addresses.
+Then, after the instruction at address $a$ is executed, the one at address
+$a+1$ should execute\footnote{Assuming that each encoded instruction can fit in
+the $n$ bits between two consecutive addresses.}.
+
+\subsection{Jump instructions}
+
+Some programs need to repeat the same sequence of instructions two or more
+times. For instance, a ``calculator'' program needs to repeat forever the same
+sequence (read two numbers in input, compute and output their sum, repeat). In
+other words, after the last instruction of the sequence is executed, the
+instruction at the next address should {\em not} be executed. Instead,
+execution should restart at the first instruction of the sequence. This can be
+described with a so called {\em jump instruction}. A ``jump to $a$''
+instruction specifies that the next instruction to execute is the one at
+address $a$.
+
+In many cases a sequence of instructions must be repeated a precise number of
+times. For instance, to compute $a*b$ with the circuit of
+\cref{fig:alu-and-ram}, we can repeat $b$ times a sequence adding $a$ to R0
+(initially set to 0). Then, after $a$ has been added to R0, there are two
+cases: either we need to repeat the sequence again, or we need to continue with
+the rest of the program (\eg, output the result $a*b$). This can be
+described with a {\em conditional jump} instruction. Such an instruction either
+jumps to a given address, or continues to the instruction at the next address,
+depending on some condition (for instance, whether R0 is equal to 0 or not).
+
+\section{A toy instruction set}\label{section:toy-insn-set}
+
+To illustrate the above discussion we define in this section a concrete set of
+instructions for a circuit such as the one in \cref{fig:alu-and-ram} (\ie, with
+a RAM and two registers R0 and R1 as input of a very basic Arithmetic Unit).
+These instructions are the following:
+\begin{itemize}
+  \item Memory:
+
+  \begin{itemize}
+    \item the Load instruction copies the value at a given address $a$ into the
+    R0 register.
+
+    \item the Store instruction copies the value in the R0 register at a
+    given address $a$.
+  \end{itemize}
+
+  \item Arithmetic:
+
+  \begin{itemize}
+    \item the Add instruction adds the value at address $a$ to the value in the
+    R0 register, and stores the result in R0.
+
+    \item the Subtract instruction subtracts the value at address $a$ from the
+    value in the R0 register, and stores the result in R0.
+  \end{itemize}
+
+  \item Jumps:
+
+  \begin{itemize}
+    \item the Jump instruction specifies that the next instruction to execute
+    is the one at address $a$.
+
+    \item the Jump If Zero instruction specifies that the next instruction to
+    execute is the one at address $a$ if the value in R0 is equal to $0$.
+    Otherwise execution continues with the instruction at the next address.
+
+    \item the Jump If Carry instruction specifies that the next instruction to
+    execute is the one at address $a$ if the last Add or Subtract instruction
+    produced a non-zero carry bit. Otherwise execution continues with the
+    instruction at the next address.
+  \end{itemize}
+
+  \item Input and output:
+
+  \begin{itemize}
+    \item the Input instruction waits for the user to press a button, and then
+    copies the value on the input wires into the R0 register.
+
+    \item the Output instruction displays the value in the R0 register, and
+    then waits until the user presses a button.
+  \end{itemize}
+\end{itemize}
+
+\subsection{Encoding}
+
+The above {\em instruction set} contains 9 instructions. We can thus give them
+numbers from 0 to 8, called {\em operation codes}, or {\em opcodes}. This
+requires at least 4 bits to encode each instruction. But all instructions
+except the last two have an associated address $a$, called an {\em operand}.
+This operand must also be encoded as part of the instruction, which requires
+more bits.
+
+In the following we assume that the memory contains $2^5=32$ bytes, each with
+their own address, and that R0, R1, and the Arithmetic Unit work on 8-bit
+values. We then use 5 bits per address, and we encode each instruction in one
+byte, as follows:
+
+\bigskip \noindent
+\rs{T8Instruction::Ldr(0).definition()}\\
+\rs{T8Instruction::Str(0).definition()}\\
+\rs{T8Instruction::Add(0).definition()}\\
+\rs{T8Instruction::Sub(0).definition()}\\
+\rs{T8Instruction::Jump(0).definition()}\\
+\rs{T8Instruction::IfZ(0).definition()}\\
+\rs{T8Instruction::IfC(0).definition()}\\
+\rs{T8Instruction::In.definition()}\\
+\rs{T8Instruction::Out.definition()}\\
+
+The left column is the {\em instruction mnemonic}, an abbreviation of the
+instruction name. The middle column is a symbolic description of the effect
+each instruction. Here $\mathit{dst} \leftarrow \mathit{src}$ or $\mathit{src}
+\rightarrow \mathit{dst}$ means a copy of the value in $\mathit{src}$ into
+$\mathit{dst}$, and $\mathrm{mem8}[a]$ means the 8-bit value at address $a$.
+Finally, the right column is the binary number corresponding to this
+instruction, \ie, its encoding. For instance, the encoding of the LDR 7
+instruction, which copies the byte at address $7=111_2$ into R0, is
+$001_2$ followed by $7$ encoded in $5$ bits, $00111_2$, which gives
+$00100111_2=39$.
+
+\subsection{Example program}\label{subsection:adder-program}
+
+With the above instruction set a ``calculator'' program adding numbers in an
+endless loop can be implemented as follows:
+
+\rust{
+  let mut a = T8Program::default();
+  a.input();
+  a.str(6);
+  a.input();
+  a.add(6);
+  a.output();
+  a.jump(0);
+  a.data(0, "the $a$ number");
+}
+\rs{a.get_listing()}
+
+\rust{
+  let outputs = T8Emulator::new().emulate(&a.get_machine_code(),
+      &[7, 13, 17, 19], 2);
+  assert_eq!(outputs, &[7 + 13, 17 + 19]);
+}
+
+\noindent where the left part gives the symbolic description of each
+instruction, and the right part their encoding and their address (in gray).
+
+The first two instructions read a number $a$ as input and store it at address
+$6$. The next two instructions read a second number $b$, and add $a$ to it. The
+last two instructions output the value in R0, which at this stage contains
+$a+b$, and jump back to the first instruction to add two new numbers. The next
+byte after these five instructions is the one used to store $a$.
+
+\subsection{Notes}\label{subsection:int-overflow}
+
+Adding two 8-bit numbers can give a 9-bit number. For instance,
+$11111111_2=255$ plus $1$ gives the 9-bit number $100000000_2=256$. However,
+the registers and the memory can only store 8-bit numbers, and the Arithmetic
+Unit can only use 8-bit numbers as input. Hence, in practice, and unless a
+program does something special with the carry bit (with the IFC instruction),
+all additions are {\em modulo} $2^8=256$. This means that adding $a$ and $b$
+does not give $a+b$ but the remainder of the division of $a+b$ by 256. It is
+noted $(a+b) \mod 256$, where $x \mod m$ is defined as $x - \lfloor x / m
+\rfloor * m$. For instance, adding $255$ and $1$ gives $0$\footnote{This {\em
+modular arithmetic} is used in everyday life with hours. For example, 10 a.m
+plus 5 hours is 3 p.m because $(10+5) \mod 12 = 3$.}.
+
+Similarly, subtracting two numbers can give a negative result, but the
+registers and the memory can only store nonnegative numbers. Hence, in
+practice, and unless a program does something special with the carry bit, all
+subtractions are modulo $256$ too. For instance, subtracting $1$ from $0$ gives
+$255$ because $-1 \mod 256 = -1 - \lfloor -1 / 256 \rfloor * 256 = -1 -
+(-1)*256 = 255$ (recall that $\lfloor y \rfloor$ means the integer part of $y$).
+
+When $a+b$ differs from $(a+b) \mod 2^n$ we say that there is an (integer) {\em
+overflow} (where $n$ is the Arithmetic Unit's ``bit width''). We say the same
+when $a-b \ne (a-b) \mod 2^n$, $a*b \ne (a*b) \mod 2^n$, etc. With an
+Arithmetic Unit such as the one in \cref{fig:alu}, there is an overflow if and
+only if the carry output is $1$.
+
+\section{Control circuits}
+
+We now have a way to describe a sequence of instructions with some numbers
+stored in memory. The next step, as described in the introduction of this
+chapter, is to build a circuit to automatically {\em execute} these
+instructions. Which means sending a corresponding sequence of pulse signals on
+the registers, memory, and bus circuits. For instance, to execute an IN
+instruction with the circuit in
+\cref{fig:alu-and-ram}, one needs to:
+\begin{itemize}
+  \item connect the input wires to the bus by sending a pulse on
+  ``selectInput''.
+
+  \item wait for the user to press a button.
+
+  \item store the input value in R0 by sending a pulse on ``writeR0''.
+\end{itemize}
+
+More generally, all instructions can be executed by sending appropriate pulses
+1) on the correct wires, 2) in the correct order, and 3) at appropriate times
+(signals must have time to propagate throughout the circuit between two
+pulses). The first two items can be ensured with circuits of the following
+form:
+
+\begin{center}
+  \input{figures/chapter4/sequencer1.tex}
+\end{center}
+
+When this circuit is powered on ``wire1'' and ``wire2'' change from 0 to 1 due
+to the NOT gate. Changing $c$ from $0$ to $1$ (and back to $0$) makes the first
+and second D flip-flops memorize 1. This resets ``wire1'' and ``wire2'' to 0,
+and sets ``wire3'' to 1:
+
+\begin{center}
+  \input{figures/chapter4/sequencer2.tex}
+\end{center}
+
+Changing $c$ from $0$ to $1$ (and back to $0$) again makes the second and third
+flip-flops memorize 0 and 1, respectively. This resets ``wire3'' to 0, and sets
+``wire4'' to 1:
+
+\begin{center}
+  \input{figures/chapter4/sequencer3.tex}
+\end{center}
+
+Finally, changing $c$ from $0$ to $1$ (and back to $0$) one more time resets
+``wire4'' to 0:
+
+\begin{center}
+  \input{figures/chapter4/sequencer4.tex}
+\end{center}
+
+In other words, with a series of pulses on the $c$ input, one gets two
+simultaneous pulses on ``wire1'' and ``wire2'', followed by a pulse on
+``wire3'' and then on ``wire4'':
+
+\begin{center}
+  \input{figures/chapter4/sequencer-signals.tex}
+\end{center}
+
+Each wire pulse starts and ends at the precise moment when $c$ switches from
+$0$ to $1$. This shows that, with circuits like the one above, it is possible
+to send pulses on specific wires, in a specific order. The only requirement is
+the ability to send a series of pulses on a shared input $c$, which can be done
+with a {\em clock}.
+
+\subsection{Clock}
+
+A clock is a circuit which generates a signal switching between $0$ and $1$ at
+a constant frequency. A clock can be implemented in many ways. For instance,
+one could use a pendulum acting on a switch. But this would not be very
+practical, and can not produce high frequencies. Instead, a frequently used
+method is to use the oscillations of a crystal. Crystals can oscillate one
+million times per second or more (\ie, at $1$~MHz or more). In the following we
+represent a clock with the symbol on the left:
+
+\begin{center}
+  \input{figures/chapter4/clock-symbol.tex}
+  \input{figures/chapter4/clock-signal.tex}
+\end{center}
+
+A clock generates the signal shown above (right). A {\em period}, also called a
+{\em clock cycle}, is the time between successive pulses. The clock frequency
+is the number of pulses per second, \ie, the inverse of its period. Increasing
+the frequency increases the number of instructions which are executed per
+second. However, the frequency cannot be increased without limit. Indeed, there
+must be enough time between two pulses for signals to propagate throughout the
+circuit. For instance, computing an addition in an Arithmetic Unit takes some
+time, because the input values have to propagate through all its logic gates,
+up to the carry output. If a pulse is sent to write the sum in a register
+before this delay, a wrong result will be stored.
+
+\subsection{Control loop}
+
+A circuit like the one above can generate a sequence of pulses to execute one
+instruction. But each type of instruction needs a different sequence of pulses
+to be executed. The solution is to use several circuits like this, one per type
+of instruction. And to connect them to a binary decoder, so that the correct
+subcircuit is used depending on the instruction opcode. For instance, if there
+are only 4 different opcodes, we can use a circuit similar to the following:
+
+\begin{center}
+  \input{figures/chapter4/decode-and-execute.tex}
+\end{center}
+
+Depending on the two bits of the instruction opcode, $op_1op_0$, the above
+circuit sends pulses on ``wire0-1'' to ``wire0-3'', or on ``wire1-1'' to
+``wire1-3'', etc. Before this the instruction must be read in memory, so that
+$op_1op_0$ contain the correct values. This can be done, as shown later, with a
+so called FETCH circuit sending an appropriate sequence of pulses. Finally,
+after the instruction has been executed, the next one must be fetched, decoded,
+and executed. For this it suffice to connect the outputs of the EXECUTE
+subcircuit back to the input of the FETCH circuit:
+
+\begin{center}
+  \input{figures/chapter4/fetch-decode-execute.tex}
+\end{center}
+
+In this way we get a pulse which loops forever in the FETCH, DECODE and EXECUTE
+circuits, each time going through a specific EXECUTE subcircuit.
+
+\section{A toy control unit}\label{section:toy-control-unit}
+
+To illustrate the above discussions we design in this section a very basic {\em
+control unit} for the circuit of \cref{fig:alu-and-ram-schema} (with an 8-bit
+{\em architecture}, \ie, an 8-bit Arithmetic Unit, 8-bit registers, etc). As
+its name implies, a control unit controls the rest of the circuit, called the
+{\em processing unit} (\ie, the Arithmetic and Logic Unit, the registers, the
+bus, etc). It does so by executing instructions stored in memory. We assume
+here that these instructions are those defined in \cref{section:toy-insn-set}.
+
+\begin{Figure}
+  \input{figures/chapter4/T8-schema.tex}
+
+  \caption{A basic control unit (yellow background) for the circuit in
+  \cref{fig:alu-and-ram-schema} (white background), with the instruction set of
+  \cref{section:toy-insn-set}.}\label{fig:T8-schema}
+\end{Figure}
+
+The core part of our example control unit is a control loop circuit with FETCH,
+DECODE, and EXECUTE subcircuits, as presented above. To implement it we need
+two new registers, in addition to R0 and R1 (see \cref{fig:T8-schema}):
+\begin{itemize}
+  \item the {\em Program Counter} (PC) register stores the address of the
+  instruction being currently executed or, once it has been executed, the
+  address of the next instruction to execute. Since addresses use only 5 bits,
+  this register is a 5-bit register.
+
+  \item the {\em Instruction Register} (IR) stores the encoding of the
+  instruction being currently executed. This 8-bit register stores a copy of
+  the original instruction in memory. This is necessary to have access to its
+  value during its execution, which might require reading or writing values at
+  other addresses in memory.
+\end{itemize}
+
+Once an instruction has been executed, the Program Counter value must be
+incremented by one to execute the next instruction. Unless the last instruction
+was a jump. In this case the Program Counter value must be replaced with the
+operand of this jump instruction. To do this we include two more circuits in
+our control unit (see \cref{fig:T8-schema}):
+\begin{itemize}
+  \item a 5-bit incrementer, which computes ``PC+1'', \ie, the value in the
+  Program Counter register plus $1$. This is an adder circuit similar to the one
+  in \cref{subsection:adder-circuit}, simplified for the case where one
+  input is always $1$.
+
+  \item a 5-bit {\em address bus}, to which we connect the Program Counter, the
+  output of the above incrementer, and the 5 least significant bits of the
+  Instruction Register (\ie, the address operand). This bus is also connected
+  to the address decoder of the RAM and thus selects which address to read or
+  write to.
+\end{itemize}
+
+Thanks to these components, we can increment the Program Counter by connecting
+the output of the incrementer to the address bus, and by sending a pulse on
+``writePC'' to store this value (see \cref{fig:T8-schema}). Likewise, we can
+replace the Program Counter with the operand of a jump instruction by
+connecting the Instruction Register to the address bus, and by sending a pulse
+on ``writePC''.
+
+\subsection{FETCH circuit}
+
+With the above architecture, fetching an instruction can be done as follows:
+\begin{itemize}
+  \item send simultaneous pulses on ``selectPC'' and ``selectRAM'' to read the
+  value in memory at the address stored in the Program Counter, and to get it
+  on the data bus.
+
+  \item send a pulse on ``writeIR'' to write this value in the Instruction
+  Register.
+
+  \item send a pulse on ``selectIR'' to prepare reading or writing a value at
+  the address operand of the new instruction. Technically this step is part of
+  the instruction's execution, but we include it in the FETCH circuit to
+  avoid duplications (it is common to all instructions except IN and OUT).
+\end{itemize}
+
+\subsection{DECODE circuit}
+
+Decoding an instruction can be done with a binary decoder with 3 inputs, namely
+the 3 most significant bits of the Instruction Register. Plus a single
+demultiplexer, controlled by the $4^{th}$ most significant bit, in order to
+distinguish the IN and OUT instructions (the 3 most significant bits are
+$111_2$ for both instructions).
+
+\subsection{EXECUTE circuit}
+
+The EXECUTE circuit has 9 subcircuits, one per type of instruction:
+
+\medskip \paragraph{LDR} This subcircuit sends a pulse on ``writeR0'' to store
+the value read from memory at the instruction's address operand (selected by
+the last step of the FETCH circuit). It then increments the PC value with a
+pulse on ``selectPC+1'', followed by one on ``writePC''.
+
+\medskip \paragraph{STR} This subcircuit sends a pulse on ``selectR0'',
+followed by a pulse on $w$ to store R0's value in memory, at the instruction's
+address operand (selected by the last step of the FETCH circuit). It then
+increments the PC value, as above.
+
+\medskip \paragraph{ADD} This subcircuit sends a pulse on ``writeR1'' to store
+the value at the instruction's address operand in R1. It then sends a pulse on
+``selectALU'' to get the sum of the values in R0 and R1 on the bus, followed by
+simultaneous pulses on ``writeR0'' and ``writeCarry'' to write it in R0 and
+Carry. It then increments the PC value as above.
+
+\medskip \paragraph{SUB} This subcircuit is almost the same as the ADD
+subcircuit. It just sends an additional pulse on ``subtract'', at the same time
+as the ``selectALU'' pulse. These pulses last until the one on ``writeR0''
+starts. This ensures that the correct result, the difference of R0 and R1
+values, is written in R0.
+
+\medskip \paragraph{JMP} This subcircuit just sends a pulse on ``writePC'' to
+replace the Program Counter with the instruction's address operand (selected by
+the last step of the FETCH circuit).
+
+\medskip \paragraph{IFZ} This subcircuit has two branches. The first, executed
+if the value in R0 is $0$, is the same as the JMP subcircuit. The second,
+executed if R0's value is not $0$, increments the PC value as for non-jump
+instructions. The two branches are connected to a demultiplexer controlled by
+the ``$\ne 0$'' signal (see \cref{fig:T8-schema}):
+
+\begin{center}
+  \input{figures/chapter4/jump-insn.tex}
+\end{center}
+
+\paragraph{IFC} This subcircuit is almost the same as the IFZ one,
+except that its demultiplexer is controlled by the value of the Carry register.
+
+\medskip \paragraph{IN} This subcircuit sends a pulse on ``selectInput'', and
+then waits until a button is pressed. This can be done with a loop similar to
+the control loop, with a demultiplexer to either wait, or to continue with the
+next instruction:
+
+\begin{center}
+  \input{figures/chapter4/in-insn.tex}
+\end{center}
+
+\noindent In the latter case, this subcircuit sends a pulse on ``writeR0'', and
+then increments the Program Counter as above.
+
+\medskip \paragraph{OUT} This subcircuit sends a pulse on ``selectR0'' and then
+waits until a button is pressed, with the same method as above. It then
+increments the Program Counter's value.

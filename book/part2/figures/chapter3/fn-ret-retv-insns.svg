@@ -1,0 +1,98 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="60mm" viewBox="0 0 145 60" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="16" height="25" x="1" y="13" fill="#cccccc"/>
+    <rect width="16" height="5" x="1" y="38" fill="#9a9a9a"/>
+    <rect width="16" height="10" x="28" y="28" fill="#cccccc"/>
+    <rect width="16" height="5" x="28" y="38" fill="#9a9a9a"/>
+    <rect width="16" height="10" x="101" y="28" fill="#cccccc"/>
+    <rect width="16" height="5" x="101" y="38" fill="#9a9a9a"/>
+    <rect width="16" height="15" x="128" y="23" fill="#cccccc"/>
+    <rect width="16" height="5" x="128" y="38" fill="#9a9a9a"/>
+    <rect width="16" height="10" x="78" y="28" fill="#cccccc"/>
+    <rect width="16" height="5" x="78" y="38" fill="#9a9a9a"/>
+    <rect width="16" height="5" x="51" y="38" fill="#9a9a9a"/>
+    <rect width="16" height="10" x="51" y="28" fill="#cccccc"/>
+    <text x="22.5" y="8" text-anchor="middle">fn 3</text>
+    <text x="2" y="4" font-size="3.5px">stack</text>
+    <text x="9" y="22" text-anchor="middle">arg1</text>
+    <text x="9" y="27" text-anchor="middle">arg0</text>
+    <text x="9" y="17" text-anchor="middle">arg2</text>
+    <text x="9" y="42" text-anchor="middle">...</text>
+    <path d="M 1,6 1,43" stroke="#000000"/>
+    <path d="m 17,6 0,37" stroke="#000000"/>
+    <path d="M 1,23 H 17" stroke="#000000"/>
+    <path d="M 1,38 H 17" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 1,28 H 17" stroke="#000000"/>
+    <path d="M 1,18 H 17" stroke="#000000"/>
+    <path d="M 1,13 H 17" stroke="#000000" stroke-width="0.4"/>
+    <rect width="16" height="15" x="28" y="13" fill="#ebebeb"/>
+    <text x="36" y="22" text-anchor="middle">arg1</text>
+    <text x="36" y="27" text-anchor="middle">arg0</text>
+    <text x="36" y="17" text-anchor="middle">arg2</text>
+    <path d="M 28,23 H 44" stroke="#000000"/>
+    <path d="M 28,18 H 44" stroke="#000000"/>
+    <path d="M 28,13 H 44" stroke="#000000"/>
+    <text x="36" y="42" text-anchor="middle">...</text>
+    <path d="m 28,38 h 16" stroke="#000000" stroke-width="0.4"/>
+    <rect width="16" height="15" x="101" y="13" fill="#ebebeb"/>
+    <text x="109" y="22" text-anchor="middle">v1</text>
+    <text x="109" y="27" text-anchor="middle">v0</text>
+    <text x="109" y="17" text-anchor="middle">v2</text>
+    <text x="109" y="42" text-anchor="middle">...</text>
+    <path d="m 101,23 h 16" stroke="#000000"/>
+    <path d="m 101,38 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 101,28 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 101,18 h 16" stroke="#000000"/>
+    <path d="m 101,13 h 16" stroke="#000000"/>
+    <text x="136" y="27" text-anchor="middle" fill="#048966">v2</text>
+    <text x="136" y="42" text-anchor="middle">...</text>
+    <path d="m 128,23 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 128,38 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 28,6 V 43" stroke="#000000"/>
+    <path d="M 44,6 V 43" stroke="#000000"/>
+    <path d="m 18,10 h 9" stroke="#000000" marker-end="url(#arrow)"/>
+    <rect width="16" height="15" x="51" y="13" fill="#ebebeb"/>
+    <text x="72.5" y="8" text-anchor="middle">ret</text>
+    <text x="59" y="22" text-anchor="middle">v1</text>
+    <text x="59" y="27" text-anchor="middle">v0</text>
+    <text x="59" y="17" text-anchor="middle">v2</text>
+    <text x="59" y="42" text-anchor="middle">...</text>
+    <path d="M 51,6 51,43" stroke="#000000"/>
+    <path d="M 67,6 V 43" stroke="#000000"/>
+    <path d="m 51,23 h 16" stroke="#000000"/>
+    <path d="M 51,38 H 67" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 51,28 H 67" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 51,18 h 16" stroke="#000000"/>
+    <path d="m 51,13 h 16" stroke="#000000"/>
+    <text x="86" y="42" text-anchor="middle">...</text>
+    <text x="9" y="36" text-anchor="middle">...</text>
+    <text x="36" y="36" text-anchor="middle">...</text>
+    <text x="109" y="36" text-anchor="middle">...</text>
+    <text x="136" y="36" text-anchor="middle">...</text>
+    <text x="59" y="36" text-anchor="middle">...</text>
+    <text x="86" y="36" text-anchor="middle">...</text>
+    <path d="m 78,38 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 78,28 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 78,6 V 43" stroke="#000000"/>
+    <path d="M 94,6 V 43" stroke="#000000"/>
+    <path d="m 68,10 h 9" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 118,10 h 9" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 101,6 V 43" stroke="#000000"/>
+    <path d="M 117,6 V 43" stroke="#000000"/>
+    <path d="M 128,6 V 43" stroke="#000000"/>
+    <path d="M 144,6 V 43" stroke="#000000"/>
+    <text x="122.5" y="8" text-anchor="middle">retv</text>
+    <path d="m 128,28 h 16" stroke="#000000"/>
+    <path d="M 28,28 H 44" stroke="#000000" stroke-width="0.4"/>
+  </g>
+</svg>

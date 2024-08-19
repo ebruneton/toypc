@@ -1,0 +1,1231 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter2}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "boot_loader_and_drivers.txt")?;
+}
+
+\chapter{Boot Loader and Drivers}\label{chapter:boot-loader-and-drivers}
+
+Thanks to our file system we can now store data in flash memory without having
+to manually keep track of used and unused regions. Unfortunately, programs
+stored in the file system can no longer be run directly from flash memory.
+Indeed, a program split in several chunks stored in any order is completely
+broken, for many reasons. For instance, execution could ``fall through'' the
+end of a chunk, instructions might be split across chunks, and jump instruction
+targets might no longer be at their expected address. We thus need to
+reassemble a program into a contiguous sequence of bytes before we can run it.
+This is called {\em loading} a program.
+
+A program can be loaded with {\tt disk\_read\_file}, but this means that we
+need a ``program loader'' using this function to run a program. This loader
+could be stored in the file system, but then we would need another loader to
+load and run it. Ultimately, we need a loader which is not stored in the file
+system, or which can fit in a single block. This is called a {\em boot loader},
+and we provide one in the first part of this chapter. We use it in the second
+part to load a very first version of our operating system kernel, containing
+only some ``foundations''. Namely the clock, graphics card and keyboard drivers,
+re-implemented in Toy, as well as the ``disk driver'' functions from the
+previous chapter.
+
+\section{Boot loader}
+
+\subsection{Requirements}
+
+Our boot loader must be able to load and run a program stored in the file
+system under a predefined name. It should fit in a page and should run
+automatically upon reset.
+
+Several errors could occur in the boot loader, for instance because the program
+to load does not exist or is invalid, or because the file system is corrupted.
+In such cases restarting the boot loader would likely trigger the same error
+again. The only solution would then be to fully erase the flash memory, in
+order to reboot with the Boot Assistant in ROM. To avoid this potential loss of
+data, we require our boot loader to change the boot mode to ``boot from ROM''
+if an error occurs. A simple reboot is then sufficient to enter the Boot
+Assistant, which can then be used to try to repair the system, or at least to
+backup important data.
+
+\subsection{Implementation}\label{subsection:boot-loader-impl}
+
+To meet the above requirements we write a small program in Toy, compile it
+to native code, and store it in page 0 of the Flash0 memory bank, after the
+Vector Table.
+
+\medskip
+\paragraph{Vector Table}
+
+As described in \cref{section:vector-table}, words 0, 1, and 3 of page 0 define
+the initial Stack Pointer, the Reset handler address, and the Hard Fault
+handler address, respectively (when booting from flash memory). The next words
+are used for exception and interrupt handlers, but they are not needed until
+the corresponding exceptions and interrupts are enabled. We thus store the boot
+loader code just after word 3.
+
+The boot loader should provide a Reset handler, and a Hard Fault handler to
+change the boot mode in case of error. These handlers could be implemented in
+separate functions, but then we would need two function addresses to setup the
+Vector Table. Unfortunately, there is no easy and robust way to get the address
+of a function other than the first one. To solve this issue we implement both
+handlers in the same function. But this introduces a new problem: how can we
+know if this function is called because an error occurred? For this we take
+advantage of the fact that page 0, which starts at address \hexa{80000}, is
+also mapped at address 0 (see \cref{fig:memory-map}). Hence the main boot
+loader function, which by hypothesis starts after the 16 bytes of the Vector
+Table, is available both at interworking address $17$ and $\hexa{80000}+17$.
+And, as shown below, it can easily detect at which address it is running. We
+thus set the Reset handler to $17$, and the Hard Fault handler to
+$\hexa{80000}+17$.
+
+To complete the Vector Table we set the initial Stack Pointer to
+\hexa{20088000} (whose 4 bytes are 00, \rs{hex_dec(0x80u32)}, 08, and
+\rs{hex_dec(0x20u32)} in little endian order), as in
+\cref{subsection:bios-vector-table}. Finally, to save space, we store in the
+$3^{rd}$ entry, otherwise unused, the name of the program to load, \ie, of the
+kernel. We use the name ``{\tt toys}'' because we are building a toy operating
+system, and because this name has exactly 4 characters:
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+static VECTOR_TABLE = [
+  0, 128, 8, 32,        /* Initial Stack Pointer */
+  17, 0, 0, 0,          /* Reset handler */
+  't', 'o', 'y', 's',
+  17, 0, 8, 0           /* Hard Fault handler */
+];
+}%toy
+
+\medskip
+\paragraph{Main function}
+
+To implement the main boot loader function we first need to some definitions
+related to the file system, copied from the previous chapter:
+
+\toy{
+struct DiskBlock {
+  next_block: &DiskBlock
+}
+struct FileBlock {
+  next_block: &DiskBlock,
+  next_file: &FileBlock,
+  name_length: u32,
+  name: u32
+}
+struct SuperBlock {
+  first_file: &FileBlock,
+  first_free_block: &DiskBlock
+}
+const SUPER_BLOCK: &SuperBlock = 524544;
+}%toy
+
+We also need the following functions, implemented later on. {\tt copy\_block}
+copies {\tt size} bytes from {\tt src} to {\tt dst} and returns {\tt dst} +
+{\tt size}. {\tt run} calls a function with the same parameters at the
+interworking address {\tt code}:
+
+\toy{
+fn copy_block(src: &u32, dst: &u32, size: u32) -> &u32;
+fn run(code: &u32, heap: &u32, stack: &u32);
+}%toy
+
+We start the main function by checking if it is called because an error
+occurred. In this case it is running from address $\hexa{80000}+16$, and the
+{\tt VECTOR\_TABLE} expression, which computes the address of this data by
+subtracting an offset from the Program Counter, thus evaluates to \hexa{80000}.
+Otherwise it is running from address $16$, and the same expression thus
+evaluates to 0, \ie, to {\tt null}. If an error occurred we change the boot
+mode as described in \cref{subsection:boot-mode-selection}, and then loop
+forever:
+
+\toy{
+fn main() \{
+  const EEFC0_COMMAND_REGISTER: &u32 = 1074661892;
+  if VECTOR_TABLE != null {
+    *EEFC0_COMMAND_REGISTER = 1509949708; /*Clear Boot Mode Selection Bit*/
+    loop {}
+  }
+}%toy
+
+Otherwise we iterate over the list of files, until we find the one named ``{\tt
+toys}''. Thanks to the fact that ``{\tt toys}'' has exactly 4 bytes (stored at
+address 8), we can compare it to another name with a single comparison between
+two 32 bit words:
+
+\toy{
+  const KERNEL_NAME: &u32 = 8;
+  let file = SUPER_BLOCK.first_file;
+  while file.name_length != 4 || file.name != *KERNEL_NAME {
+    file = file.next_file;
+  }
+}%toy
+
+
+To reduce code size we do not check if the file exists. If not the code will
+most likely trigger a Hard Fault at some point, which is fine thanks to the
+above code. Once the file is found we use another loop to copy all its blocks
+into a contiguous sequence of bytes, starting at address
+\rs{hex_dec(0x20070100u32)} (we reserve the range
+[\hexa{20070000},\hexa{20070100}[ for a new Vector Table, with proper handlers
+for the enabled exceptions and interrupts -- see \cref{fig:kernel-ram-map}):
+
+\toy{
+  const KERNEL_ADDRESS: &u32 = 537329920;
+  let dst = KERNEL_ADDRESS;
+  let block = file as &DiskBlock;
+  let offset = sizeof(FileBlock);
+  while block as u32 > 256 {
+    dst = copy_block(block as &u32 + offset, dst, 256 - offset);
+    block = block.next_block;
+    offset = 4;
+  }
+}%toy
+
+Note that the {\tt while} loop does not check if {\tt block} has a next block,
+but whether {\tt block} is a valid block address. In the former case a separate
+{\tt copy\_block} call would be needed to copy the last block, which would
+increase code size. The above code avoids this but copies the unused bytes at
+the end of the last block. This is actually fine, and it guarantees that {\tt
+copy\_block} is always used to copy a number of bytes which is a multiple of 4.
+
+Once the kernel is loaded we run its main function, with the initial Stack
+Pointer \rs{hex_dec(0x20088000u32)}, with the following call (see below and
+\cref{fig:kernel-ram-map}):
+
+\toy{
+  const STACK_POINTER: &u32 = 537427968;
+  run(KERNEL_ADDRESS + 1, dst, STACK_POINTER);
+\}
+}%toy
+
+The {\tt copy\_block} function is a simple variant of the ``memory
+copy'' functions already implemented. It copies memory word by word, and
+assumes that the source and destination regions do not overlap (which is true):
+
+\toy{
+fn copy_block(src: &u32, dst: &u32, size: u32) -> &u32 {
+  let end = src + size;
+  while src < end {
+    *dst = *src;
+    src = src + 4;
+    dst = dst + 4;
+  }
+  return dst;
+}
+}%toy
+
+The last boot loader function is used to run the kernel. Here we assume that
+its main function has the same parameters as the {\tt run} function. Namely the
+interworking address of the main function itself, the start address of a RAM
+region where the kernel can store its data, and its initial Stack Pointer.
+Since there is no way to call a function at a given address with a Toy
+expression, we implement {\tt run} with native instructions.
+
+When {\tt run} starts executing, its arguments are in registers R0, R1 and R2.
+The function we want to call, at interworking address {\tt code}, also expects
+its arguments in these registers. Hence, to call it, we just need to jump to it.
+This can be done with a native \arm{BX} instruction (the called function is not
+expected to return, hence a \arm{BLX} instruction is not needed). Before this,
+we set the Stack Pointer to {\tt stack} with a \arm{MOV} instruction (since the
+called function is not expected to return, we don't need to save the current
+Stack Pointer to restore it later):
+
+\toy{
+fn run(code: &u32, heap: &u32, stack: &u32) [
+  /*MOV_SP_R2*/18069;
+  /*BX_R0*/18176;
+]
+}%toy
+
+\section{Compilation and storage}
+
+\rust{
+  let native_compiler_code =
+      context.memory_region("compiler_code_backup").start;
+  let kernel_source = context.memory_region("builder_source").end();
+  let kernel_code = native_compiler_code + 12 * 1024;
+  let command_editor_source = context.memory_region("command_editor_source");
+  let ram_command_source =
+      command_editor_source.label_address("ram_command_source");
+  let ram_source = command_editor_source.label_address("ram_compiler_source");
+  let ram_code = command_editor_source.label_address("ram_compiler_code");
+  const MAX_KERNEL_SOURCE_SIZE: u32 = 48 * 1024;
+  const MAX_KERNEL_CODE_SIZE: u32 = 12 * 1024;
+
+  context.add_memory_region(
+      "kernel_source",
+      MemoryRegion::new(
+          RegionKind::DataBuffer,
+          kernel_source,
+          MAX_KERNEL_SOURCE_SIZE,
+          &HashMap::new(),
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+  context.add_memory_region(
+      "kernel_code",
+      MemoryRegion::new(
+          RegionKind::DataBuffer,
+          kernel_code,
+          MAX_KERNEL_CODE_SIZE,
+          &HashMap::new(),
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+
+  const VECTOR_TABLE_BACKUP: u32 = 0xF0000 - 256;
+  const BOOT_LOADER_BACKUP: u32 = 0xF0000 - 512;
+  context.add_memory_region(
+      "vector_table_backup",
+      MemoryRegion::new(
+          RegionKind::Default,
+          VECTOR_TABLE_BACKUP,
+          256,
+          &HashMap::new(),
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+  context.add_memory_region(
+      "boot_block_backup",
+      MemoryRegion::new(
+          RegionKind::Default,
+          BOOT_LOADER_BACKUP,
+          256,
+          &HashMap::new(),
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  let command_editor_main = context.memory_region("command_editor")
+      .label_address("command_editor");
+  let define_address = |name, value| {
+    define(name, &hex(context.memory_region(value).start))
+  };
+}
+
+\begin{Figure}
+\rs{define_address("mmapa", "compiler_code")}
+\rs{define_address("mmapb", "builder_code")}
+\rs{define_address("mmapc", "command_editor_commands")}
+\rs{define_address("mmapd", "compiler_source")}
+\rs{define_address("mmapf", "compiler_code_backup")}
+\rs{define_address("mmapg", "kernel_code")}
+\rs{define_address("mmaph", "boot_block_backup")}
+\rs{define_address("mmapi", "builder_source")}
+\rs{define_address("mmapj", "kernel_source")}
+\input{figures/chapter2/memory-map.tex}
+
+\caption{The Flash1 memory bank content at the end of
+\cref{chapter:boot-loader-and-drivers}. White, blue, red and gray areas
+represent source code, bytecode, native code, and unused memory, respectively
+(not to scale). See \cref{fig:final-toyc-memory-map} for the
+content before the Types Compiler.}\label{fig:boot-loader-memory-map}
+\end{Figure}
+
+We now need to type this program, compile it, and save it. Thanks to our file
+system we can store the source code as a file. However, this would make it
+harder to compile since our compiler can not work with files (yet). Instead,
+we use two steps:
+\begin{enumerate}
+  \item we store the source code as a data buffer in the Flash1 memory bank,
+  compile it, and store the compiled code in the same way.
+
+  \item we copy the source code into the file system.
+\end{enumerate}
+
+For step 1 we choose to store the source code after the builder's source code,
+at address \rs{hex_dec(kernel_source)} = page
+\rs{dec(page_number(kernel_source))}, and the compiled code after the native
+compiler code, at address \rs{hex_dec(kernel_code)} = page
+\rs{dec(page_number(kernel_code))} (see \cref{fig:boot-loader-memory-map}).
+
+To load and save the boot loader source code, edit the F8 and F10 commands as
+follows. In the memory editor, type
+``w\rs{hex_word_low(command_editor_main)}''+Enter, followed by ``r'', to start
+the command editor. Then type ``F8'' and ``e'' to edit this command, and
+replace its code with the following (similar to the F3 command; see also
+\cref{subsection:first-commands}):
+
+\rust{
+  // Start command editor.
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(),
+      "Welcome to the command editor.");
+
+  context.type_keys(vec!["F8"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("load_kernel_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(kernel_source);
+  c.cst(ram_source);
+  c.call("buffer_copy");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source_f8 = format!("{}\nd LOAD_BOOT_LOADER_SOURCE_CODE",
+  c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source_f8);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source_f8)}
+
+When done, type Escape and ``s'' to save it. In the same way, replace the F10
+command with the following code
+(similar to the F5 command):
+
+\rust{
+  context.type_keys(vec!["F10"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("save_kernel_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(ram_source);
+  c.cst(page_number(kernel_source));
+  c.call("buffer_flash");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source_f10 = format!("{}\nd SAVE_BOOT_LOADER_SOURCE_CODE",
+  c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source_f10);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source_f10)}
+
+To compile the boot loader code, or in fact whatever source code has just been
+edited in RAM, update the F9 command as follows (see
+\cref{section:toyc5-compilation}):
+
+\rust{
+  context.type_keys(vec!["F9"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+
+  // Same subroutine as in 'Native Compiler chapter'
+  let asm_words = context.program("native_compiler_wrapper").machine_code();
+  assert_eq!(asm_words.len(), 8);
+
+  c.func("compile_kernel_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst_0();
+  c.def("result");
+  // compile kernel code
+  c.new_line();
+  c.ptr("result");
+  c.def("word7");
+  c.cst(ram_code); // dst_buffer
+  c.def("word6");
+  c.cst(ram_source); // src_buffer
+  c.def("word5");
+  c.cst(native_compiler_code + 4 + 1); //+1 for interworking address
+  c.def("word4");
+  c.new_line();
+  c.cst(asm_words[3]);
+  c.def("word3");
+  c.cst(asm_words[2]);
+  c.def("word2");
+  c.cst(asm_words[1]);
+  c.def("word1");
+  c.cst(asm_words[0]);
+  c.def("word0");
+  // Compute interworking address of wrapper and call it.
+  c.new_line();
+  c.ptr("word0");
+  c.cst_1();
+  c.add();
+  c.blx();
+  //if error, return it
+  c.new_line();
+  c.get("result");
+  c.cst_0();
+  c.ifne("compile_kernel_source_code_end");
+  // save compiled code of kernel
+  c.new_line();
+  c.cst(ram_code);
+  c.cst(page_number(kernel_code));
+  c.call("buffer_flash");
+  // return result
+  c.label("compile_kernel_source_code_end");
+  c.get("result");
+  c.retv();
+  let commands = context.memory_region("command_editor_commands").start;
+  let original = context.get_text(commands + 8 * 256);
+  let c_source = format!("{}\nd COMPILE_AND_STORE_EDITED_SOURCE_CODE",
+      c.get_toy0_source_code());
+  assert!(c_source.len() <= 252);
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+
+}
+\rs{code_changes(&c_source, &original, &[2, 5, 6, 8])}
+
+The second line is updated in order to compile the edited source code in RAM,
+at $\mathit{src\_buffer}$ = \rs{hex_dec(ram_source)} (see
+\cref{fig:command-editor-memory-map}), into $\mathit{dst\_buffer}$ =
+\rs{hex_dec(ram_code)} (idem), with the native compiler (at interworking
+address \rs{hex(native_compiler_code)} + 4 + 1 =
+\rs{dec(native_compiler_code+5)} -- see \cref{fig:boot-loader-memory-map}). The
+added lines store the result in flash memory at \rs{hex(kernel_code)} = page
+\rs{dec(page_number(kernel_code))}, with
+\hyperlink{buffer-flash}{buffer\_flash}, if the compilation is successful.
+
+\bigskip \paragraph{Compilation} We can now type the boot loader source code
+and compile it. For this type ``F2''+``r'' to start a new program, and
+``F4''+``r'' to edit it. Then type the source code listed in the previous
+section. For reference, we also provide this code in the {\tt boot\_loader.txt}
+file in \toypcurl{sources.zip}. When done, type ``F10''+``r'' to save it, and
+``F9''+``r'' to compile it. The result should be 0, meaning that the
+compilation was successful. If not, type ``F4''+``r'' to fix the error, save
+the program and compile it again. Repeat this process until the compilation is
+successful.
+
+\rust{
+  t.write_toy5("website/sources/boot_loader.txt")?;
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F10"]);
+  context.type_ascii("R\n");
+
+  // F9 to compile it, must fit in a page
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+  let boot_loader_size =
+      context.micro_controller().borrow_mut().debug_get32(ram_code);
+  assert!(boot_loader_size <= 256);
+}
+
+\bigskip \paragraph{Storage} At this stage we can check if the boot loader code
+fits in a page by looking at its compiled code data buffer header, at address
+\rs{hex(ram_code)} (with the memory editor). The result is
+\rs{dec(boot_loader_size)}, which is indeed smaller than 256.
+
+We can now copy its source code on disk, but it is too soon to copy
+its compiled code in page 0 of the Flash0 memory bank, hereafter called the
+{\em boot page}. Indeed, we still need the current content of this page to
+start the command editor and run its commands (to continue building our
+operating system in the next chapters). Instead, we copy the boot loader code
+in page \rs{dec(page_number(BOOT_LOADER_BACKUP))} (at address
+\rs{hex(BOOT_LOADER_BACKUP)}), and we make a copy of the current boot page,
+hereafter called the {\em BIOS Vector Table}\footnote{Since this page contains
+the Vector Table of our Basic Input Output System.}, in the next one (see
+\cref{fig:boot-loader-memory-map}). For this type ``F11''+``e'' to define a new
+command as follows:
+
+\rust{
+  context.type_keys(vec!["F11"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("save_boot_block_and_vector_table", &[], "", &[]);
+  c.new_line();
+  c.cst(kernel_code + 4); // must skip header!
+  c.cst(page_number(BOOT_LOADER_BACKUP));
+  c.cst(256);
+  c.call("page_flash");
+  c.new_line();
+  c.cst(0x80000);
+  c.cst(page_number(VECTOR_TABLE_BACKUP));
+  c.cst(256);
+  c.call("page_flash");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = c.get_toy0_source_code();
+  context.store_text(ram_command_source, &c_source);
+  context.type_ascii("R\n");
+}
+\rs{code(&c_source)}
+
+When done, type Escape and ``r'' to run it (we don't need to save it). The
+first line copies the boot loader (without its data buffer header, \ie,
+starting at \rs{hex(kernel_code)} + 4 = \rs{dec(kernel_code+4)}) in page
+\rs{dec(page_number(BOOT_LOADER_BACKUP))} with
+\hyperlink{page-flash}{page\_flash}. The second lines copies the BIOS Vector
+Table, at address \rs{hex_dec(0x80000u32)}, in the next page (both copy a full
+page).
+
+\rust{
+  let builder_source =
+      context.get_text(context.memory_region("builder_source").start);
+  let mut t = Transpiler5::new_str(&builder_source);
+  t.add_unchanged("fn main() -> u32;", "static NAME = [");
+}
+
+Storing the boot loader source code on disk can't be done with a command editor
+command since we don't have the addresses of the functions written in the
+previous chapter. But we can use the builder program instead, which is easier
+anyway. For this, type ``F3''+``r'' to load it, and ``F4''+``r'' to edit it.
+Then delete the code after the {\tt disk\_delete\_file} function (starting with
+{\tt static NAME = }$\ldots$), and replace it with the following:
+
+\rust{
+  t.add_placeholder("#SOURCE", &format!("{}", kernel_source));
+}
+\toy{
+fn buffer_write(buffer: &u32, name: &u32, length: u32) -> u32 {
+  let result = OK;
+  let file = disk_find_file(name, length, null);
+  if file == null {
+    result = disk_create_file(name, length, &file);
+  } else {
+    disk_clear_file(file);
+  }
+  let block = file as &DiskBlock;
+  let size = *buffer;
+  if result == OK {
+    result = disk_write_file(&block, buffer + 4, size);
+  }
+  return result;
+}
+
+static NAME = ['b','o','o','t','.','t','o','y'];
+fn main() -> u32 {
+  const BOOT_LOADER_SOURCE: &u32 = #SOURCE;
+  return buffer_write(BOOT_LOADER_SOURCE, NAME, 8);
+}
+}%toy
+
+The {\tt buffer\_write} function writes a data {\tt buffer} in a file with the
+given {\tt name}, and returns {\tt OK} if the operation succeeds. For this it
+creates the file if it does not exist, or clears its content otherwise. It then
+appends the content of {\tt buffer}, without its 4 bytes header, to this file.
+The {\tt main} function uses it to save the boot loader source code, at address
+\rs{hex_dec(kernel_source)}, in a ``{\tt boot.toy}'' file.
+
+When done, return in the command editor and type ``F5''+``r'' to save this
+code, ``F6''+``r'' to compile it, and ``F7''+``r'' to run it. The result of
+each step should be 0, meaning that no error occurred. Otherwise repeat the
+steps before the failure.
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+  // F7 to run it
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\section{Drivers}
+
+In order to test our boot loader we first need to write a program to load. We
+can then try to run it with the boot loader but, to check that this process
+works, the loaded program must do something that we can verify. A simple option
+is to blink a LED. A more complex option is to display on screen each character
+typed on the keyboard. This requires the clock, graphics card, and keyboard
+drivers. We already have them, but only in bytecode form. And since we want to
+eventually get rid of the bytecode interpreter, we need to re-implement them in
+Toy at some point. We thus choose the second option, which gives us the
+opportunity to write a very first version of our operating system kernel,
+containing the drivers re-implemented in Toy.
+
+\rust{
+  let builder_source =
+      context.get_text(context.memory_region("builder_source").start);
+  let mut t = Transpiler5::new_str(&builder_source);
+}
+
+\subsection{Clock driver}
+
+We start the kernel with an {\tt entry} function having the same parameters as
+the boot loader's {\tt run} function, as required. This function simply calls
+an {\tt os\_init} function, declared here but implemented at the very end. We
+also include the native {\tt load8} and {\tt store8} functions, copied from
+\cref{section:toyc5-implementation}, which are always useful:
+
+\toy{
+@fn os_init(code: &u32, heap: &u32, stack: &u32);
+@fn entry(code: &u32, heap: &u32, stack: &u32) {
+@  os_init(code, heap, stack);
+@}
+
+@fn load8(ptr: &u32) -> u32 [ /*LDRB_R0_R0_0*/30720; /*MOV_PC_LR*/18167; ]
+@fn store8(ptr: &u32, value: u32) [ /*STRB_R1_R0_0*/ 28673; \
+/*MOV_PC_LR*/ 18167;]
+}%toy
+
+We continue with a re-implementation of the {\tt clock\_init} and {\tt delay}
+functions from \cref{section:clock-initializer,section:delay-function} (see
+these sections for more details):
+
+\toy{
+@fn clock_init() {
+@  const EEFC0_MODE_REGISTER: &u32 = 1074661888;
+@  const EEFC1_MODE_REGISTER: &u32 = 1074662400;
+@  *EEFC0_MODE_REGISTER = 1536; /*wait=6*/
+@  *EEFC1_MODE_REGISTER = 1536; /*wait=6*/
+
+@  const PMC_MAIN_OSCILLATOR_REGISTER: &u32 = 1074660896;
+@  const PMC_PHASE_LOCK_LOOP_REGISTER: &u32 = 1074660904;
+@  const PMC_MASTER_CLOCK_REGISTER: &u32 = 1074660912;
+@  const PMC_STATUS_REGISTER: &u32 = 1074660968;
+
+@  *PMC_MAIN_OSCILLATOR_REGISTER = 3669769; /*Enable Crystal Oscillator*/
+@  while (*PMC_STATUS_REGISTER & 1) == 0 {} /*Wait until ready*/
+
+@  *PMC_MAIN_OSCILLATOR_REGISTER = 20446985; /*Select Crystal Oscillator*/
+@  while (*PMC_STATUS_REGISTER & 65536) == 0 {} /*Wait until selected*/
+
+@  *PMC_PHASE_LOCK_LOOP_REGISTER = 537280257; /*Configure Phase Lock Loop*/
+@  while (*PMC_STATUS_REGISTER & 2) == 0 {} /*Wait until ready*/
+
+@  *PMC_MASTER_CLOCK_REGISTER = 2; /*Select Phase Lock Loop output*/
+@  while (*PMC_STATUS_REGISTER & 8) == 0 {} /*Wait until output ready*/
+
+@  const SYSTICK_CONTROL_AND_STATUS_REGISTER: &u32 = 3758153744;
+@  *SYSTICK_CONTROL_AND_STATUS_REGISTER = 1; /*Enable*/
+
+@  const WATCHDOG_TIMER_MODE_REGISTER: &u32 = 1074666068;
+@  *WATCHDOG_TIMER_MODE_REGISTER = 32768; /*Disable*/
+@}
+
+@fn delay(millis: u32) {
+@  const SYSTICK_CONTROL_AND_STATUS_REGISTER: &u32 = 3758153744;
+@  const SYSTICK_RELOAD_VALUE_REGISTER: &u32 = 3758153748;
+@  const SYSTICK_CURRENT_VALUE_REGISTER: &u32 = 3758153752;
+@
+@  *SYSTICK_RELOAD_VALUE_REGISTER = 10500 * millis;
+@  *SYSTICK_CURRENT_VALUE_REGISTER = 0;
+@  /*Wait until timer counts from 1 to 0*/
+@  while *SYSTICK_CONTROL_AND_STATUS_REGISTER & 65536 == 0 {}
+@}
+}%toy
+
+We also re-implement the {\tt boot\_mode\_select\_rom} function from
+\cref{subsection:boot-mode-selection}, without the Vector Table relocation part
+(we do this in {\tt os\_init} instead, see below):
+
+\toy{
+@fn boot_mode_select_rom() {
+@  const EEFC0_COMMAND_REGISTER: &u32 = 1074661892;
+@  const EEFC0_STATUS_REGISTER: &u32 = 1074661896;
+@  const CLEAR_BOOT_MODE_SELECTION_BIT_COMMAND: u32 = 1509949708;
+@  *EEFC0_COMMAND_REGISTER = CLEAR_BOOT_MODE_SELECTION_BIT_COMMAND;
+@  while *EEFC0_STATUS_REGISTER != 1 {}
+@}
+}%toy
+
+\subsection{Graphics card driver}
+
+Here we re-implement the graphics card driver functions from
+\cref{section:gpu-driver} (see this section for more details). We omit the last
+ones, namely {\tt gpu\_clear\_screen}, {\tt gpu\_set\_cursor}, {\tt
+gpu\_set\_color}, and {\tt gpu\_draw\_char}:
+
+\toy{
+@fn gpu_reset() {
+@  const PIOB_ENABLE_REGISTER: &u32 = 1074663424;
+@  const PIOB_OUTPUT_ENABLE_REGISTER: &u32 = 1074663440;
+@  const PIOB_SET_OUTPUT_DATA_REGISTER: &u32 = 1074663472;
+@  const PIOB_CLEAR_OUTPUT_DATA_REGISTER: &u32 = 1074663476;
+@  const PIOB_PULL_UP_DISABLE_REGISTER: &u32 = 1074663520;
+@  const PB12_PIN: u32 = 4096;
+
+@  *PIOB_ENABLE_REGISTER = PB12_PIN;
+@  *PIOB_OUTPUT_ENABLE_REGISTER = PB12_PIN;
+@  *PIOB_PULL_UP_DISABLE_REGISTER = PB12_PIN;
+@  *PIOB_CLEAR_OUTPUT_DATA_REGISTER = PB12_PIN;
+@  delay(10);
+@  *PIOB_SET_OUTPUT_DATA_REGISTER = PB12_PIN;
+@  delay(10);
+@}
+
+@fn spi_init() {
+@  const PIOA_DISABLE_REGISTER: &u32 = 1074662916;
+@  const PA25_26_27_28_PINS: u32 = 503316480;
+@  *PIOA_DISABLE_REGISTER = PA25_26_27_28_PINS;
+
+@  const PMC_PERIPHERAL_CLOCK_ENABLE_REGISTER: &u32 = 1074660880;
+@  const SPI_ID: u32 = 16777216;
+@  *PMC_PERIPHERAL_CLOCK_ENABLE_REGISTER = SPI_ID;
+
+@  const SPI_CONTROL_REGISTER: &u32 = 1073774592;
+@  const SPI_MODE_REGISTER: &u32 = 1073774596;
+@  const SPI_CHIP_SELECT_REGISTER: &u32 = 1073774640;
+@  *SPI_MODE_REGISTER = 1; /*Set master mode*/
+@  *SPI_CONTROL_REGISTER = 1; /*Enable*/
+@  *SPI_CHIP_SELECT_REGISTER = 5506; /*4MHz, 16bits, rising edge*/
+@}
+
+@fn spi_transfer(data: u32) -> u32 {
+@  const SPI_RECEIVE_DATA_REGISTER: &u32 = 1073774600;
+@  const SPI_TRANSMIT_DATA_REGISTER: &u32 = 1073774604;
+@  const SPI_STATUS_REGISTER: &u32 = 1073774608;
+
+@  while (*SPI_STATUS_REGISTER & 2) == 0 {} /*Wait transmitter ready*/
+@  *SPI_TRANSMIT_DATA_REGISTER = data;
+
+@  while (*SPI_STATUS_REGISTER & 1) == 0 {} /*Wait data received*/
+@  return *SPI_RECEIVE_DATA_REGISTER;
+@}
+
+@fn gpu_set_register(register : u32, value : u32) {
+@  const SELECT_REGISTER: u32 = 32768;
+@  spi_transfer(SELECT_REGISTER | register);
+@  spi_transfer(value & 255);
+@}
+
+@fn gpu_set_register_or_wait(register : u32, value : u32) {
+@  if register != 0 {
+@    gpu_set_register(register, value);
+@  } else {
+@    delay(value);
+@  }
+@}
+
+@static GPU_INIT_COMMANDS = [
+@  136,   6, /*PLL Control 1*/
+@  0,     1, /*delay 1ms*/
+@  137,   1, /*PLL Control 2*/
+@  0,     1, /*delay 1ms*/
+@  4,   129, /*Pixel Clock Setting*/
+@  20,   99, /*Horizontal Display Width*/
+@  21,    4, /*Horizontal Non-Display Period Fine Tuning*/
+@  22,    3, /*Horizontal Non-Display Period*/
+@  23,   25, /*HSYNC Start Position*/
+@  25,  223, /*Vertical Display Height 0*/
+@  26,    1, /*Vertical Display Height 1*/
+@  27,   21, /*Vertical Non-Display Period 0*/
+@  29,   21, /*VSYNC Start Position*/
+@  142, 128, /*Memory Clear Control*/
+@  0,   100, /*delay 100ms*/
+@  1,   128, /*Power And Display Control*/
+@  199,   1, /*Extra General Purpose IO*/
+@  138,  64, /*PWM1 Control*/
+@  52,   31, /*Horizontal End Point of Active Window 0*/
+@  53,    3, /*Horizontal End Point of Active Window 1*/
+@  54,  223, /*Vertical End Point of Active Window 0*/
+@  55,    1, /*Vertical End Point of Active Window 1*/
+@  64,  224, /*Memory Write Control 0*/
+@  68,   30  /*Blink Time Control*/
+@];
+
+@fn gpu_init() {
+@  gpu_reset();
+@  spi_init();
+@  let ptr = GPU_INIT_COMMANDS;
+@  while ptr < GPU_INIT_COMMANDS + 48 {
+@    gpu_set_register_or_wait(load8(ptr), load8(ptr + 1));
+@    ptr = ptr + 2;
+@  }
+@}
+}%toy
+
+\subsection{Keyboard driver}
+
+Finally, we re-implement the keyboard driver from
+\cref{subsection:keyboard-driver-impl}, starting with the two character tables
+(see this section for more details):
+
+\toy{
+@static CHARACTERS = [
+@  0, 136, 0, 132, 130, 128, 129, 139, 0, 137, 135, 133, 131, 9, 96, 0, 0,
+@  141, 0, 0, 140, 113, 49, 0, 0, 0, 122, 115, 97, 119, 50, 0, 0,
+@  99, 120, 100, 101, 52, 51, 0, 0, 32, 118, 102, 116, 114, 53, 0, 0,
+@  110, 98, 104, 103, 121, 54, 0, 0, 0, 109, 106, 117, 55, 56, 0, 0,
+@  44, 107, 105, 111, 48, 57, 0, 0, 46, 47, 108, 59, 112, 45, 0, 0,
+@  0, 39, 0, 91, 61, 0, 0, 143, 0, 10, 93, 0, 92, 0, 0, 0,
+@  0, 0, 0, 0, 0, 8, 0, 0, 49, 0, 52, 55, 0, 0, 0, 48,
+@  46, 50, 53, 54, 56, 27, 142, 138, 43, 51, 45, 42, 57, 144, 0, 0,
+@  0, 0, 134,
+@  0, 136, 0, 132, 130, 128, 129, 139, 0, 137, 135, 133, 131, 9, 126, 0, 0,
+@  141, 0, 0, 140, 81, 33, 0, 0, 0, 90, 83, 65, 87, 64, 0, 0,
+@  67, 88, 68, 69, 36, 35, 0, 0, 32, 86, 70, 84, 82, 37, 0, 0,
+@  78, 66, 72, 71, 89, 94, 0, 0, 0, 77, 74, 85, 38, 42, 0, 0,
+@  60, 75, 73, 79, 41, 40, 0, 0, 62, 63, 76, 58, 80, 95, 0, 0,
+@  0, 34, 0, 123, 43, 0, 0, 143, 0, 10, 125, 0, 124, 0, 0, 0,
+@  0, 0, 0, 0, 0, 8, 0, 0, 49, 0, 52, 55, 0, 0, 0, 48,
+@  46, 50, 53, 54, 56, 27, 142, 138, 43, 51, 45, 42, 57, 144, 0, 0,
+@  0, 0, 134];
+
+@const KEYBOARD_HANDLER_STATE: &u32 = 1074666128;
+@const KEYBOARD_HANDLER_SHIFT: &u32 = 1074666132;
+@const KEYBOARD_HANDLER_CHAR: &u32 = 1074666136;
+
+@const NVIC_INTERRUPT_SET_ENABLE_REGISTER: &u32 = 3758153984;
+@const NVIC_INTERRUPT_CLEAR_ENABLE_REGISTER: &u32 = 3758154112;
+@const USART_ID: u32 = 131072;
+
+@fn keyboard_init() {
+@  *KEYBOARD_HANDLER_STATE = 0;
+@  *KEYBOARD_HANDLER_SHIFT = 0;
+@  *KEYBOARD_HANDLER_CHAR = 0;
+
+@  const PIOA_ENABLE_REGISTER: &u32 = 1074662912;
+@  const PA10_17_PINS: u32 = 132096;
+@  *PIOA_ENABLE_REGISTER = PA10_17_PINS;
+
+@  const PMC_PERIPHERAL_CLOCK_ENABLE_REGISTER: &u32 = 1074660880;
+@  *PMC_PERIPHERAL_CLOCK_ENABLE_REGISTER = USART_ID;
+
+@  const USART_CONTROL_REGISTER: &u32 = 1074364416;
+@  const USART_MODE_REGISTER: &u32 = 1074364420;
+@  const USART_INTERRUPT_ENABLE_REGISTER: &u32 = 1074364424;
+
+@  *USART_MODE_REGISTER = 1008; /*PS/2 protocol configuration*/
+@  *USART_INTERRUPT_ENABLE_REGISTER = 1; /*Enable RX ready interrupt*/
+@  *NVIC_INTERRUPT_SET_ENABLE_REGISTER = USART_ID;
+@  *USART_CONTROL_REGISTER = 16; /*Enable receiver*/
+@}
+
+@fn keyboard_put_char(c: u32) {
+@  if *KEYBOARD_HANDLER_CHAR == 0 {
+@    *KEYBOARD_HANDLER_CHAR = c;
+@  }
+@}
+
+@fn keyboard_get_char() -> u32 {
+@  *NVIC_INTERRUPT_CLEAR_ENABLE_REGISTER = USART_ID;
+@  let c = *KEYBOARD_HANDLER_CHAR;
+@  *KEYBOARD_HANDLER_CHAR = 0;
+@  *NVIC_INTERRUPT_SET_ENABLE_REGISTER = USART_ID;
+@  return c;
+@}
+
+@fn keyboard_wait_char() -> u32 {
+@  let c = 0;
+@  while c == 0 { c = keyboard_get_char(); }
+@  return c;
+@}
+}%toy
+
+Here we merge the ({\tt keyboard\_}){\tt skip\_code}, {\tt press\_shift}, {\tt
+release\_shift}, {\tt put\_extended\_code}, and {\tt put\_code} functions into
+a single one, taking an additional {\tt action} parameter equal to one of the
+following constants:
+
+\toy{
+@const SKIP_CODE: u32 = 0;
+@const RELEASE_SHIFT: u32 = 1;
+@const PRESS_SHIFT: u32 = 2;
+@const PUT_EXTENDED_CODE: u32 = 3;
+@const PUT_CODE: u32 = 4;
+
+@fn keyboard_handle_code(action: u32, scancode: u32) {
+@  if action == RELEASE_SHIFT {
+@    *KEYBOARD_HANDLER_SHIFT = 0;
+@  } else if action == PRESS_SHIFT {
+@    *KEYBOARD_HANDLER_SHIFT = 132;
+@  } else if action == PUT_EXTENDED_CODE {
+@    keyboard_put_char(scancode + 128);
+@  } else if action == PUT_CODE {
+@    keyboard_put_char(load8(CHARACTERS + scancode + *KEYBOARD_HANDLER_SHIFT));
+@  }
+@}
+}%toy
+
+We then replace the addresses of these functions with these constants
+in the Finite State Machine transition table:
+
+\toy{
+@static TRANSITION_TABLE = [
+@  4, 0, 0, 30, 0, 20, 0, 10, 2, 0,
+@  0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+@  3, 0, 0, 0, 0, 0, 0, 40, 0, 0,
+@  0, 10, 0, 0, 0, 0, 0, 10, 0, 0,
+@  0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+}%toy
+
+\noindent and we update the {\tt keyboard\_handler} function to use {\tt
+keyboard\_handle\_code}:
+
+\toy{
+@fn keyboard_action_column(scancode : u32) -> u32 {
+@  if scancode == 18 { return 8; }
+@  if scancode < 132 { return 0; }
+@  if scancode == 224 { return 4; }
+@  if scancode == 240 { return 6; }
+@  return 2;
+@}
+
+@fn keyboard_handler() {
+@  const USART_RECEIVER_HOLDING_REGISTER: &u32 = 1074364440;
+@  let scancode = *USART_RECEIVER_HOLDING_REGISTER;
+@  let cell = TRANSITION_TABLE + *KEYBOARD_HANDLER_STATE + \
+keyboard_action_column(scancode);
+@  keyboard_handle_code(load8(cell), scancode);
+@  *KEYBOARD_HANDLER_STATE = load8(cell + 1);
+@}
+}%toy
+
+\subsection{Disk driver}
+
+The new ``disk driver'' functions implemented in the previous chapter can be
+added here, starting from the block data structure definitions and ending with
+the {\tt disk\_delete\_file} function. Indeed, they will be needed by our
+operating system to work with files.
+
+\rust{
+  t.add_unchanged("struct DiskBlock", "fn buffer_write(");
+}
+
+\subsection{Main function}\label{subsection:kernel0-main}
+
+To finish this initial version of the kernel we need to implement the main
+function, {\tt os\_init}. As discussed above, this function should display on
+screen each character typed on the keyboard. But this is not the only thing it
+has to do.
+
+Indeed, to run this kernel with the boot loader, we first need to
+copy the boot loader in the boot page. However, after our test with the
+kernel, we need to return in the memory editor to continue building our
+operating system. For this, {\tt os\_init} must restore the BIOS Vector Table
+in the boot page, as soon as possible (in case a next step fails).
+
+The {\tt os\_init} function also needs to configure an USART handler in the
+Vector Table, to handle USART interrupts with the keyboard driver. However, as
+explained above, we don't want to change the BIOS Vector Table. The solution is
+to define a new Vector Table in RAM. In summary, {\tt os\_init} must do the
+following:
+\begin{enumerate}
+  \item define and enable a new Vector Table in RAM.
+
+  \item restore the BIOS Vector Table in the boot page.
+
+  \item initialize the drivers.
+
+  \item display on screen each character typed on the keyboard.
+\end{enumerate}
+
+For step 1 we first need an USART handler function. When it returns, such a
+function must make sure to restore the registers to the values they had before
+the interrupt (so that the interrupted program can resume execution correctly).
+This is why the USART handler implemented in
+\cref{subsection:keyboard-driver-impl} saves and restores the registers R4 to
+R6, in addition to the R0 to R3 registers automatically saved by the
+microprocessor. Indeed, this handler calls the bytecode interpreter, which uses
+registers R0 to R6.
+
+Here we want to compile the whole kernel into native code, and thus no longer
+need to use the bytecode interpreter to call {\tt keyboard\_handler}. Note also
+that this function, and the functions it calls directly or indirectly, have at
+most 2 parameters and use very simple expressions. In other words, they do not
+use registers other than R0 to R3 (at most). Since these registers are
+automatically saved and restored (see
+\cref{subsection:interrupt-entry-return}), our USART handler can just call {\tt
+keyboard\_handler} directly:
+
+\toy{
+@fn usart_handler() {
+@  keyboard_handler();
+@}
+}%toy
+
+For step 2 we implement the following function, which uses the disk driver
+functions to copy the BIOS Vector Table backup (at address
+\rs{hex_dec(VECTOR_TABLE_BACKUP)} -- see \cref{fig:boot-loader-memory-map}),
+into the boot page, at address \rs{hex_dec(0x80000u32)}:
+
+\rust{
+  t.add_placeholder("#SRC", &format!("{}", VECTOR_TABLE_BACKUP));
+  t.add_placeholder("#DST", &format!("{}", 0x80000));
+}
+\toy{
+@fn restore_bios_vector_table() {
+@  const BIOS_VECTOR_TABLE_BACKUP: &u32 = #SRC;
+@  const BOOT_PAGE: &u32 = #DST;
+@  block_copy_bytes(BIOS_VECTOR_TABLE_BACKUP, BOOT_PAGE, 256);
+@  block_write(BOOT_PAGE as u32);
+@}
+}%toy
+
+With this we can finally implement the {\tt os\_init} function, as described
+above. To simplify we only set the USART handler in the Vector Table (no Hard
+Fault handler), relocated with the Vector Table Offset Register (see
+\cref{section:vector-table}) at the address reserved for this by the boot loader
+(257 bytes before {\tt code} -- see
+\cref{subsection:boot-loader-impl,fig:kernel-ram-map}):
+
+\toy{
+@fn os_init(code: &u32, heap: &u32, stack: &u32) {
+@  const VECTOR_TABLE_OFFSET_REGISTER: &&u32 = 3758157064;
+@  const USART_HANDLER_OFFSET: u32 = 132;
+@  let vector_table = code - 257;
+@  *(vector_table + USART_HANDLER_OFFSET) = usart_handler + 1;
+@  *VECTOR_TABLE_OFFSET_REGISTER = vector_table;
+
+@  restore_bios_vector_table();
+@  clock_init();
+@  keyboard_init();
+@  gpu_init();
+@  gpu_set_register(2, '>');
+@  loop {
+@    gpu_set_register(2, keyboard_wait_char());
+@  }
+@}
+}%toy
+
+\section{Compilation and test}
+
+\begin{Figure}
+  \input{figures/chapter2/kernel-ram-map.tex}
+
+  \caption{The layout of the kernel in RAM, and the $\mathit{code}$,
+  $\mathit{heap}$, and $\mathit{stack}$ arguments passed to {\tt os\_init}. The
+  kernel code (red) is just after the relocated Vector Table (yellow). Red,
+  white, and gray areas represent native code, used memory, and unused memory,
+  respectively (not to scale).}\label{fig:kernel-ram-map}
+\end{Figure}
+
+To compile and test this initial kernel we proceed in two steps, as for the
+boot loader:
+\begin{enumerate}
+  \item we store the source code as a data buffer in the Flash1 memory bank,
+  compile it, and store the compiled code in the same way.
+
+  \item we copy the compiled code into the file system, flash the boot loader
+  in the boot page, and reset the Arduino.
+\end{enumerate}
+
+For step 1 we can reuse the data buffer at address \rs{hex(kernel_source)},
+which currently contains the boot loader source code. Indeed, we saved this
+code in the ``{\tt boot.toy}'' file. In particular, we can reuse the F8 and F10
+commands, as is. Let's just update their description to reflect their new
+purpose. With the command editor, update the F8 command description to:
+
+\rust{
+  context.type_keys(vec!["F8"]);
+  let new_c_source_f8 = c_source_f8.replace("BOOT_LOADER", "KERNEL");
+  context.store_text(ram_command_source, &new_c_source_f8);
+  context.type_keys(vec!["S"]);
+}
+\rs{code_changes(&new_c_source_f8, &c_source_f8, &[3])}
+
+\noindent and the F10 command description to:
+
+\rust{
+  context.type_keys(vec!["F10"]);
+  let new_c_source_f10 = c_source_f10.replace("BOOT_LOADER", "KERNEL");
+  context.store_text(ram_command_source, &new_c_source_f10);
+  context.type_keys(vec!["S"]);
+}
+\rs{code_changes(&new_c_source_f10, &c_source_f10, &[3])}
+
+The kernel source code includes the disk driver functions from the previous
+chapter. To avoid re-typing them, first make a copy of the builder source code
+by typing ``F3''+``r'' and ``F10''+``r''. Then type ``F4''+``r'' to replace its
+beginning part with the clock, graphics card, and keyboard drivers, and its end
+part with the main function from \cref{subsection:kernel0-main}. The result
+should be identical to the {\tt toys\_v0.txt} file in \toypcurl{sources.zip}.
+When done, type ``F10''+``r'' to save it and ``F9''+``r'' to compile it. If
+necessary, repeat these steps until the compilation is successful.
+
+\rust{
+  t.close_unchecked();
+  t.write_toy5("website/sources/toys_v0.txt")?;
+
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F10"]);
+  context.type_ascii("R\n");
+  // F9 to compile it (stores it in flash memory too)
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+For step 2 we modify the builder as follows. Type ``F3''+``r'' and ``F4''+``r''
+to edit the builder source code, delete the code after the {\tt buffer\_write}
+function (starting with {\tt static NAME = }$\ldots$), and replace it with the
+following:
+
+\rust{
+  let builder_source =
+      context.get_text(context.memory_region("builder_source").start);
+  let mut t = Transpiler5::new_str(&builder_source);
+  t.add_unchanged("fn main() -> u32;", "static NAME = [");
+  t.add_placeholder("#SRC", &format!("{}", BOOT_LOADER_BACKUP));
+  t.add_placeholder("#DST", &format!("{}", 0x80000));
+  t.add_placeholder("#CODE", &format!("{}", kernel_code));
+}
+
+\toy{
+fn flash_boot_loader_and_reset() {
+  const BOOT_LOADER_BACKUP: &u32 = #SRC;
+  const BOOT_PAGE: &u32 = #DST;
+  block_copy_bytes(BOOT_LOADER_BACKUP, BOOT_PAGE, 256);
+  block_write(BOOT_PAGE as u32);
+
+  const RESET_CONTROL_REGISTER: &u32 = 1074665984;
+  const RESET_COMMAND: u32 = 2768240653;
+  *RESET_CONTROL_REGISTER = RESET_COMMAND;
+}
+
+static NAME = ['t','o','y','s'];
+fn main() -> u32 {
+  const COMPILED_CODE: &u32 = #CODE;
+  let result = buffer_write(COMPILED_CODE, NAME, 4);
+  if result == OK { flash_boot_loader_and_reset(); }
+  return result;
+}
+}%toy
+
+As its name implies, {\tt flash\_boot\_loader\_and\_reset} copies the boot
+loader, at address \rs{hex(BOOT_LOADER_BACKUP)}, into the boot page, and then
+resets the Arduino (see \cref{section:clock-driver-experiments}). The main
+function calls it after saving the compiled code of the kernel, at address
+\rs{hex_dec(kernel_code)}, in a ``{\tt toys}'' file on disk.
+
+When done, type ``F5''+``r'' to save the builder, and``F6''+``r'' to compile
+it. If necessary, repeat these steps until the compilation is successful.
+Finally, type ``F7''+``r'' to run the builder. The Arduino should reset and you
+should see a ``{\tt >}'' prompt on screen. Furthermore, any character typed
+should be displayed on screen, showing that the boot loader successfully loaded
+and launched the kernel. After a new reset, the Arduino should restart with the
+memory editor.
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+  // F7 to run it
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+
+  // Test system now running with boot loader and first kernel version
+  context.run_until_get_char();
+  context.type_ascii("A");
+  assert_eq!(display.borrow().get_text(), ">a");
+
+  // Test reset goes back to memory editor and old system
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  assert!(display.borrow().get_text().contains("20088000 00000000"));
+}

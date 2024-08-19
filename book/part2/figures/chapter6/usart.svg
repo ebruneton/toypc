@@ -1,0 +1,88 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="M 21,32 H 15 L 15,10" fill="none" stroke="#bf3959" marker-end="url(#arrow)"/>
+    <path d="M 20,28 H 15" stroke="#bf3959"/>
+    <path d="m 120,61 0,-32 H 64" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <rect width="28" height="5" x="36" y="43" fill="#ebebeb" stroke="#000000"/>
+    <text x="105" y="39">TXD</text>
+    <text x="105" y="22">RXD</text>
+    <text x="105" y="60">SCK</text>
+    <text x="135" y="22" text-anchor="end">PA10</text>
+    <text x="135" y="39" text-anchor="end">PA11</text>
+    <text x="135" y="60" text-anchor="end">PA17</text>
+    <text x="34" y="75" text-anchor="end">Mode</text>
+    <text x="-45" y="141" transform="rotate(-90)" text-anchor="middle">PIO Controller</text>
+    <text x="-45" y="5" transform="rotate(-90)" text-anchor="middle">Power Management Controller</text>
+    <text x="10" y="64" fill="#048966">Peripheral Clock 17</text>
+    <text x="-24" y="26" transform="rotate(-90)">Status</text>
+    <text x="-31" y="14" transform="rotate(-90)" font-size="2.8px" fill="#bf3959">USART\_INT</text>
+    <text x="-24" y="22" transform="rotate(-90)">Channel</text>
+    <text x="66" y="47">Transmit Holding</text>
+    <text x="66" y="17">Receive Holding</text>
+    <path d="m 50,43 v 5" stroke="#000000"/>
+    <path d="m 54,43 v 5" stroke="#000000"/>
+    <text x="52" y="47" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 60,43 v 5" stroke="#000000"/>
+    <text x="62" y="47" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="64" y="51" font-size="2.8px" text-anchor="end">0</text>
+    <text x="54" y="51" font-size="2.8px" text-anchor="end">7</text>
+    <text x="57" y="47" font-size="3.5px" text-anchor="middle">...</text>
+    <rect width="28" height="5" x="36" y="71" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 50,71 0,5" stroke="#000000"/>
+    <text x="52" y="75" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 54,71 v 5" stroke="#000000"/>
+    <path d="m 58,71 v 5" stroke="#000000"/>
+    <text x="56" y="75" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="58" y="79" font-size="2.8px" text-anchor="end">4</text>
+    <text x="54" y="79" font-size="2.8px" text-anchor="end">5</text>
+    <text x="40" y="75" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="61" y="75" font-size="3.5px" text-anchor="middle">...</text>
+    <rect width="28" height="5" x="36" y="13" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 50,13 v 5" stroke="#000000"/>
+    <path d="m 54,13 v 5" stroke="#000000"/>
+    <text x="52" y="17" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 60,13 v 5" stroke="#000000"/>
+    <text x="62" y="17" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="64" y="12" font-size="2.8px" text-anchor="end">0</text>
+    <text x="54" y="12" font-size="2.8px" text-anchor="end">7</text>
+    <text x="57" y="17" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="86" y="62" text-anchor="middle">Clock Generator</text>
+    <rect width="28" height="5" x="36" y="25" fill="none" stroke="#000000"/>
+    <rect width="28" height="5" x="36" y="31" fill="none" stroke="#000000"/>
+    <rect width="5" height="28" x="20" y="26" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 20,30 h 5" stroke="#000000"/>
+    <path d="m 20,34 h 5" stroke="#000000"/>
+    <text x="-28" y="24" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="-32" y="24" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="M 25,28 H 29 V 16 l 7,0" fill="none" stroke="#000000" marker-start="url(#arrow)"/>
+    <path d="m 25,32 h 4 V 46 L 36,46" fill="none" stroke="#000000" marker-start="url(#arrow)"/>
+    <path d="m 50,42 1,-1 h 12 l 1,1" fill="none" stroke="#000000"/>
+    <path d="m 50,19 1,1 H 63 l 1,-1" fill="none" stroke="#000000"/>
+    <path d="M 57,41 57,36" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 50,70 1,-1 6,0 1,1" fill="none" stroke="#000000"/>
+    <path d="m 57,25 0,-5" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 9,60 70,60" stroke="#048966" marker-end="url(#arrow)"/>
+    <path d="M 1,10 H 9 L 9,80 H 1" fill="none" stroke="#000000"/>
+    <path d="m 144,10 h -8 V 80 h 8" fill="none" stroke="#000000"/>
+    <rect width="2" height="2" x="56" y="22" fill="#ffffff"/>
+    <path d="m 36,27 h -4 l 0,-4 h 104" fill="none" stroke="#000000" marker-start="url(#arrow)"/>
+    <path d="m 136,61 -34,0" stroke="#000000" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <rect width="2" height="2" x="119" y="34" fill="#ffffff"/>
+    <rect width="32" height="7" x="70" y="57" fill="none" stroke="#000000"/>
+    <path d="m 54,69 v -7 l 16,0" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <circle cx="120" cy="61" r="0.5" stroke="#000000"/>
+    <path d="m 64,35 h 72" stroke="#000000" marker-end="url(#arrow)"/>
+    <circle cx="68" cy="29" r="0.5" stroke="#000000"/>
+    <path d="m 68,29 v 3 l -4,0" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+  </g>
+</svg>

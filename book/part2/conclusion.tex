@@ -1,0 +1,57 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter*{Conclusion}
+\addcontentsline{toc}{chapter}{Conclusion}
+
+A microcontroller contains in a single chip a microprocessor, various memories,
+and specialized circuits to communicate and interact with the external world.
+In this part we connected an Arduino Due, based on an Atmel microcontroller, to
+a Liquid Crystal Display (LCD), and to a keyboard. We used its boot program in
+read-only memory, via an external computer, to store in its flash memory a
+basic memory editor program. Like the Atmel's boot program, this editor allows
+us to input programs and to run them. However, it does this by using the
+keyboard and the LCD connected to the Arduino, \ie, without needing any
+external computer. Our toy computer is thus fully autonomous. The rest of this
+book illustrates this by progressively improving it, to make it more and more
+usable, without using any external computer.
+
+\subsubsection{Further readings}
+
+This part barely scratched the surface of what microcontrollers can do. And it
+only presented a very low level method to program them (because the goal of
+this book it to program one from scratch). To know more about what
+microcontrollers can do, how they work, and how to use them in more convenient
+ways, you can read the following books:
+\begin{itemize}
+  \item ``Arduino Workshop, 2nd Edition: A Hands-on Introduction with 65
+  Projects'' \cite{ArduinoWorkshop}. This book gives a very practical
+  introduction to the Arduino microcontrollers. It explains how they can be
+  programmed with the Arduino Integrated Development Environment, and shows how
+  they can be used with many external components (including 7-segments
+  displays, micro-SD cards, keypads, touchpads, motors, infrared sensors,
+  GPS modules, external memories, etc).
+
+  \item ``Embedded System Design with ARM Cortex-M Microcontrollers:
+  Applications with C, C++ and MicroPython'' \cite{EmbeddedSystemDesign}. This
+  book explains how microcontrollers work in general, and gives practical
+  examples illustrating each aspect. For instance, it presents digital and
+  analog signals, conversions between digital and analog signals, interrupts,
+  clocks and timers, communication protocols, etc.
+
+  \item ``Embedded Systems Fundamentals with Arm Cortex-M Based
+  Microcontrollers: A Practical Approach'' \cite{EmbeddedSystemsFundamentals}.
+  This book also gives ``theoretical'' and practical information about
+  microcontrollers, with an emphasis on how to use them ``properly'' (\ie, to
+  get efficient and responsive programs with low power requirements).
+\end{itemize}
+
+These books use programs written in textual form, which is much more
+practical than hexadecimal numbers representing machine code or bytecode
+instructions. Some of the above books introduce the {\em programming language}
+that they use for this, at the same time as they present microcontrollers. But
+none of them explains in detail how a program written in textual form can run
+on a microprocessor, which can only execute machine code instructions. This
+process is introduced in the next part, based on a toy programming language for
+our toy computer.

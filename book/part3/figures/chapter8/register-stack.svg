@@ -1,0 +1,78 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="60mm" viewBox="0 0 145 60" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="24" height="5" x="1" y="1" fill="#cccccc"/>
+    <rect width="24" height="10" x="1" y="1" fill="none" stroke="#000000"/>
+    <text x="4" y="5" text-anchor="middle">R0</text>
+    <text x="10" y="5" text-anchor="middle">R1</text>
+    <text x="16" y="5" text-anchor="middle">R2</text>
+    <text x="22" y="5" text-anchor="middle">...</text>
+    <path d="M 25,6 H 1" stroke="#000000"/>
+    <path d="M 7,1 V 11" stroke="#000000"/>
+    <path d="M 13,1 V 11" stroke="#000000"/>
+    <path d="M 19,1 V 11" stroke="#000000"/>
+    <rect width="24" height="5" x="1" y="15" fill="none" stroke="#000000"/>
+    <text x="4" y="19" text-anchor="middle">1</text>
+    <path d="m 7,15 v 5" stroke="#000000"/>
+    <path d="m 13,15 v 5" stroke="#000000"/>
+    <path d="m 19,15 v 5" stroke="#000000"/>
+    <rect width="24" height="5" x="36" y="6" fill="none" stroke="#000000"/>
+    <text x="45" y="10" text-anchor="middle">2</text>
+    <text x="39" y="10" text-anchor="middle">1</text>
+    <path d="M 42,6 V 11" stroke="#000000"/>
+    <path d="M 48,6 V 11" stroke="#000000"/>
+    <path d="M 54,6 V 11" stroke="#000000"/>
+    <rect width="24" height="5" x="36" y="15" fill="none" stroke="#000000"/>
+    <text x="39" y="19" text-anchor="middle">3</text>
+    <path d="m 42,15 v 5" stroke="#000000"/>
+    <path d="m 48,15 v 5" stroke="#000000"/>
+    <path d="m 54,15 v 5" stroke="#000000"/>
+    <rect width="24" height="5" x="71" y="6" fill="none" stroke="#000000"/>
+    <text x="80" y="10" text-anchor="middle">3</text>
+    <text x="74" y="10" text-anchor="middle">3</text>
+    <path d="m 77,6 v 5" stroke="#000000"/>
+    <path d="M 83,6 V 11" stroke="#000000"/>
+    <path d="m 89,6 v 5" stroke="#000000"/>
+    <rect width="24" height="5" x="71" y="15" fill="none" stroke="#000000"/>
+    <text x="86" y="19" text-anchor="middle">4</text>
+    <text x="80" y="19" text-anchor="middle">3</text>
+    <text x="74" y="19" text-anchor="middle">3</text>
+    <path d="m 77,15 v 5" stroke="#000000"/>
+    <path d="m 83,15 v 5" stroke="#000000"/>
+    <path d="m 89,15 v 5" stroke="#000000"/>
+    <rect width="24" height="5" x="106" y="6" fill="none" stroke="#000000"/>
+    <text x="115" y="10" text-anchor="middle">7</text>
+    <text x="109" y="10" text-anchor="middle">3</text>
+    <path d="M 112,6 V 11" stroke="#000000"/>
+    <path d="M 118,6 V 11" stroke="#000000"/>
+    <path d="M 124,6 V 11" stroke="#000000"/>
+    <rect width="24" height="5" x="106" y="15" fill="none" stroke="#000000"/>
+    <text x="109" y="19" text-anchor="middle">21</text>
+    <path d="m 112,15 v 5" stroke="#000000"/>
+    <path d="m 118,15 v 5" stroke="#000000"/>
+    <path d="m 124,15 v 5" stroke="#000000"/>
+    <text x="29" y="14" text-anchor="end">{\tt 1}</text>
+    <text x="32" y="14">{\tt 2}</text>
+    <text x="64" y="14" text-anchor="end">{\tt +}</text>
+    <text x="134" y="14" text-anchor="end">{\tt *}</text>
+    <text x="99" y="14" text-anchor="end">{\tt 4}</text>
+    <text x="102" y="14">{\tt +}</text>
+    <text x="67" y="14">{\tt 3}</text>
+    <path d="m 25,9 c 0,0 5,0 5,4 0,4 -5,4 -5,4" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 25,18 c 0,0 6,0 6,-5 0,-5 5,-5 5,-5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 60,18 c 0,0 6,0 6,-5 0,-5 5,-5 5,-5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 95,18 c 0,0 6,0 6,-5 0,-5 5,-5 5,-5" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 60,9 c 0,0 5,0 5,4 0,4 -5,4 -5,4" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 95,9 c 0,0 5,0 5,4 0,4 -5,4 -5,4" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 130,9 c 0,0 5,0 5,4 0,4 -5,4 -5,4" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+  </g>
+</svg>

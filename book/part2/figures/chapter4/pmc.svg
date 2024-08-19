@@ -1,0 +1,129 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="28" height="5" x="108" y="81" fill="#ebebeb" stroke="#000000"/>
+    <rect width="28" height="5" x="58" y="65" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 49,33 4,4 V 47 l -4,4 z" fill="none" stroke="#000000"/>
+    <path d="m 97,37 4,4 v 10 l -4,4 z" fill="none" stroke="#000000"/>
+    <path d="m 93,48 v -4" stroke="#000000"/>
+    <rect width="1" height="1" x="92.5" y="43.5" fill="#ffffff"/>
+    <path d="m 91,28 4,4 v 10 l -4,4 z" fill="none" stroke="#000000"/>
+    <path d="m 91,46 4,4 v 10 l -4,4 z" fill="none" stroke="#000000"/>
+    <text x="50" y="39" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="50" y="47" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="59" y="23" text-anchor="middle">Master Clock</text>
+    <text x="106" y="85" text-anchor="end">Peripheral Clock Status</text>
+    <text x="144" y="69" text-anchor="end" fill="#048966">Peripheral Clock $i$</text>
+    <text x="144" y="61" text-anchor="end">...</text>
+    <text x="-74" y="107" transform="rotate(-90)" text-anchor="end">...</text>
+    <text x="144" y="53" text-anchor="end" fill="#048966">Peripheral Clock 0</text>
+    <text x="-50" y="6" transform="rotate(-90)" text-anchor="middle">Main Oscillator</text>
+    <path d="M 91,42 H 53" stroke="#000000"/>
+    <path d="m 116,81 v 5" stroke="#000000"/>
+    <path d="m 120,81 v 5" stroke="#000000"/>
+    <text x="56" y="69" text-anchor="end">Phase Lock Loop</text>
+    <text x="144" y="45" text-anchor="end" fill="#048966">Master Clock</text>
+    <path d="m 64,65 v 5" stroke="#000000"/>
+    <path d="m 68,65 v 5" stroke="#000000"/>
+    <text x="120" y="89" font-size="2.8px" text-anchor="end">bit $i$</text>
+    <text x="66" y="69" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 74,65 v 5" stroke="#000000"/>
+    <path d="m 78,65 v 5" stroke="#000000"/>
+    <text x="76" y="69" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="78" y="73" font-size="2.8px" text-anchor="end">16</text>
+    <text x="68" y="73" font-size="2.8px" text-anchor="end">23</text>
+    <text x="61" y="69" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="82" y="69" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="83" y="32" font-size="3.5px" text-anchor="end">...</text>
+    <text x="83" y="60" font-size="3.5px" text-anchor="end">...</text>
+    <text x="71" y="69" font-size="3.5px" text-anchor="middle">...</text>
+    <path d="M 49,36 H 38" stroke="#000000"/>
+    <path d="M 49,48 H 38" stroke="#000000"/>
+    <circle cx="56" cy="42" r="0.5"/>
+    <text x="118" y="85" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="112" y="85" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="128" y="85" font-size="3.5px" text-anchor="middle">...</text>
+    <rect width="28" height="5" x="72" y="19" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 96,19 v 5" stroke="#000000"/>
+    <path d="m 92,19 v 5" stroke="#000000"/>
+    <text x="98" y="23" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="94" y="23" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="82" y="23" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="23" y="39" font-size="3.5px">Oscillator</text>
+    <text x="23" y="35" font-size="3.5px">Crystal</text>
+    <text x="22" y="21" font-size="3.5px" text-anchor="end">12 MHz</text>
+    <text x="22" y="25" font-size="3.5px" text-anchor="end">crystal</text>
+    <rect width="17" height="10" x="21" y="31" fill="none" stroke="#000000"/>
+    <text x="65" y="53" font-size="3.5px">circuit</text>
+    <text x="65" y="49" font-size="3.5px">PLL</text>
+    <rect width="16" height="10" x="63" y="45" fill="none" stroke="#000000"/>
+    <text x="23" y="51" font-size="3.5px">4MHz</text>
+    <text x="23" y="47" font-size="3.5px">RC</text>
+    <rect width="17" height="10" x="21" y="43" fill="none" stroke="#000000"/>
+    <rect width="5" height="28" x="8" y="36" fill="#ebebeb" stroke="#000000"/>
+    <path d="M 8,58 H 13" stroke="#000000"/>
+    <path d="M 8,54 H 13" stroke="#000000"/>
+    <path d="M 8,40 H 13" stroke="#000000"/>
+    <path d="M 8,44 H 13" stroke="#000000"/>
+    <path d="M 8,48 H 13" stroke="#000000"/>
+    <text x="-36" y="16" transform="rotate(-90)" font-size="2.8px" text-anchor="end">0</text>
+    <text x="-44" y="16" transform="rotate(-90)" font-size="2.8px" text-anchor="end">3</text>
+    <text x="-56" y="12" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="-46" y="12" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="-38" y="12" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="-61" y="12" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="-51" y="12" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="-42" y="12" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="-54" y="16" transform="rotate(-90)" font-size="2.8px" text-anchor="end">24</text>
+    <path d="M 13,38 H 17 v -2 h 4" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 13,46 H 17 v 2 h 4" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 13,56 51,56 v -7" fill="none" stroke="#000000"/>
+    <path d="m 56,42 v 8 l 7,0" fill="none" stroke="#000000"/>
+    <circle cx="107" cy="46" r="0.5" fill="#048966"/>
+    <path d="m 107,46 v 8 h 28 l 2,1" fill="none" stroke="#048966"/>
+    <path d="M 79,50 H 91" stroke="#000000"/>
+    <path d="m 64,64 1,-1 h 12 l 1,1" fill="none" stroke="#000000"/>
+    <path d="m 71,63 v -8" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 91,32 H 84" stroke="#000000"/>
+    <path d="M 91,60 H 84" stroke="#000000"/>
+    <path d="m 101,46 h 43" stroke="#048966"/>
+    <path d="m 137,54 h 7" stroke="#048966"/>
+    <path d="m 107,54 v 16 h 10 l 2,1" fill="none" stroke="#048966"/>
+    <path d="m 119,70 h 25" stroke="#048966"/>
+    <path d="m 107,62 h 22 l 2,1" fill="none" stroke="#048966"/>
+    <path d="m 131,62 h 13" stroke="#048966"/>
+    <path d="M 118,81 V 71" stroke="#000000"/>
+    <path d="m 107,70 v 3" stroke="#048966"/>
+    <path d="m 98,24 0,2 L 93,28 v 2" fill="none" stroke="#000000"/>
+    <path d="m 94,24 0,2 L 99,28 v 11" fill="none" stroke="#000000"/>
+    <path d="m 95,37 1,0 0,5 h 1" fill="none" stroke="#000000"/>
+    <path d="m 95,55 h 1 l 0,-5 h 1" fill="none" stroke="#000000"/>
+    <path d="m 39,47 h 1 v -3 h 3 v 3 H 46 V 44 L 48,44" fill="none" stroke="#0e6e8e"/>
+    <path d="m 54,41 h 1 V 38 h 3 v 3 h 3 V 38 H 63" fill="none" stroke="#0e6e8e"/>
+    <path d="m 81,41 h 1 v -3 h 3 v 3 h 3 v -3 h 2" fill="none" stroke="#0e6e8e"/>
+    <path d="m 102,45 h 1 V 42 h 3 v 3 h 3 V 42 h 2" fill="none" stroke="#0e6e8e"/>
+    <path d="m 39,35 h 1 v -3 h 1 v 3 H 42 v -3 h 1 v 3 h 1 v -3 h 1 v 3 H 46 v -3 h 1 v 3 h 1" fill="none" stroke="#0e6e8e"/>
+    <path d="m 81,49 h 1 v -3 h 1.5 v 3 H 85 v -3 h 1.5 v 3 H 88 v -3 h 1.5 v 3 H 90" fill="none" stroke="#0e6e8e"/>
+    <rect width="3" height="6" x="28" y="19" fill="none" stroke="#000000"/>
+    <path d="m 27,19 v 6" stroke="#000000"/>
+    <path d="m 32,19 v 6" stroke="#000000"/>
+    <path d="M 24,31 V 22 h 3" fill="none" stroke="#000000"/>
+    <path d="M 32,22 H 35 v 9" fill="none" stroke="#000000"/>
+    <text x="52" y="34" font-size="3.5px" fill="#9a9a9a">multiplexer</text>
+    <text x="92" y="60" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="92" y="52" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="92" y="42" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="92" y="34" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="98" y="51" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="98" y="43" font-size="3.5px" text-anchor="middle">0</text>
+  </g>
+</svg>

@@ -1,0 +1,1915 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter4}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "labels_compiler.txt")?;
+}
+
+\chapter{Labels Compiler}\label{chapter:labels-compiler}
+
+The opcodes compiler written in the previous chapter removes the need to
+manually convert each opcode into its numerical value, and to convert each
+opcode argument into the correct number of bytes. However, with this compiler,
+we still need to manually keep track of the address of each function, and of
+the offset of each instruction inside functions. Indeed, these values are
+needed for function call and jump instructions. To solve these issues, we
+implement in this chapter a new compiler, for a better programming language.
+
+\section{Requirements}\label{section:toyc1-requirements}
+
+So far we manually kept track of the address of each function by using a
+symbolic name for each function, and by keeping the address corresponding to
+each name in tables such as \cref{table:bios_functions}. To avoid this manual
+work, a solution is to use function names {\em in the program source code},
+instead of outside of it (as we did so far). For instance, instead of writing
+``\insn{fn} 1'', we can write ``\insn{fn} {\tt factorial} 1''. We can then
+write ``\insn{call} {\tt factorial}'' to call this function, instead of
+something like ``\insn{call} {\tt 4096}''. From this, the compiler can do what
+we have been doing manually, \ie, compute the address corresponding to each
+name, keep these addresses in a table, and replace each name with its
+corresponding address to produce the compiled code.
+
+Similarly, so far, we used symbolic names such as ``Step 1'' to refer to some
+instructions in a function. And we added comments next to jump instructions,
+such as ``go back to step 1'', to make it easier to understand them. To avoid
+having to manually convert these symbolic names, called {\em labels}, into
+instruction offsets, we can use the same solution as above. Namely use labels
+in the program source code, instead of outside of it. For instance, we can
+write ``{\tt :step1} \insn{add}'' to label an instruction, and then
+``\insn{goto} {\tt step1}'' to jump to it (instead of something like
+``\insn{goto} {\tt 13}''). The compiler can then compute the offset
+corresponding to each label, keep them in a table, and replace each label with
+its corresponding offset to produce the compiled code.
+
+Programs with bytecode instructions in textual form, augmented with function
+names and labels, can be defined with the following grammar:
+
+\begin{Paragraph}
+program: (fn | static)* END\\
+fn: ``\insn{fn}'' fn\_name fn\_body\\
+fn\_name: IDENTIFIER\\
+fn\_body: INTEGER instruction* | ``;''\\
+instruction: label | ``\insn{cst\_0}'' | ``\insn{cst\_1}'' | ``\insn{cst8}''
+argument | ``\insn{cst32}'' argument | $\ldots$\\
+label: ``:'' IDENTIFIER\\
+argument: INTEGER | IDENTIFIER\\
+static: ``{\tt static}'' IDENTIFIER INTEGER*
+\end{Paragraph}
+
+\noindent where IDENTIFIER refers to a token made of letters in ``{\tt a}'' to
+``{\tt z}'', ``{\tt A}'' to ``{\tt Z}'', ``{\tt 0}'' to ``{\tt 9}'', or ``{\tt
+\_}'', not starting with a digit, and not equal to ``{\tt static}'', ``{\tt
+fn}'', ``{\tt cst\_0}'', etc.
+
+The ``fn'' rule gives a symbolic name (defined by the ``fn\_name'' rule) to a
+function. The body of this function is either an integer (its number of
+parameters) followed by a list of instructions, or a semi-colon. The latter case
+allows the introduction of a function name before its implementation is
+defined. It is explained in the next section.
+
+The ``instruction'' rule is similar to the one in the previous chapter. The
+main differences are the introduction of labels (with the ``label'' rule), the
+generalization of arguments to either an INTEGER (as before) or an IDENTIFIER
+(which should be a function name, a label, or a static block name -- see
+below), and the removal of the ``{\tt fn}'' instruction (which now has its own
+rule, as explained above).
+
+The ``static'' rule gives a symbolic name to the address of the first byte in a
+series of bytes. For instance, ``{\tt static} {\tt FIBONACCI} {\tt 0} {\tt 1}
+{\tt 1} {\tt 2} {\tt 3} {\tt 5} {\tt 8}'' gives the name ``{\tt FIBONACCI}'' to
+the address of the {\tt 0} byte, and compiles into the series of bytes {\tt 0}
+{\tt 1} {\tt 1} {\tt 2} {\tt 3} {\tt 5} {\tt 8}. It replaces the pseudo
+\insn{d} instruction used in the previous chapter to insert data between code.
+And it avoids the need to manually compute the address of this data, just like
+function names.
+
+Finally, the main ``program'' rule defines a program as any number of function
+and static blocks, in any order (the parentheses are not tokens; they mean
+that the ``*'' applies to their content). END is a special token representing
+the end of the source code. It does not correspond to any character. Its role
+is to ensure that the program is not followed by ``garbage'' content. Without
+it, for instance, ``{\tt lorem ipsum}'' would be a valid (empty) program for
+the above grammar.
+
+In this context, the precise requirements for our new compiler, also called an
+{\em assembler}, are mostly the same as in \cref{section:toyc0-requirements},
+but for the above grammar. The main difference is that the compiler now needs
+an additional input parameter, namely the address where the compiled code will
+be stored and executed. Indeed, this is needed to compute correct addresses in
+\insn{call} instructions\footnote{To simplify, the compiler does not produce
+position independent code (see \cref{section:flash-driver-storage}).}. We call
+this new parameter $\it{flash\_buffer}$. We also want our compiler to detect
+more errors. In particular, it should detect all invalid opcode names, and all
+references to undefined names or labels.
+
+\section{Algorithms}
+
+Our new compiler is divided in a scanner, a parser and a backend, like the
+previous one. This section explains the algorithms used in each part.
+
+\subsection{Scanner}
+
+Based on the above grammar, the tokens that the scanner must recognize are
+integers, identifiers, {\em keywords} such as ``{\tt static}'', ``{\tt fn}'',
+``{\tt cst\_0}'', etc, the colon and semi-colon characters, and the special END
+token. A token can thus no longer be represented with a single value $v$, as in
+the previous chapter. Instead, the scanner produces the following values for
+each token:
+\begin{itemize}
+\item $\it{token}$ identifies the token type. We use 0 for END, 1 for invalid
+tokens (such as ``{\tt =}''), 2 for integers, 3 for identifiers, 115 (``s'' in
+ASCII) for ``{\tt static}'', 102 (``f'' in ASCII) for ``{\tt fn}'', 58 (``:''
+in ASCII) for ``{\tt :}'', 59 (``;'' in ASCII) for ``{\tt ;}'', and
+$\it{opcode}+128$ for the token corresponding to $\it{opcode}$.
+
+\item $\it{token\_data}$ is the token's value for integer tokens (\eg, 42 for
+the ``{\tt 42}'' token), or the address of the token's first character in the
+source code for identifier tokens.
+
+\item $\it{token\_length}$ is the number of characters of identifier tokens
+(\eg, 3 for ``{\tt src}'').
+\end{itemize}
+
+As before, the scanner could be represented with a Finite State Machine. But it
+would then have a lot of states. Another method is to use the following
+properties:
+\begin{itemize}
+\item keywords excepted, all tokens start with a different type of character: a
+digit for integers, a lowercase or uppercase letter (or an underscore) for
+identifiers, and a colon or a semi-colon for the single-character tokens.
+
+\item keywords are special cases of identifiers.
+\end{itemize}
+
+This suggests the following method to read a token: 1) look at its first
+character, 2) call a dedicated function to read the type of token corresponding
+to this first character, 3) if the token looks like an identifier, check if it
+is equal to a keyword and, if so, treat it as such. To implement this method,
+it is useful to have a {\tt CHAR\_TYPES}  table indicating the type of each
+character: 1 for unsupported characters such as ``{\tt =}'', 2 for digits, 3
+for letters and the underscore, 58 for ``{\tt :}'' and 59 for ``{\tt ;}''. It
+is also useful to have a {\tt KEYWORDS} table of all the keywords, associated
+with their $\it{token}$ value. Each entry in this table can be stored as the
+keyword's number of characters $n$, followed by these $n$ characters, and
+ending with the corresponding $\it{token}$ value:
+
+{\tt KEYWORDS} = 5 {\tt c} {\tt s} {\tt t} {\tt \_} {\tt 0} 128\hspace{1em}
+  5 {\tt c} {\tt s} {\tt t} {\tt \_} {\tt 1} 129\hspace{1em}
+  4 {\tt c} {\tt s} {\tt t} {\tt 8} 130\hspace{1em}
+  ...\hspace{1em}
+  0
+
+\noindent where, to indicate the end of the table, a last ``entry'' with $n=0$
+is used. With this table, finding the $\it{token}$ value of an identifier or
+keyword starting at address $\it{start}$ and with $\it{length}$ characters can
+be done with \cref{alg:toyc1-get-keyword}, which makes use of
+\cref{alg:toyc1-mem-cmp} to compare two names (this algorithm simply compares
+the token characters with those of each keyword in the table, one by one).
+
+\begin{Algorithm}
+\caption{Comparing the $size$ bytes starting at address $ptr1$ with those
+starting at address $ptr2$, and returning 0 if and only if they are
+equal.}\label{alg:toyc1-mem-cmp}
+\begin{algorithmic}[1]
+\State initialize $i$ to 0
+\Begin while $i<size$ and the byte at $ptr1+i$ is equal to the byte at $ptr2+i$
+  \State increment $i$ by 1
+\End
+\State return $size$ - $i$
+\end{algorithmic}
+\end{Algorithm}
+
+\begin{Algorithm}
+\caption{Computing the $\it{token}$ value of the identifier or keyword starting
+at address $\it{start}$ and made of $\it{length}$
+characters.}\label{alg:toyc1-get-keyword}
+\begin{algorithmic}[1]
+\State initialize $ptr$ to the address of the {\tt KEYWORDS} table
+\State load the byte at $ptr$ (a keyword length) into $len$
+\State if $len=0$ return 3 (no keyword was found, hence this is an identifier)
+\Begin if $len=length$ and if the $len$ bytes starting at $start$
+are equal to those starting at $ptr+1$ (the keyword's characters)
+  \State return the keyword's $token$ value, \ie, the byte at $ptr+len+1$
+\Continue otherwise
+\State increment $ptr$ by $len+2$ and go back to step 2 to try the next keyword
+\End
+\end{algorithmic}
+\end{Algorithm}
+
+The above method can then be split into 3 functions to read a character, an
+integer, or an identifier or keyword, called by a main function to read an
+arbitrary token:
+\begin{itemize}
+  \item The function to read a character increments $src$ by 1 and stores the
+  {\em next} character to read and its {\tt CHAR\_TYPES} type in the new
+  $\it{next\_char}$ and $\it{next\_char\_type}$ variables. Reading a character
+  can then be done as described in \cref{alg:toyc1-read-char} (recall that
+  $src$ is defined as the address of the next character to read). In order to
+  support the END token, this algorithm ``reads the character'' at
+  $\it{src\_end}$ by setting $\it{next\_char}$ and $\it{next\_char\_type}$ to
+  0. Trying to read any character after that returns an error.
+
+  \item The function to read an integer reads characters one by one, while the
+  next character is a digit. It computes its numerical value in
+  $\it{token\_data}$ as in \cref{alg:parser0-getopcode}, and returns the
+  $token$ value of integer tokens (see \cref{alg:toyc1-read-integer}).
+
+  \item The function to read an identifier or keyword reads characters one by
+  one, while the next character is a letter, an underscore or a digit. It then
+  returns the $token$ value computed with \cref{alg:toyc1-get-keyword} (see
+  \cref{alg:toyc1-read-identifier}).
+
+  \item Finally, the function to read an arbitrary token reads characters one
+  by one while the next character is a spacing character (for this it assumes
+  that the {\tt CHAR\_TYPES} of the space, tab and ``new line'' characters is
+  32 -- `` '' in ASCII). It then calls one of the above 3 functions, depending
+  on the next character type (see \cref{alg:toyc1-read-token}). It uses the
+  property that the $token$ value of single character tokens and of the END
+  token is equal to the character type (the {\tt CHAR\_TYPES} are chosen to
+  ensure this).
+\end{itemize}
+
+Note that
+\cref{alg:toyc1-read-integer,alg:toyc1-read-identifier,alg:toyc1-read-token}
+assume that the first character of the token to read, called a {\em lookahead}
+character, is already available in $\it{next\_char}$ and
+$\it{next\_char\_type}$. This property is ensured by the fact that, each time a
+character is read with \cref{alg:toyc1-read-char}, the next character is stored
+in $\it{next\_char}$ and $\it{next\_char\_type}$.
+
+\begin{Algorithm}
+\caption{Reading a character.}\label{alg:toyc1-read-char}
+\begin{algorithmic}[1]
+\State if $src \ge \it{src\_end}$ return an error
+\State increment $src$ by 1, set $\it{next\_char}$ and $\it{next\_char\_type}$
+to 0
+\Begin if $src < \it{src\_end}$
+  \State set $\it{next\_char}$ to the character at $src$
+  \State set $\it{next\_char\_type}$ to the byte at {\tt CHAR\_TYPES}
+  $+\ \it{next\_char}$
+\End
+\end{algorithmic}
+\end{Algorithm}
+
+\begin{Algorithm}
+\caption{Reading an integer token.}\label{alg:toyc1-read-integer}
+\begin{algorithmic}[1]
+\State initialize $v$ to 0
+\Begin while $\it{next\_char\_type}=2$
+  \State update $v$ to $10v+(\it{next\_char}-\hexa{30})$
+  \State read a character with \cref{alg:toyc1-read-char}
+\End
+\State set $\it{token\_data}$ to $v$ and return the $token$ value 2
+\end{algorithmic}
+\end{Algorithm}
+
+\subsection{Parser}
+
+The parser uses the scanner to read the source code, checks that the tokens
+follow the grammar, and generates the corresponding compiled code with the
+backend. Here the latter task requires building a table mapping identifiers to
+values (function names to function addresses, label names to instruction
+offsets), and using this table to find the value corresponding to an identifier.
+The following presents the algorithms used to do this, before presenting the
+overall parsing algorithm.
+
+\subsubsection{Symbol table}
+
+The above table can be stored in memory in several ways. We use here a {\em
+linked list} because it is simple to implement, although not very efficient. As
+its name implies, this is a list of elements, where each element has a pointer
+to (\ie, the address of) the next one (or 0 for the last element). In our case
+we call each element a {\em symbol}. Besides a link to the next symbol, a
+symbol contains an identifier and a value. The identifier is represented with
+the address of its first character, and its length (see
+\cref{fig:toyc1-symbols-list}).
+
+Symbols must be stored in RAM in a different region than the $\it{dst\_buffer}$
+used for the compiled code. We call this new region the {\em heap}, and we use
+a new $heap$ variable to indicate where a new symbol can be stored. We also
+use a new $symbols$ variable storing the address of the first symbol in the
+list (or 0 if the list is empty -- see \cref{fig:toyc1-symbols-list}). With
+this data structure, adding a new symbol in the table is very easy: we just
+need to store it in memory, starting at the $heap$ address, with $symbols$ as
+pointer to the next symbol. Finally, we need to set $symbols$ to $heap$, the
+address of the new first symbol, and to increase $heap$ by the number of bytes
+needed to store a symbol (see \cref{fig:toyc1-symbols-list}). Finding the
+symbol corresponding to a given identifier $I$ (specified by its address and
+length) is also very easy. We just need to iterate over all the symbols in the
+list, by using the pointers from each symbol to the next, until we find one
+whose identifier is equal to $I$ (or we reach the end of the list -- see
+\cref{alg:toyc1-sym-lookup}).
+
+\begin{Algorithm}
+\caption{Reading an identifier or keyword
+  token.}\label{alg:toyc1-read-identifier}
+\begin{algorithmic}[1]
+\State set $start$ to $src$
+\Begin while $\it{next\_char\_type}=3$ or $\it{next\_char\_type}=2$
+  \State read a character with \cref{alg:toyc1-read-char}
+\End
+\State set $length$ to $src-start$
+\State set $\it{token\_data}$ to $start$ and $token\_length$ to $length$
+\State return the token value computed with \cref{alg:toyc1-get-keyword} for
+  $start$ and $length$
+\end{algorithmic}
+\end{Algorithm}
+
+\begin{Algorithm}
+\caption{Reading an arbitrary token.}\label{alg:toyc1-read-token}
+\begin{algorithmic}[1]
+\Begin while $\it{next\_char\_type}=32$
+  \State read a character with \cref{alg:toyc1-read-char}
+\End
+\State set $\it{token}$ to $\it{next\_char\_type}$
+\State if $\it{next\_char\_type}=2$ set $\it{token}$ to the result of
+  \cref{alg:toyc1-read-integer}
+\State if $\it{next\_char\_type}=3$ set $\it{token}$ to the result of
+  \cref{alg:toyc1-read-identifier}
+\State if $\it{next\_char\_type} \ne 0$ read a character with
+  \cref{alg:toyc1-read-char}
+\end{algorithmic}
+\end{Algorithm}
+
+\bigskip \paragraph*{Forward references} Sometimes a jump instruction needs to
+jump to a later instruction, whose offset is not yet known when the jump
+instruction is parsed and compiled. In such cases, called {\em forward
+references}, what we did manually so far was to leave a placeholder for the
+jump offset in the compiled code, and to fill it once the jump target was
+known. The compiler can do exactly the same, with the following algorithm:
+\begin{itemize}
+  \item If a jump instruction uses a label which is not in the $symbols$ list,
+  add a new symbol for this label, with the placeholder address as the symbol's
+  value. To distinguish this symbol from normal ones, each symbol also stores
+  its {\em kind}, which can be {\em resolved} (0) or, for forward references,
+  {\em unresolved} (1) -- see \cref{fig:toyc1-symbols-list}.
+
+  \item When a label is defined with the ``{\tt :}{\em label}'' syntax, check
+  if it is in the $symbols$ list. If so the symbol should be unresolved. Then
+  fill the placeholder at the address stored in the symbol's value with the
+  label offset (now known), store this offset in the symbol's value, and set
+  the symbol kind to ``resolved''.
+\end{itemize}
+
+In fact several instructions can jump to a label which is not yet defined. In
+such cases we need to store several placeholder addresses. One way to do this
+would be to store in each placeholder the address of the previous one, yielding
+a linking list of placeholders. Unfortunately a placeholder has only 16 bits.
+To solve this issue, we can store instead in each placeholder the {\em offset}
+to the previous one (see \cref{fig:toyc1-placeholders-list}). In summary,
+adding a placeholder and filling a list of placeholders can be done as
+described in \cref{alg:toyc1-add-ref,alg:toyc1-resolve-refs}. Finally, note
+that a call instruction can also refer to a function whose address is not yet
+known. These forward function references can be handled in exactly the same way
+as forward label references.
+
+\bigskip \paragraph*{Local identifiers} In compiled code a jump instruction can
+only jump to an instruction in the same function. Hence, in source code, a jump
+instruction should only use {\em local labels}, \ie, labels defined in the same
+function. To ensure this, and to save memory at the same time, we can delete
+the symbols added for the labels of a function after it has been compiled.
+Doing this is very simple: we just need to save the value of the $heap$ and
+$symbols$ variables before compiling the function's body, and to restore $heap$
+and $symbols$ to these saved values after the body has been compiled. Note
+however that this method removes {\em all} the symbols added during the
+function compilation. Hence, we cannot add a symbol for a forward function
+reference while compiling another (otherwise this forward reference would be
+lost and thus never resolved). This explains why, to simplify the compiler, we
+require an explicit {\em forward declaration} of functions with the ``\insn{fn}
+{\em name}{\tt ;}'' syntax (compiled by adding an unresolved symbol for {\em
+name}, outside any function body).
+
+\begin{Figure}
+  \input{figures/chapter4/symbols-list.tex}
+
+  \caption{A linked list of symbols (top). Each symbol is made of 5 words.
+  $name$ and $length$ refer to an identifier in the source code (bottom).
+  $next$ is the address of the next symbol, or 0 for the last one (left). New
+  symbols are stored at $heap$, which is then incremented by $5*4$ bytes
+  (right). $symbols$ is the start of the linked
+  list.}\label{fig:toyc1-symbols-list}
+\end{Figure}
+
+\begin{Algorithm}
+\caption{Finding the symbol corresponding to the identifier starting at address
+$name$ and with $length$ characters.}\label{alg:toyc1-sym-lookup}
+\begin{algorithmic}[1]
+\State initialize $symbol$ to $symbols$
+\Begin while $symbol \ne 0$
+  \State if the $symbol$'s $length$ is not equal to $length$ go to step 6
+  \State if the $symbol$'s $name$ is not equal to $name$ (\cf
+    \cref{alg:toyc1-mem-cmp}), go to step 6
+  \State return $symbol$
+  \State update $symbol$ to the $symbol$'s $\it{next}$ value
+\End
+\State no symbol has been found, return 0
+\end{algorithmic}
+\end{Algorithm}
+
+\subsubsection{Parsing algorithm}
+
+As in the previous chapter, the parser could be represented with a Finite State
+Machine. Doing so, however, would lead to a complex implementation. Moreover,
+in the next chapters, using a Finite State Machine is no longer possible. We
+thus use here another method, called a {\em recursive descent parser}. This
+method uses one parse\_$r$ function per rule $r$ of the grammar. Each function
+checks that the next tokens follow the corresponding grammar rule. A parse\_$r$
+function for a rule $r$ using another rule $r'$ can thus call parse\_$r'$ to
+check this subpart of $r$.
+
+\begin{Figure}
+  \input{figures/chapter4/placeholders-list.tex}
+
+  \caption{The $value$ of an unresolved symbol is the address $x$ of its last
+    placeholder in the compiled code (in blue). Each placeholder contains the
+    offset to the previous one, or 0 for the first one. Adding a placeholder at
+    address $y$ simply requires storing $y-x$ in it, and updating $value$ to $y$
+    (right).}\label{fig:toyc1-placeholders-list}
+\end{Figure}
+
+\begin{Algorithm}
+\caption{Adding a new placeholder at $y$ for an unresolved
+    $symbol$.}\label{alg:toyc1-add-ref}
+\begin{algorithmic}[1]
+\State initialize $x$ to the $symbol$'s $value$ (the address of the
+  previous placeholder)
+\State set the $symbol$'s $value$ to $y$ (the address of the new
+  placeholder)
+\State if $x=0$, set $x$ to $y$
+\State set the half-word at $y$ to the offset $y-x$ to the previous
+  placeholder
+\end{algorithmic}
+\end{Algorithm}
+
+For instance, in our case, 3 of the parser functions are parse\_fn,
+parse\_fn\_name, and parse\_fn\_body, for the 3 rules fn, fn\_name and
+fn\_body. The parse\_fn function is implemented by reading a token, checking
+that it is equal to ``\insn{fn}'', and then calling parse\_fn\_name and
+parse\_fn\_body (because the fn rule is defined by ``\insn{fn}'' fn\_name
+fn\_body -- see \cref{section:toyc1-requirements}). The parse\_fn\_body
+function is more complex because the fn\_body rule has two alternatives. The
+body can either be an integer followed by instructions, or a semi-colon. To
+decide which alternative to use, the next token must be inspected. If it is an
+identifier the first alternative must be used. If it is a semi-colon the second
+one must be used. Any other case is an error. In the first case, zero or more
+instructions must be parsed after the integer. This can be done by calling the
+parse\_instruction function, but how many times should it be called? The answer
+is as long as the next token is the start of an instruction. By looking at the
+grammar rules, we see that an instruction either starts with a label, or with
+an opcode keyword (``\insn{cst\_0}'', etc). And a label starts with a colon.
+Thus, parse\_instruction should be called as long as the next token is a colon
+or an opcode keyword. In summary, parse\_fn\_body can be implemented as follows:
+\begin{algorithmic}[1]
+\State if the next token is a semi-colon, read it
+\Begin otherwise, if the next token is an integer
+  \State read it
+  \State while the next token is a colon or an opcode keyword, call
+    parse\_instruction
+\End
+\State otherwise return an error
+\end{algorithmic}
+and the same principles can be used for all the other parsing functions. Note
+that such algorithms need the value of the ``next token'' (after the last one
+that has been read), called a {\em lookahead} token. For this we consider that
+what \cref{alg:toyc1-read-token} stores in $\it{token}$, $\it{token\_data}$,
+and $\it{token\_length}$ is actually about this lookahead token (by analogy
+with \cref{alg:toyc1-read-char}). And, for this reason, we rename these
+variables to $\it{next\_token}$, $\it{next\_token\_data}$, and
+$\it{next\_token\_length}$ from now on. The above algorithm thus becomes:
+\begin{algorithmic}[1]
+\State if $\it{next\_token}$ is a semi-colon, read it with
+  \cref{alg:toyc1-read-token}
+\Begin otherwise, if $\it{next\_token}$ is an integer
+  \State read it with \cref{alg:toyc1-read-token}
+  \State while $\it{next\_token}$ is a colon or an opcode keyword, call
+     parse\_instruction
+\End
+\State otherwise return an error
+\end{algorithmic}
+
+\begin{Algorithm}
+\caption{Filling the placeholders of an unresolved $symbol$ to
+  $value$.}\label{alg:toyc1-resolve-refs}
+\begin{algorithmic}[1]
+\State initialize $\it{placeholder}$ to the $symbol$'s $value$
+\Begin while $\it{placeholder} \ne 0$
+  \State set $\it{offset}$ to the half-word value at $\it{placeholder}$
+  \State store the half-world value $value$ at $\it{placeholder}$
+  \State if $\it{offset}=0$ there is no previous placeholder, return
+  \State decrement $\it{placeholder}$ by $\it{offset}$
+\End
+\end{algorithmic}
+\end{Algorithm}
+
+Finally, to produce the compiled code, calls to the backend are inserted in the
+parse\_$r$ functions where needed. For instance, for parse\_fn\_body, calls are
+inserted between steps 2 and 3 above to add the \insn{fn} opcode to the
+compiled code, followed by $next\_token\_data$ (which contains the function's
+number of parameters). Other calls are also inserted to update the list of
+symbols when a new function or label is defined, and to use this list to
+compile function calls and jump instructions.
+
+\subsection{Error handling}\label{subsection:toyc1-panic}
+
+Note that the above parse\_fn\_body algorithm can ``return an error''. In
+fact any parse\_$r$ function of the recursive descent parser might do so,
+and \cref{alg:toyc1-read-char} can as well. Thus, for instance,
+parse\_program could call parse\_fn, itself calling parse\_fn\_body, in turn
+calling parse\_instruction, itself calling parse\_label, where an error could
+be found (\eg, if a colon is followed by
+integer). At this stage we would like to stop everything and simply return the
+error from parse\_program. One way to do this is to check, after each
+function call, if an error occurred and, if so, immediately return from the
+current function. This is what we did in the previous chapter, but this was
+easy because only {\tt tc\_parse\_token} could return an error,
+and it was called directly from the main {\tt tc\_compile} function. Doing the
+same here would be much more cumbersome.
+
+Another solution is to return from parse\_label, or in fact any function, {\em
+directly} into parse\_program, without going through all the intermediate
+functions. But how can we do this? Here we need to remember how the bytecode
+interpreter returns from a function. The answer is by restoring 4 registers to
+the values which were saved on the callee's stack frame by the caller (see
+\cref{chapter:virtual-machine,fig:stack-frame-layout}). parse\_label returns
+into parse\_instruction because the saved register values in its stack frame
+were set by this caller. If we can somehow replace these saved register values
+with those set by parse\_program when it calls another function, parse\_label
+would actually return directly in parse\_program! And this is in fact possible,
+since a function can access these saved register values in its stack frame (for
+instance with \insn{get} and \insn{set} instructions). The rest of this section
+presents a method to do this.
+
+\begin{Figure}
+  \input{figures/chapter4/panic.tex}
+
+  \caption{When {\tt panic\_result}($ptr$) is called from {\tt a}, the saved
+  registers necessary to return in {\tt a} (light blue) are copied at $ptr$
+  (top, in red). Later on, in {\tt e} called from {\tt d}, called from {\tt c},
+  ... called from {\tt a}, a call to {\tt panic(err)} copies the values at
+  $ptr$ in {\tt panic}'s stack frame (middle). When {\tt panic} returns $err$,
+  it thus returns in $a$ (bottom).}\label{fig:toyc1-panic}
+\end{Figure}
+
+In a first step, the function we want to return to directly, say {\tt a}, calls
+the predefined {\tt panic\_result}($ptr$) function. This function copies at
+$ptr$ the saved register values necessary to return into {\tt a} (see
+\cref{fig:toyc1-panic}). This can be done by copying the 16 bytes starting 16
+bytes before the address of the 0$^{th}$ stack frame slot (given by \insn{ptr}
+0). {\tt panic\_result} then saves $ptr$ at a fixed address $A$, and returns 0
+(``no error'').
+
+Later on, for instance, {\tt a} calls {\tt b}, which calls {\tt c}, ... which
+calls {\tt e}, where an error $err$ is found. To return this error directly
+into {\tt a}, {\tt e} calls the predefined {\tt panic}($err$) function. This
+function reads $ptr$ at address $A$, and then copies the 16 bytes at $ptr$ into
+its own stack frame (16 bytes before the address of the 0$^{th}$ stack frame
+slot, as before -- see \cref{fig:toyc1-panic}). It then returns $err$. By doing
+this, the Frame Pointer (FP) is restored to {\tt a}'s stack frame, the Function
+Address (FA) is restored to {\tt a}'s address, and the Instruction Counter (IC)
+is restored to {\tt a}'s Return Address (RA), \ie, to the instruction following
+the initial call to {\tt panic\_result}. In other words, from {\tt a}'s point
+of view, {\tt panic\_result} is returning {\em twice}, the second time with the
+error value $err$ (and from {\tt e}'s point of view, {\tt panic}($err$) never
+returns). Note however that the Stack Pointer (SP) is updated by popping the
+{\tt panic} stack frame, and then pushing the result value $err$. As a
+consequence, after a panic, {\tt a}'s stack frame contains all the stack frames
+of the intermediate functions, with $err$ on top (see \cref{fig:toyc1-panic}).
+When {\tt a} itself returns, this large stack frame is popped and everything
+goes back to normal.
+
+\section{Implementation}\label{section:toyc1_implementation}
+
+\rust{
+  let flash_offset =
+      context.memory_region("compiler_code").start - 0xC0000;
+  let mut t = Transpiler1::new(flash_offset);
+}
+
+We can now implement our new compiler. We first need to write it without using
+function names and labels, so that it can be compiled with the opcodes compiler
+(the only compiler we have for now). We then compile this source code, which
+gives us the labels compiler bytecode. Finally, we rewrite the labels compiler
+source code with function names and labels, and we compile it with the labels
+compiler bytecode.
+
+In the following, to save space, we give the two compiler versions (with or
+without function names and labels) at the same time. Most of the code is the
+same in both versions, and is shown in black. Parts which are only in the
+$1^{st}$ version are highlighted in \ToyDelete{red}. And parts which are only
+in the $2^{nd}$ version are highlighted in \ToyInsert{green}. Some comments, in
+\ToyComment{gray}, make it easier to understand the code but are not part of
+it. These include function addresses and instruction offsets, shown at the
+beginning of each line (we still need to compute them manually in the $1^{st}$
+version). Because of these comments, some lines are too long to fit on a page.
+In these cases they are wrapped on the next line, as indicated by \ToyWrap{}
+marks (which are not part of the code).
+
+We start with the compiler's {\tt main} function, so that its address is easy
+to obtain ($\rs{hex(0xC0000 + flash_offset)}+4$
+$=\hexa{C0000}+\rs{dec(flash_offset+4)}$, see
+\cref{fig:command-editor-memory-map}). Indeed, in the $2^{nd}$ version and in
+the next chapters, we have no easy way to get the address of the other
+functions. This function just calls a {\tt tc\_main} function, implemented at
+the very end. At this stage, in the $1^{st}$ version, we don't know {\tt
+tc\_main}'s address yet, and so we need to use a placeholder, filled at the
+end. Here we show the end result directly. In the $2^{nd}$ version we can just
+call {\tt tc\_main}, but we need to declare it first with ``\insn{fn} {\tt
+tc\_main;}'':
+
+\toy{
+fn tc_main;
+fn main src_buffer dst_buffer flash_buffer
+  get src_buffer get dst_buffer get flash_buffer call tc_main retv
+}%toy
+
+We continue with functions to load and store bytes and half-words. We already
+have such functions, but we re-implement them here to avoid the need of
+function addresses in the $2^{nd}$ version (\rs{dec_hex(4294967040u32)},
+\rs{dec_hex(4294901760u32)}):
+
+\toy{
+fn load8 ptr
+  get ptr load cst8 255 and retv
+fn load16 ptr
+  get ptr load cst 65535 and retv
+fn store8 ptr value
+  get ptr get ptr load cst 4294967040 and get value or store ret
+fn store16 ptr value
+  get ptr get ptr load cst 4294901760 and get value or store ret
+}%toy
+
+We then implement the panic functions, using an auxiliary function to copy 16
+bytes between two addresses (for the same reason as above, we don't reuse the
+already existing {\tt mem\_copy} function -- see
+\cref{table:flash_driver_functions}):
+
+\toy{
+const A 1074666152
+fn panic_copy src dst
+  get dst get src load store
+  get dst cst8 4 add get src cst8 4 add load store
+  get dst cst8 8 add get src cst8 8 add load store
+  get dst cst8 12 add get src cst8 12 add load store
+  ret
+fn panic_result ptr
+  ptr ptr cst8 16 sub get ptr call panic_copy
+  cst A get ptr store
+  cst_0 retv
+fn panic error
+  cst A load ptr error cst8 16 sub call panic_copy
+  get error retv
+}%toy
+
+\noindent where $A$=\rs{dec_hex(1074666152u32)} is the $7^{th}$ General Purpose
+Backup Register (we already used 3 in \cref{subsection:keyboard-driver-impl},
+and 3 more in \cref{subsection:med-state-variables}).
+
+\subsection{Scanner}
+
+We start the scanner implementation with the {\tt CHAR\_TYPES} and {\tt
+KEYWORDS} tables (the former has 256 values, one for each possible character;
+the latter omits the keywords that we don't need for now, such as \insn{lsl} and
+\insn{lsr}):
+
+\toy{
+static TC_CHAR_TYPES
+  1 1 1 1 1 1 1 1 1 32 32 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  32 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  2 2 2 2 2 2 2 2 2 2 58 59 1 1 1 1
+  1 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+  3 3 3 3 3 3 3 3 3 3 3 1 1 1 1 3
+  1 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+  3 3 3 3 3 3 3 3 3 3 3 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+static TC_KEYWORDS
+  5 'c' 's' 't' '_' '0' 128
+  5 'c' 's' 't' '_' '1' 129
+  4 'c' 's' 't' '8' 130
+  3 'c' 's' 't' 131
+  3 'a' 'd' 'd' 132
+  3 's' 'u' 'b' 133
+  3 'm' 'u' 'l' 134
+  3 'd' 'i' 'v' 135
+  3 'a' 'n' 'd' 136
+  2 'o' 'r' 137
+  4 'i' 'f' 'l' 't' 140
+  4 'i' 'f' 'e' 'q' 141
+  4 'i' 'f' 'g' 't' 142
+  4 'i' 'f' 'l' 'e' 143
+  4 'i' 'f' 'n' 'e' 144
+  4 'i' 'f' 'g' 'e' 145
+  4 'g' 'o' 't' 'o' 146
+  4 'l' 'o' 'a' 'd' 147
+  5 's' 't' 'o' 'r' 'e' 148
+  3 'p' 't' 'r' 149
+  3 'g' 'e' 't' 150
+  3 's' 'e' 't' 151
+  3 'p' 'o' 'p' 152
+  4 'c' 'a' 'l' 'l' 154
+  3 'r' 'e' 't' 157
+  4 'r' 'e' 't' 'v' 158
+  2 'f' 'n' 102
+  6 's' 't' 'a' 't' 'i' 'c' 115
+  0
+}%toy
+
+We continue with the implementation of
+\cref{alg:toyc1-mem-cmp,alg:toyc1-get-keyword}:
+
+\toy{
+const TC_INTEGER 2
+const TC_IDENTIFIER 3
+const TC_FN 102
+const TC_STATIC 115
+fn mem_compare ptr1 ptr2 size
+  cst_0 let i
+:step2
+  get i get size ifge step4
+  get ptr1 get i add call load8 get ptr2 get i add call load8 ifne step4
+  get i cst_1 add set i goto step2
+:step4
+  get size get i sub retv
+
+fn tc_get_keyword start length
+  cst_0 let len
+  cst TC_KEYWORDS let ptr
+:step2
+  get ptr call load8 set len
+  get len cst_0 ifne step4
+  cst8 TC_IDENTIFIER retv
+:step4
+  get length get len ifne step7
+  get start get ptr cst_1 add get length call mem_compare cst_0 ifne step7
+  get ptr get len add cst_1 add call load8 retv
+:step7
+  get ptr get len add cst8 2 add set ptr goto step2
+}%toy
+
+To implement the next scanner functions we need to decide where to store the 7
+scanner variables $\it{src}$, $\it{src\_end}$, $\it{next\_char}$,
+$\it{next\_char\_type}$, $\it{next\_token}$, $\it{next\_token\_data}$ and
+$\it{next\_token\_length}$. Passing them as function parameters would be
+cumbersome (because there are many variables, and because we would actually need
+to pass their addresses). Storing them at some fixed addresses, such as
+537329664, 537329668, 537329672, etc is not better. Instead, we assume that
+these variables are stored next to each other, somewhere in RAM, and we pass the
+address of the first one, noted $\it{self}$, to each scanner function. Hence,
+$\it{src}$, $\it{src\_end}$, $\it{next\_char}$, etc can be read or written by
+loading or writing the word at $\it{self}$, $\it{self}+4$, $\it{self}+8$, etc
+(respectively). With this hypothesis, \cref{alg:toyc1-read-char} can be
+implemented with the following function, which returns $\it{next\_char\_type}$
+(or panics with $\it{error}=10$):
+
+\toy{
+const tc_src 0
+const tc_src_end 4
+const tc_next_char 8
+const tc_next_char_type 12
+const tc_next_token 16
+const tc_next_token_data 20
+const tc_next_token_length 24
+
+fn tc_read_char self
+  get self scst tc_src add load let src
+  get self cst8 tc_src_end add load let src_end
+  get src get src_end iflt step2
+  cst8 10 call panic
+:step2
+  get src cst_1 add set src cst_0 let char cst_0 let type
+  get src get src_end ifge end
+  get src call load8 set char
+  cst TC_CHAR_TYPES get char add call load8 set type
+:end
+  get self scst tc_src add get src store
+  get self cst8 tc_next_char add get char store
+  get self cst8 tc_next_char_type add get type store
+  get type retv
+}%toy
+\rust{
+  context.add_error_code(10, "Unexpected end of input");
+}
+
+We continue with the implementation of \cref{alg:toyc1-read-integer} (as
+before, to simplify, we do not check if $v$ fits in a word):
+
+\toy{
+fn tc_read_integer self
+  get self cst8 tc_next_char_type add load let type
+  cst_0 let v
+:step2
+  get type cst8 TC_INTEGER ifne step5
+  get v cst8 10 mul get self cst8 tc_next_char add load cst8 48 sub add set v
+  get self call tc_read_char set type
+  goto step2
+:step5
+  get self cst8 tc_next_token_data add get v store
+  cst8 TC_INTEGER retv
+}%toy
+
+\noindent and of \cref{alg:toyc1-read-identifier}:
+
+\toy{
+fn tc_read_identifier self
+  get self scst tc_src add load let start
+  get self cst8 tc_next_char_type add load let type
+:step2
+  get type cst8 TC_IDENTIFIER ifeq step3
+  get type cst8 TC_INTEGER ifne step4
+:step3
+  get self call tc_read_char set type goto step2
+:step4
+  get self scst tc_src add load get start sub let length
+  get self cst8 tc_next_token_data add get start store
+  get self cst8 tc_next_token_length add get length store
+  get start get length call tc_get_keyword retv
+}%toy
+
+With this we can finally implement \cref{alg:toyc1-read-token} in the main
+scanner function:
+
+\toy{
+fn tc_read_token self
+  get self cst8 tc_next_char_type add load let type
+:step1
+  get type cst8 32 ifne step3
+  get self call tc_read_char set type goto step1
+:step3
+  get type let token
+  get type cst8 TC_INTEGER ifne step5
+  get self call tc_read_integer set token goto end
+:step5
+  get type cst8 TC_IDENTIFIER ifne step6
+  get self call tc_read_identifier set token goto end
+:step6
+  get type cst_0 ifeq end
+  get self call tc_read_char pop
+:end
+  get self cst8 tc_next_token add get token store
+  ret
+}%toy
+
+\subsection{Backend}
+
+We start the backend implementation with a small function which increments the
+pointer at address $ptr^p$ by $size$ and returns the {\em previous} pointer at
+this address. We use it later on to increment $\it{dst}$ and $\it{heap}$:
+
+\toy{
+fn mem_allocate size ptr_p
+  get ptr_p load let ptr
+  get ptr_p get ptr get size add store
+  get ptr retv
+}%toy
+
+To implement the backend itself we need to decide where to store the $dst$
+variable. We assume here that it is stored after the 7 scanner variables. Hence,
+$\it{dst}$ can be read and written by loading or writing the word at
+$\it{self}+28$. We can then implement 3 functions to write a byte, a half-word
+or a word at $dst$, respectively:
+
+\toy{
+const tc_dst 28
+
+fn tc_write8 self value
+  cst_1 get self cst8 tc_dst add call mem_allocate get value call store8
+  ret
+fn tc_write16 self value
+  cst8 2 get self cst8 tc_dst add call mem_allocate get value call store16
+  ret
+fn tc_write32 self value
+  cst8 4 get self cst8 tc_dst add call mem_allocate get value store
+  ret
+}%toy
+
+We continue the backend with functions to manage placeholders. Placeholders
+were introduced while describing the parser, but managing them involves writing
+and updating bytes in the $\it{dst}$ buffer, which is the backend's
+responsibility. The following function adds a new placeholder for an unresolved
+symbol, with \cref{alg:toyc1-add-ref}. It takes the symbol's value address
+$\it{value}^p$ as parameter, and uses $y=\it{dst}$. Step 4 only returns $y-x$,
+and lets the caller fill the placeholder:
+
+\toy{
+fn tc_add_placeholder self value_p
+  get self cst8 tc_dst add load let y
+  get value_p load let x
+  get value_p get y store
+  get x cst_0 ifne step4 get y set x
+:step4
+  get y get x sub retv
+}%toy
+
+The next function fills all the placeholders in the list starting at
+$\it{placeholder}$ with $value$, using \cref{alg:toyc1-resolve-refs} (step 1
+must be done by the caller):
+
+\toy{
+fn tc_fill_placeholders placeholder value
+  cst_0 let offset
+:step2
+  get placeholder cst_0 ifeq end
+:step3
+  get placeholder call load16 set offset
+  get placeholder get value call store16
+  get offset cst_0 ifne step6 ret
+:step6
+  get placeholder get offset sub set placeholder
+  goto step2
+:end
+  ret
+}%toy
+
+We finish the backend with a small function to write a \insn{fn} instruction
+and its argument, the function's number of parameters, also called its {\em
+arity}:
+
+\toy{
+fn tc_write_fn_insn self arity
+  get self cst8 25 call tc_write8
+  get self get arity call tc_write8
+  ret
+}%toy
+
+\subsection{Parser}
+
+We start the parser implementation with a function to search for a symbol in
+the list of symbols starting with $\it{symbol}$, with
+\cref{alg:toyc1-sym-lookup}. We assume that the symbol's $\it{name}$,
+$\it{length}$, $\it{kind}$, $\it{data}$, and $\it{next}$ symbol are stored at
+$\it{symbol}$, $\it{symbol}+4$, $\it{symbol}+8$, $\it{symbol}+12$, and
+$\it{symbol}+16$, respectively (as in \cref{fig:toyc1-symbols-list}.):
+
+\toy{
+const SYM_RESOLVED 0
+const SYM_UNRESOLVED 1
+const sym_name 0
+const sym_length 4
+const sym_kind 8
+const sym_value 12
+const sym_next 16
+
+fn sym_lookup symbol name length
+:step2
+  get symbol cst_0 ifeq step7
+  get symbol cst8 sym_length add load get length ifne step6
+  get symbol scst sym_name add load get name get length call mem_compare \
+cst_0 ifne step6
+  get symbol retv
+:step6
+  get symbol cst8 sym_next add load set symbol goto step2
+:step7
+  cst_0 retv
+}%toy
+
+We continue with a function to add a new symbol with the given name, length,
+kind and value in the $\it{symbols}$ list. We assume here that the $\it{heap}$
+and $\it{symbols}$ variables are stored after $dst$, \ie, at $\it{self}+32$ and
+$\it{self}+36$, respectively. We start by reserving 20 bytes to store the 5
+words of the new symbol at $\it{heap}$:
+
+\toy{
+const tc_heap 32
+const tc_symbols 36
+
+fn tc_add_symbol self name length kind value
+  cst8 20 get self cst8 tc_heap add call mem_allocate let symbol
+}%toy
+
+If the symbol is already in the $\it{symbols}$ list, this is an error:
+
+\toy{
+  get self cst8 tc_symbols add load get name get length call sym_lookup cst_0 \
+ifeq ok
+  cst8 30 call panic
+}%toy
+\rust{
+  context.add_error_code(30, "Already defined symbol");
+}
+
+\noindent otherwise we store the symbol's name, length, kind and value, and set
+its next symbol to $\it{symbols}$. Finally, we update $\it{symbols}$ and return
+the new symbol:
+
+\toy{
+:ok
+  get symbol scst sym_name add get name store
+  get symbol cst8 sym_length add get length store
+  get symbol cst8 sym_kind add get kind store
+  get symbol cst8 sym_value add get value store
+  get symbol cst8 sym_next add get self cst8 tc_symbols add load store
+  get self cst8 tc_symbols add get symbol store
+  get symbol retv
+}%toy
+
+The following function adds a symbol with the given name, length and value to
+the $\it{symbols}$ list, as a resolved symbol. Unless this symbol is already in
+the list, in which case it resolves it. We for this we first search this
+symbol. If it is not found, we add one and return it:
+
+\toy{
+fn tc_add_or_resolve_symbol self name length value
+  get self cst8 tc_symbols add load get name get length call sym_lookup let \
+symbol
+  get symbol cst_0 ifne found
+  get self get name get length scst SYM_RESOLVED get value call tc_add_symbol \
+retv
+}%toy
+
+If the symbol already exists, then it should be unresolved (otherwise it means
+we are trying to define this symbol more than once). We thus check that this is
+the case, and panic otherwise:
+
+\toy{
+:found
+  get symbol cst8 sym_kind add load scst SYM_UNRESOLVED ifeq ok cst8 31 call \
+panic
+}%toy
+\rust{
+  context.add_error_code(31, "Already resolved symbol");
+}
+
+If everything is fine, we fill the symbol's placeholders with $\it{value}$,
+update its $\it{kind}$ to ``resolved'', update its value to $\it{value}$, and
+return it:
+
+\toy{
+:ok
+  get symbol cst8 sym_value add load get value call tc_fill_placeholders
+  get symbol cst8 sym_kind add scst SYM_RESOLVED store
+  get symbol cst8 sym_value add get value store
+  get symbol retv
+}%toy
+
+To make it easier to implement the parsing functions corresponding to each
+grammar rule, we first provide 3 basic functions to parse a token, an integer
+or an identifier. The first one panics if the next token is not the one passed
+as parameter. Otherwise it just reads this token:
+
+\toy{
+fn tc_parse_token self token
+  get self cst8 tc_next_token add load get token ifeq ok cst8 20 call panic
+:ok
+  get self call tc_read_token
+  ret
+}%toy
+\rust{
+  context.add_error_code(20, "Unexpected token");
+}
+
+The second panics if the next token is not an integer. Otherwise it reads this
+token and returns its numeric value:
+
+\toy{
+fn tc_parse_integer self
+  get self cst8 tc_next_token add load cst8 TC_INTEGER ifeq ok cst8 21 call \
+panic
+:ok
+  get self cst8 tc_next_token_data add load let value
+  get self call tc_read_token
+  get value retv
+}%toy
+\rust{
+  context.add_error_code(21, "Integer token expected");
+}
+
+The last one panics if the next token is not an identifier. Otherwise it reads
+this token, sets its length at address $\it{length}^p$ and returns the address
+of its first character:
+
+\toy{
+fn tc_parse_identifier self length_p
+  get self cst8 tc_next_token add load cst8 TC_IDENTIFIER ifeq ok cst8 22 \
+call panic
+:ok
+  get self cst8 tc_next_token_data add load let name
+  get length_p get self cst8 tc_next_token_length add load store
+  get self call tc_read_token
+  get name retv
+}%toy
+\rust{
+  context.add_error_code(22, "Identifier token expected");
+}
+
+We can now implement the parsing functions, one per rule of the grammar. We
+implement them in reverse order, starting with the ``static'' rule. Parsing a
+{\tt static} block starts by parsing this keyword and the following identifier.
+We then compute the final address of the following data,
+$\it{dst}-\it{dst\_buffer}+\it{flash\_buffer}$, and add a symbol for this
+identifier and value. Here we assume that $\it{dst\_buffer}-\it{flash\_buffer}$
+is stored in a $\it{flash\_offset}$ variable at $\it{self}+40$:
+
+\toy{
+const tc_flash_offset 40
+
+fn tc_parse_static self
+  get self cst8 TC_STATIC call tc_parse_token
+  cst_0 let length
+  get self ptr length call tc_parse_identifier let name
+  get self cst8 tc_dst add load get self cst8 tc_flash_offset add load sub \
+let value
+  get self get name get length scst SYM_RESOLVED get value call tc_add_symbol \
+pop
+}%toy
+
+Finally, while the next token is an integer, we parse it and append the
+corresponding byte to the compiled code (to simplify we do not check if it fits
+in a byte):
+
+\toy{
+:loop
+  get self cst8 tc_next_token add load cst8 TC_INTEGER ifne end
+  get self get self call tc_parse_integer call tc_write8
+  goto loop
+:end
+  ret
+}%toy
+
+The next function implements the ``argument'' rule. If the next token is an
+integer we just parse it and return its numeric value:
+
+\toy{
+fn tc_parse_argument self
+  get self cst8 tc_next_token add load cst8 TC_INTEGER ifne identifier get \
+self call tc_parse_integer retv
+}%toy
+
+Otherwise the next token should be an identifier. We get its name and length
+with {\tt tc\_parse\_identifier}:
+
+\toy{
+:identifier
+  cst_0 let length
+  get self ptr length call tc_parse_identifier let name
+}%toy
+
+\noindent and then search it in the symbol table:
+
+\toy{
+  get self cst8 tc_symbols add load get name get length call sym_lookup let \
+symbol
+}%toy
+
+If no symbol is found we add an unresolved one for this identifier:
+
+\toy{
+  get symbol cst_0 ifne found
+  get self get name get length scst SYM_UNRESOLVED cst_0 call tc_add_symbol \
+set symbol
+}%toy
+
+Otherwise we jump here directly. In both cases we now have a symbol for the
+identifier, but it might be unresolved. If it is, we add a new placeholder and
+return the value to store in it:
+
+\toy{
+:found
+  get symbol cst8 sym_kind add load scst SYM_UNRESOLVED ifne resolved
+  get self get symbol cst8 sym_value add call tc_add_placeholder retv
+}%toy
+
+Finally, if it is resolved, we just return its value:
+
+\toy{
+:resolved
+  get symbol cst8 sym_value add load retv
+}%toy
+
+Parsing a label starts by parsing a colon (58 in ASCII) and then an identifier:
+
+\toy{
+const tc_fn_dst 44
+
+fn tc_parse_label self
+  get self cst8 58 call tc_parse_token
+  cst_0 let length
+  get self ptr length call tc_parse_identifier let name
+}%toy
+
+We then want to compute the instruction offset corresponding to this label.
+This is $dst$ minus the address of the current function's first instruction,
+noted $\it{fn\_dst}$. This address can be computed in the {\tt parse\_fn}
+function. We assume here that it is stored after $\it{tc\_flash\_offset}$, \ie,
+at $\it{self}+44$:
+
+\toy{
+  get self cst8 tc_dst add load get self cst8 tc_fn_dst add load sub let value
+}%toy
+
+Finally, we add a symbol for this label or resolve it, and return:
+
+\toy{
+  get self get name get length get value call tc_add_or_resolve_symbol ret
+}%toy
+
+To implement {\tt parse\_instruction} it is useful to have in a table -- noted
+{\tt S} in the previous chapter -- the argument size of each opcode (in bytes):
+
+\toy{
+static ARG_SIZES
+  0 0 1 4 0 0 0 0 0 0 0 0 2 2 2 2
+  2 2 2 0 0 1 1 1 0 0 2 0 0 0 0 0
+}%toy
+
+If the next token is a colon (58 in ASCII) we just call {\tt parse\_label} and
+return:
+
+\toy{
+fn tc_parse_instruction self
+  get self cst8 tc_next_token add load let token
+  get token cst8 58 ifne not_label
+  get self call tc_parse_label
+  ret
+}%toy
+
+Otherwise the next token should be an opcode keyword, and we assume here that
+the caller has already checked this. We then compute the corresponding opcode
+($\it{token}-128$ by construction), write it, and read the token:
+
+\toy{
+:not_label
+  get token cst8 128 sub let opcode
+  get self get opcode call tc_write8
+  get self call tc_read_token
+}%toy
+
+Then there are 4 cases, depending on the argument size (computed with {\tt
+ARG\_SIZES}). If it is 0 we have nothing to do and thus return directly:
+
+\toy{
+  cst ARG_SIZES get opcode add call load8 let arg_size
+  get arg_size cst_0 ifne not0
+  ret
+}%toy
+
+Otherwise we need to parse the argument, and then write it in 1, 2 or 4 bytes:
+
+\toy{
+:not0
+  get self call tc_parse_argument let arg
+  get arg_size cst_1 ifne not1
+  get self get arg call tc_write8 ret
+:not1
+  get arg_size cst8 2 ifne not2
+  get self get arg call tc_write16 ret
+:not2
+  get self get arg call tc_write32 ret
+}%toy
+
+Parsing a function name starts by parsing an identifier, and by storing its
+address ($\it{dst}$) in $\it{fn\_dst}$, as we assumed above. We then compute
+the value of this identifier, \ie, the argument which much be used in a
+\insn{call} instruction to call this function. This is its final address in
+flash memory, $\it{dst}-\it{dst\_buffer}+\it{flash\_buffer}$, minus
+\hexa{C0000}.
+
+\toy{
+fn tc_parse_fn_name self
+  cst_0 let length
+  get self ptr length call tc_parse_identifier let name
+  get self cst8 tc_dst add load let fn_dst
+  get self cst8 tc_fn_dst add get fn_dst store
+  get fn_dst get self cst8 tc_flash_offset add load sub cst 786432 sub let value
+}%toy
+
+Finally, we add or resolve a symbol with this value, and return it:
+
+\toy{
+  get self get name get length get value call tc_add_or_resolve_symbol retv
+}%toy
+
+Parsing the body of a function is done as explained in the previous section.
+The following function takes as parameter the symbol computed by {\tt
+parse\_fn\_name}. If the next token is a semi-colon (59 in ASCII), it reads
+this token and changes this symbol to ``unresolved'', with an empty list of
+placeholders:
+
+\toy{
+fn tc_parse_fn_body self function
+  get self cst8 tc_next_token add load cst8 59 ifne body
+  get self call tc_read_token
+  get function cst8 sym_kind add scst SYM_UNRESOLVED store
+  get function cst8 sym_value add cst_0 store
+  ret
+}%toy
+
+Otherwise it parses an integer (the function's arity) and writes
+it as an argument of an \insn{fn} instruction:
+
+\toy{
+:body
+  get self get self call tc_parse_integer call tc_write_fn_insn
+}%toy
+
+Finally, it parses an instruction while the next token is a colon or an opcode
+(\ie, while $\it{next\_token} = 58$ or $\it{next\_token} \ge 128$):
+
+\toy{
+:loop
+  get self cst8 tc_next_token add load cst8 58 ifeq insn
+  get self cst8 tc_next_token add load cst8 128 ifge insn
+  ret
+:insn
+  get self call tc_parse_instruction goto loop
+}%toy
+
+A jump instruction can reference a label which is not yet defined, but this
+label must be defined before the end of the function. We thus need to verify,
+when we reach the end of the function, that all its label symbols are resolved.
+To this end, we implement the following function, which checks that all the
+symbols from $\it{symbol}$ to $\it{end\_symbol}$ (excluded) are resolved (and
+panics otherwise):
+
+\toy{
+fn tc_check_symbols symbol end_symbol
+:loop
+  get symbol get end_symbol ifeq end
+  get symbol cst8 sym_kind add load scst SYM_UNRESOLVED ifne next
+  cst8 32 call panic
+:next
+  get symbol cst8 sym_next add load set symbol goto loop
+:end
+  ret
+}%toy
+\rust{
+  context.add_error_code(32, "Undefined forward reference");
+}
+
+With this we can now implement the {\tt parse\_fn} function. It simply needs to
+parse the \insn{fn} token, and then call the above functions to parse the
+function name and body, and to check that all the labels are resolved. As
+explained in the previous section, this function saves the $\it{heap}$ and
+$symbols$ variables before parsing the body, and restores their values once
+this is done. Note that we only check the symbols added in {\tt
+tc\_parse\_fn\_body}. Indeed, it is not an error if a symbol added before that
+is undefined (it corresponds to a forward function reference).
+
+\toy{
+fn tc_parse_fn self
+  get self cst8 TC_FN call tc_parse_token
+  get self call tc_parse_fn_name let function
+  get self cst8 tc_heap add load let heap
+  get self cst8 tc_symbols add load let symbols
+  get self get function call tc_parse_fn_body
+  get self cst8 tc_symbols add load get symbols call tc_check_symbols
+  get self cst8 tc_symbols add get symbols store
+  get self cst8 tc_heap add get heap store
+  ret
+}%toy
+
+We can finally implement the last parsing function, corresponding to the main
+grammar rule. For this we loop while the next token is {\tt fn} or
+\insn{static} and, if so, call the corresponding parsing function:
+
+\toy{
+fn tc_parse_program self
+:loop
+  get self cst8 tc_next_token add load cst8 TC_FN ifne not_fn
+  get self call tc_parse_fn goto loop
+:not_fn
+  get self cst8 tc_next_token add load cst8 TC_STATIC ifne end
+  get self call tc_parse_static goto loop
+}%toy
+
+We then test if the next token is the special END token (0), and panic
+otherwise. Finally, we check that all the symbols are resolved, \ie, that all
+the functions declared with the \insn{fn} {\em name}{\tt ;} syntax are
+effectively implemented:
+
+\toy{
+:end
+  get self cst8 tc_next_token add load cst_0 ifeq ok
+  cst8 23 call panic
+:ok
+  get self cst8 tc_symbols add load cst_0 call tc_check_symbols ret
+}%toy
+\rust{
+  context.add_error_code(23, "End of input expected");
+}
+
+The last function of our compiler is the {\tt tc\_main} function which was
+declared at the very beginning. This function initializes the compiler
+variables, sets a panic handler, and finally calls {\tt tc\_parse\_program}. We
+start by initializing the variables defined above {\em on the stack}. Since the
+stack grows in decreasing address order, we define them in reverse order, \ie,
+from $\it{fn\_dst}$ to $\it{src}$. $fn\_dst$ can be set to any value (it is
+reset in {\tt parse\_fn}). $\it{flash\_offset}$ is equal to
+$\it{flash\_buffer}-\it{dst\_buffer}$. $symbols$ must be initialized to 0 (an
+empty list). We set $\it{heap}$ 12~KB after $\it{dst\_buffer}$, which leaves
+more than enough space for the compiled code (the current compiled code size is
+about 2~KB). $\it{dst}$ starts after the 4 bytes buffer header. The next scanner
+variables can be set to any value (see below):
+
+\toy{
+fn tc_main src_buffer dst_buffer flash_buffer
+  cst_0 let fn_dst
+  get dst_buffer get flash_buffer sub let flash_offset
+  cst_0 let symbols
+  get dst_buffer cst 12288 add let heap
+  get dst_buffer cst8 4 add let dst
+  cst_0 let next_token_length
+  cst_0 let next_token_data
+  cst_0 let next_token
+  cst_0 let next_char_type
+  cst_0 let next_char
+}%toy
+
+We then initialize $\it{src\_end}$ to the end of the source code,
+$\it{src\_buffer}+4+\mathrm{mem32}[\it{src\_buffer}]$, and $src$ to the start
+of the source code {\em minus} 1 (see below):
+
+\toy{
+  get src_buffer cst8 4 add get src_buffer load add let src_end
+  get src_buffer cst8 3 add let src
+}%toy
+
+We continue with a call to {\tt panic\_result} so that calls to {\tt panic}
+directly return here, just after the call instruction. As explained in the
+previous section, this function saves the 4 values necessary for this at some
+$\it{ptr}$ address. Here we push 4 zeros on the stack and use the address of
+the top one as $\it{ptr}$:
+
+\toy{
+  cst_0 let panic3
+  cst_0 let panic2
+  cst_0 let panic1
+  cst_0 let panic0
+  cst_0 let error
+  ptr panic0 call panic_result set error
+}%toy
+
+This first call returns 0 but, in case of panic, {\tt panic\_result} returns
+again with a non-zero value (stored in $error$ just above). Thus, if $error \ne
+0$, we store the location of this error in the source code,
+$\it{src}-\it{src\_buffer}-4$ at the $\it{dst\_buffer}$ address, and return the
+error itself (as per the compiler requirements):
+
+\toy{
+  get error cst_0 ifeq ok
+  get dst_buffer get src get src_buffer sub cst8 4 sub store
+  get error retv
+}%toy
+
+We finally call {\tt tc\_parse\_program}, set the compiled code size
+$\it{dst}-\it{dst\_buffer}-4$ in the $\it{dst\_buffer}$ header, and return 0
+(meaning ``no error''). Before this, since all parsing functions, and {\tt
+tc\_parse\_program} in particular, assume that information about the next token
+is already available in $next\_token$, we call {\tt tc\_read\_token}. And since
+this function assumes that information about the next character is already
+available in $next\_char$, we call {\tt tc\_read\_char} first (which explains
+why $\it{src}$ was set to 1 byte before the start of the source code, and why
+the other scanner variables could be initialized to any value).
+
+\toy{
+:ok
+  ptr src call tc_read_char pop
+  ptr src call tc_read_token
+  ptr src call tc_parse_program
+  get dst_buffer get dst get dst_buffer sub cst8 4 sub store
+  cst_0 retv
+}%toy
+
+\rust{
+  t.write_toy0("website/sources/labels_compiler_v1.txt")?;
+  t.write_toy1("website/sources/labels_compiler_v2.txt")?;
+}
+
+\section{Compilation and tests}\label{section:toyc1-compilation}
+
+\rust{
+  let boot_mode_address = context.memory_region("foundations")
+      .label_address("boot_mode_select_rom");
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  let mut context1 = context.clone();
+
+  // Launch the command editor
+  let command_editor_main =
+      context.memory_region("command_editor").label_address("command_editor");
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+}
+
+To compile the above source code proceed as follows (see also
+\cref{fig:compilation-and-test}). First launch the command editor by typing
+``w\rs{hex_word_low(command_editor_main)}''+Enter in the memory editor,
+followed by ``r''.
+
+\medskip \paragraph*{Edit v1} Type ``F2''+``r'' to create a new program, and
+``F4''+``r'' to edit it. Then type the $1^{st}$ version of the labels compiler
+(that is, the above code with the parts highlighted in red). For convenience,
+we also provide this code in the {\tt labels\_compiler\_v1.txt} file in
+\toypcurl{sources.zip}. When you are done, type Escape to exit the text editor
+and ``F5''+``r'' to save your work. Alternatively, you can ``cheat'' by saving
+it via an external computer, as follows. First run the
+\verb!boot_mode_select_rom! function by typing
+``w\rs{hex_word_low(boot_mode_address)}''+Enter in the memory editor, followed
+by ``r''. Then reset the Arduino and, on the host computer, run the following
+command (then restart the command editor and type ``F3''+``r''):
+
+\rust{
+  // Enter source code in RAM, as if edited with F4 command.
+  let ram_compiler_source = context.memory_region("command_editor_source")
+      .label_address("ram_compiler_source");
+  let toyc1_dot_toy0 = std::fs::read_to_string(
+      "website/sources/labels_compiler_v1.txt")?;
+  context.store_text(ram_compiler_source, toyc1_dot_toy0.as_str());
+
+  // Save it in flash.
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Alternative method.
+  context1.micro_controller().borrow_mut().reset();
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  let compiler_source = context.memory_region("compiler_source").start;
+  write_lines("website/part3", "labels_compiler_v1.txt",
+      &flash_helper_commands(&toyc1_dot_toy0, compiler_source))?;
+  let mut flash_helper1 = FlashHelper::from_file(context1.micro_controller(),
+      "website/", "part3/labels_compiler_v1.txt")?;
+  let log = flash_helper1.read();
+
+  // Check that both methods give the same result.
+  context.check_equal_buffer(&mut context1, compiler_source);
+}
+\rs{host_log(log.lines().next().unwrap())}
+
+\medskip \paragraph{Compile v1} In the command editor, type ``F6''+``r'' to
+compile the code you typed. If all goes well, after about 1 second, you should
+get a result equal to 0, meaning that no error was found. If this is not the
+case, type ``F4''+``r'' to fix the error. The text editor should open right at
+the error location. Fix the error indicated by the error code returned by the
+compiler (see \cref{appendix:compilercodes}), save the program and compile it
+again. Repeat this process until the compilation is successful. Then type
+``F7''+``r'' to save the result.
+
+\rust{
+  // Test compilation errors (this also tests the panic functions).
+  let mut context2 = context.clone();
+  context2.store_text(ram_compiler_source, toyc1_dot_toy0.replace(
+      "get 6 cst8 10 mul get 0 cst8 8 add",
+      "get 6 cst8 10 mul get 0 cst_3 8 add").as_str());
+  context2.type_keys(vec!["F5"]);
+  context2.type_ascii("R\n");
+  context2.type_keys(vec!["F6"]);
+  context2.type_ascii("R");
+  assert_eq!(context2.get_display().borrow().get_text(), "00000001");
+  context2.type_ascii("\n");
+  context2.type_keys(vec!["F4"]);
+  context2.type_ascii("R");
+  assert!(context2.get_display().borrow().get_text().lines().nth(15).unwrap()
+      .contains("get 6 cst8 10 mul get 0 cst_3 8 add"));
+
+  // Compile it with toyc0.
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Save it in flash memory.
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\rust{
+  let compiler_code_size = context.memory_region("compiler_code").len;
+  let compiler_code_end = context.memory_region("compiler_code").end();
+  let command_editor_source = context.memory_region("command_editor_source");
+  let ram_command_source =
+      command_editor_source.label_address("ram_command_source");
+  let ram_compiler_code =
+      command_editor_source.label_address("ram_compiler_code");
+}
+
+\medskip \paragraph{Test v1} Type ``F9''+``e'' to edit a new command, and type
+the following code:
+
+\rust{
+  // Test compiler with small test program, in F9.
+  context.type_keys(vec!["F9"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.import_labels(context.memory_region("compiler_code"));
+  c.func("test_compiler", &[], "", &[]);
+  // compile test program
+  c.new_line();
+  c.cst(ram_compiler_source); // src_buffer
+  c.cst(ram_compiler_code); // dst_buffer
+  c.cst(compiler_code_end); // flash_buffer
+  c.call("main");
+  c.def("result");
+  // if error, return it
+  c.new_line();
+  c.get("result");
+  c.cst_0();
+  c.ifne("test_compiler_end");
+  // save compiled code of test program
+  c.new_line();
+  c.cst(ram_compiler_code);
+  c.cst(page_number(compiler_code_end));
+  c.call("buffer_flash");
+  // run test program
+  c.new_line();
+  c.cst(compiler_code_end + 4);
+  c.calld();
+  c.set("result");
+  // return result
+  c.label("test_compiler_end");
+  c.get("result");
+  c.retv();
+  let c_source = format!("{}\nd TEST_COMPILER", c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+Then type Escape and ``s'' to save it. The first line calls the labels compiler
+with $\it{src\_buffer}$=\rs{hex(ram_compiler_source)},
+$\it{dst\_buffer}$=\rs{hex(ram_compiler_code)}, and
+$\it{flash\_buffer}$=\rs{hex(compiler_code_end)}
+(\rs{dec(compiler_code_size / 1024)}~KB after ``saved program'' -- see
+\cref{fig:command-editor-memory-map}). If there is a compilation error the
+second line returns it by jumping to the fifth line. Otherwise the third line
+calls \hyperlink{buffer-flash}{buffer\_flash} to save the compiled program in
+$\it{flash\_buffer}$, which corresponds to page
+\rs{dec(page_number(compiler_code_end))}.
+The last lines call this compiled program and return its result.
+
+Type ``F2''+``r'' to create a new program, ``F4''+``r'' to edit it, and type
+the following small test program, which computes the factorial of 6:
+
+\rust{
+  let test_program = r"fn factorial;
+fn test 0
+  cst 6 call factorial retv
+fn factorial 1
+  get 0 cst_0 ifne not_zero cst_1 retv
+  :not_zero get 0 cst_1 sub call factorial get 0 mul retv";
+  // Enter source code in RAM, as if edited with F4 command.
+  context.store_text(ram_compiler_source, test_program);
+}
+\rs{code(test_program)}
+
+\noindent Then type ``F9''+``r'' to compile and run it. The result should be
+\rs{dec_hex(720u32)}. If this is not the case this means that the compiler is
+wrong. Repeat the previous steps and double check everything until this test
+passes.
+
+\rust{
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "000002D0");
+  context.type_ascii("\n");
+}
+
+\begin{Figure}
+  \input{figures/chapter4/compilation-and-test.tex}
+
+  \caption{The memory content after each step of
+  \cref{section:toyc1-compilation}. White, blue and gray areas represent source
+  code, bytecode and unused memory, respectively (not to scale). See also
+  \cref{fig:command-editor-memory-map}.}\label{fig:compilation-and-test}
+\end{Figure}
+
+\medskip \paragraph*{Edit v2} Type ``F3''+``r'' to load the $1^{st}$ version of
+the labels compiler and ``F4''+``r'' to edit it. Then update it to the $2^{nd}$
+version (that is, the code in the previous section, with the parts highlighted
+in green). For convenience, we also provide this code in the {\tt
+labels\_compiler\_v2.txt} file. Then save this new version with the F5 command.
+Alternatively, run the following command on an external computer (see above):
+
+\rust{
+  // Enter source code in RAM, as if edited with F4 command.
+  let toyc1_dot_toy1 = std::fs::read_to_string(
+      "website/sources/labels_compiler_v2.txt")?;
+  context.store_text(ram_compiler_source, toyc1_dot_toy1.as_str());
+
+  // Save it in flash.
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Alternative method.
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  write_lines("website/part3", "labels_compiler_v2.txt",
+      &flash_helper_commands(&toyc1_dot_toy1, compiler_source))?;
+  let mut flash_helper1 = FlashHelper::from_file(context1.micro_controller(),
+      "website/", "part3/labels_compiler_v2.txt")?;
+  let log = flash_helper1.read();
+
+  // Check that both methods give the same result.
+  context.check_equal_buffer(&mut context1, compiler_source);
+}
+\rs{host_log(log.lines().next().unwrap())}
+
+\medskip \paragraph*{Compile v2} To compile this new code we need to update
+command number 6 first, in order to use the labels compiler instead of the
+opcodes compiler. Type ``F6''+``e'' to edit this command and change its code to
+the following:
+
+\rust{
+  // Update compile command in F6
+  // (need to use compiler at new address; new parameter as well).
+  context.type_keys(vec!["F6"]);
+  let compiler_source = context.memory_region("compiler_source").start;
+  let compiler_code = context.memory_region("compiler_code").start;
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("compiler_code"));
+  c.func("compile_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(compiler_source); // src_buffer
+  c.cst(ram_compiler_code); // dst_buffer
+  c.cst(compiler_code); // flash_buffer
+  c.call("main");
+  c.retv();
+  let c_source = format!("{}\nd COMPILE_SOURCE_CODE", c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\noindent Then type ``s'' to save it, and ``r'' to run it. The result should be
+0, meaning ``no error''. If this is not the case, repeat the ``Edit v2'' and
+``Compile v2'' steps until all errors are fixed, as explained in ``Compile v1''.
+
+\rust{
+  // Test compilation errors (this also tests the panic functions).
+  let mut context2 = context.clone();
+  context2.store_text(ram_compiler_source,
+      toyc1_dot_toy1.replace("static ARG_SIZES", "stati ARG_SIZES").as_str());
+  context2.type_keys(vec!["F5"]);
+  context2.type_ascii("R\n");
+  context2.type_keys(vec!["F6"]);
+  context2.type_ascii("R");
+  assert_eq!(context2.get_display().borrow().get_text(), "00000017");
+  context2.type_ascii("\n");
+  context2.type_keys(vec!["F4"]);
+  context2.type_ascii("R");
+  assert_eq!(
+      context2.get_display().borrow().get_text().lines().nth(15).unwrap(),
+      "stati ARG_SIZES");
+
+  // Compile v2.
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph*{Test v2} The compilation of the $2^{nd}$ version of the
+labels compiler should give the same function addresses and instruction offsets
+as those we computed manually to write the $1^{st}$ version. Consequently, the
+compiled code of the $2^{nd}$ version (at address \rs{hex(ram_compiler_code)})
+should be identical to that of the $1^{st}$ version (at address
+\rs{hex(compiler_code)}). To check this we can use the following function,
+which compares the buffers at these two addresses with \cref{alg:toyc1-mem-cmp}:
+
+\rust{
+  let mut c = BytecodeAssembler::create(RegionKind::Default, 0xC0000, true);
+  c.import_labels(context.memory_region("graphics_card_driver"));
+}
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{c.func("compare_compiled_code", &[], "", &["nolink"])}
+
+Step 1. Initialize $\it{ptr1}$ and $\it{ptr2}$ to the above addresses.
+
+\bytecode[switchcolumn]{
+  c.new_line();
+  c.cst(ram_compiler_code);
+  c.def("ptr1");
+  c.cst(compiler_code);
+  c.def("ptr2");
+}
+
+Initialize $\it{size}$ to the size of the $\it{ptr1}$ buffer, which is the
+value at this address plus 4.
+
+\bytecode[switchcolumn]{
+  // let size = *ptr1 + 4;
+  c.new_line();
+  c.get("ptr1");
+  c.load();
+  c.cst8(4);
+  c.add();
+  c.def("size");
+}
+
+Initialize $i$ to 0.
+
+\bytecode[switchcolumn]{
+  // let i = 0;
+  c.new_line();
+  c.cst_0();
+  c.def("i");
+}
+
+Step 2. If $i$ is not less than $\it{size}$, go to step 4.
+
+\bytecode[switchcolumn]{
+  // while i < size && *(ptr1 + i) == *(ptr2 + i)
+  c.new_line();
+  c.label("test_equal_code_loop");
+  c.get("i");
+  c.get("size");
+  c.ifge("test_equal_code_end");
+}
+
+If the two bytes at $\it{ptr1}+i$ and $\it{ptr2}+i$ are different, go to step 4.
+
+\bytecode[switchcolumn]{
+  c.new_line();
+  c.get("ptr1");
+  c.get("i");
+  c.add();
+  c.call("load_byte");
+  c.get("ptr2");
+  c.get("i");
+  c.add();
+  c.call("load_byte");
+  c.ifne("test_equal_code_end");
+}
+
+Step 3. Increment the top stack value $i$ by $1$ and go back to step 2.
+
+\bytecode[switchcolumn]{
+  // i = i + 1;
+  c.new_line();
+  c.cst_1();
+  c.add();
+  c.goto("test_equal_code_loop");
+}
+
+Step 4. Return $\it{size}-i$.
+
+\bytecode[switchcolumn]{
+  // return size - i;
+  c.new_line();
+  c.label("test_equal_code_end");
+  c.get("size");
+  c.get("i");
+  c.sub();
+  c.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+\rust{
+  let c_source =
+      format!("{}\nd COMPARE_COMPILED_CODE", c.get_toy0_source_code());
+
+  context.type_keys(vec!["F10"]);
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+
+Type ``F10''+``e'' to edit a new command, and type the source code of
+the above function:
+
+\rs{code(&c_source)}
+
+\noindent Then type Escape and ``s'' to save it. Finally, type ``r'' to run it.
+The result should be 0, indicating that the two compiler versions have the same
+compiled code. If this is not the case, repeat the steps from ``Edit v2'' until
+this test passes. It might also happen that the $1^{st}$ version is wrong
+despite the ``Test v1'' step. In this case you need to restore the ``F6''
+command to its previous value and restart from the ``Edit v1'' step.
+
+\rust{
+  // test same code obtained
+  context.type_keys(vec!["F10"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // return in memory editor
+  context.type_keys(vec!["Escape"]);
+}

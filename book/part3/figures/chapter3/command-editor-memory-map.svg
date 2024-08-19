@@ -1,0 +1,108 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="44" height="7" x="6" y="14" fill="#0e6e8e"/>
+    <rect width="2" height="7" x="12" y="14" fill="#ebebeb"/>
+    <rect width="1" height="7" x="18" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="72.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="73.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="64.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="65.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="66.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="67.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="68.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="69.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="70.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="71.5" y="14" fill="#ebebeb"/>
+    <rect width="1" height="7" x="46" y="48" fill="#0e6e8e"/>
+    <rect width="7" height="7" x="95" y="48" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="45.5" y="48" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="46.5" y="48" fill="#ebebeb"/>
+    <rect width="1" height="7" x="79" y="14" fill="#ebebeb"/>
+    <rect width="27" height="7" x="4" y="48" fill="#0e6e8e"/>
+    <path d="m 129,48 h 15 l -1,4 h 1 l -1,3 h -14" fill="#ebebeb"/>
+    <rect width="27" height="7" x="102" y="48" fill="#0e6e8e"/>
+    <path d="m 137,14 h 7 L 143,18 h 1 L 143,21 l -6,0" fill="#ebebeb"/>
+    <path d="m 50,14 h 7 l -1,4 H 57 l -1,3 -6,0" fill="#ebebeb"/>
+    <path d="M 6,14 H 2 L 1,17 H 2 L 1,21 H 6" fill="#ebebeb"/>
+    <path d="M 57,14 H 2 L 1,17 H 2 L 1,21 H 56 L 57,18 h -1 z" fill="none" stroke="#000000"/>
+    <path d="m 19,14 v 7" stroke="#000000"/>
+    <path d="m 137,14 v 7" stroke="#000000"/>
+    <path d="m 14,14 v 7" stroke="#000000"/>
+    <path d="m 6,14 v 7" stroke="#000000"/>
+    <text x="0.70710659" y="19.091883" transform="rotate(-45)" font-size="3.5px">\mmapb</text>
+    <text x="4.2426405" y="22.627417" transform="rotate(-45)" font-size="3.5px">\mmapc</text>
+    <text x="-4.9497476" y="13.435029" transform="rotate(-45)" font-size="3.5px">\mmapa</text>
+    <text x="21" y="19" font-size="3.5px" fill="#ffffff">saved program</text>
+    <text x="75" y="29" font-size="3.5px">Command Editor</text>
+    <path d="m 64,14 h -6 l -1,3 h 1 l -1,4 h 7" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="74.5" y="14" fill="#ebebeb"/>
+    <rect width="0.5" height="7" x="75.5" y="14" fill="#ebebeb"/>
+    <path d="m 75,14 v 7" stroke="#000000"/>
+    <path d="m 76,14 v 7" stroke="#000000"/>
+    <path d="M 144,14 H 58 l -1,3 h 1 l -1,4 h 86 L 144,18 h -1 z" fill="none" stroke="#000000"/>
+    <path d="m 80,14 v 7" stroke="#000000"/>
+    <path d="m 129,48 v 7" stroke="#000000"/>
+    <path d="m 46,48 v 7" stroke="#000000"/>
+    <path d="m 47,48 v 7" stroke="#000000"/>
+    <path d="m 72,14 v 7" stroke="#000000"/>
+    <path d="m 65,14 v 7" stroke="#000000"/>
+    <path d="m 66,14 v 7" stroke="#000000"/>
+    <path d="m 67,14 v 7" stroke="#000000"/>
+    <path d="m 68,14 v 7" stroke="#000000"/>
+    <path d="m 69,14 v 7" stroke="#000000"/>
+    <path d="m 70,14 v 7" stroke="#000000"/>
+    <path d="m 71,14 v 7" stroke="#000000"/>
+    <path d="m 73,14 v 7" stroke="#000000"/>
+    <path d="m 74,14 v 7" stroke="#000000"/>
+    <path d="m 79,14 v 7" stroke="#000000"/>
+    <path d="m 64,14 v 7" stroke="#000000"/>
+    <text x="44.547844" y="62.932621" transform="rotate(-45)" font-size="3.5px">\mmape</text>
+    <text x="47.376274" y="65.761047" transform="rotate(-45)" font-size="3.5px">\mmapf</text>
+    <text x="36.062447" y="54.447224" transform="rotate(-45)" font-size="3.5px">\mmapd</text>
+    <text x="82" y="19" font-size="3.5px">saved program</text>
+    <path d="M 76,26 V 22" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <path d="m 64,30 v -8" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <text x="63" y="33" font-size="3.5px">saved commands</text>
+    <text x="13" y="29" font-size="3.5px">Command Editor</text>
+    <path d="M 14,26 V 22" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <path d="m 6,30 v -8" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <text x="5" y="33" font-size="3.5px">Opcodes Compiler</text>
+    <path d="m 31,48 h 7 l -1,4 h 1 l -1,3 -6,0" fill="#ebebeb"/>
+    <path d="M 6,48 H 2 l -1,3 H 2 L 1,55 H 6" fill="#ebebeb"/>
+    <path d="M 38,48 H 2 l -1,3 H 2 L 1,55 37,55 38,52 h -1 z" fill="none" stroke="#000000"/>
+    <path d="m 31,48 v 7" stroke="#000000"/>
+    <path d="m 102,48 v 7" stroke="#000000"/>
+    <path d="m 50,14 v 7" stroke="#000000"/>
+    <path d="m 6,48 v 7" stroke="#000000"/>
+    <text x="-28.991377" y="37.476662" transform="rotate(-45)" font-size="3.5px">\mmapg</text>
+    <text x="8" y="53" font-size="3.5px" fill="#ffffff">backup</text>
+    <text x="50" y="63" font-size="3.5px">current command</text>
+    <path d="m 45,48 h -6 l -1,3 h 1 l -1,4 h 7" fill="#ebebeb"/>
+    <path d="M 144,48 H 39 l -1,3 h 1 l -1,4 105,0 1,-3 h -1 z" fill="none" stroke="#000000"/>
+    <path d="m 45,48 v 7" stroke="#000000"/>
+    <path d="m 95,48 v 7" stroke="#000000"/>
+    <path d="m 12,14 v 7" stroke="#000000"/>
+    <path d="m 18,14 v 7" stroke="#000000"/>
+    <text x="-0.70710748" y="65.760933" transform="rotate(-45)" font-size="3.5px">\mmapi</text>
+    <text x="2.1213198" y="68.589355" transform="rotate(-45)" font-size="3.5px">\mmapj</text>
+    <text x="-3.5355344" y="62.932503" transform="rotate(-45)" font-size="3.5px">\mmaph</text>
+    <text x="38.890877" y="105.35891" transform="rotate(-45)" font-size="3.5px">\mmapk</text>
+    <text x="49" y="53" font-size="3.5px">edited program</text>
+    <text x="104" y="53" font-size="3.5px" fill="#ffffff">edited program</text>
+    <path d="m 50,60 -4,-4" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <path d="m 41,60 4,-4" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <path d="M 45,48 42,47" stroke="#000000" stroke-dasharray="0.4 0.4"/>
+    <path d="m 47,48 3,-1" stroke="#000000" stroke-dasharray="0.4 0.4"/>
+    <text x="41" y="63" font-size="3.5px" text-anchor="end">current command</text>
+  </g>
+</svg>

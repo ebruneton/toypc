@@ -1,0 +1,210 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{introduction}
+\setcounter{rustid}{0}
+
+\chapter*{Introduction}
+\addcontentsline{toc}{chapter}{Introduction}
+
+Our toy computer is now fully assembled and autonomous. However, it is still
+very hard to use. Indeed, even if our virtual machine instructions are much
+simpler than ARM instructions, they remain difficult to use. The goal of this
+part is thus to provide an easier way to program our toy computer.
+
+To illustrate how this can be done, consider the task of writing a program to
+compute the factorial of a number $n$, defined by $factorial(n)=1*2*\ldots*n$
+if $n > 0$, and 1 otherwise. One way to write such a program is to use the
+property that, for $n>0$, $factorial(n)=factorial(n-1) * n$. This leads to the
+following bytecode instructions:
+
+\rust{
+  let address = 0xC1000;
+  let mut b = BytecodeAssembler::new(RegionKind::Default, address);
+}
+
+\begin{TwoColumns}
+\rs{b.func("factorial", &["n"], "", &[])}\\
+\bytecode{
+  b.get("n");
+  b.cst_0();
+  b.ifne("not_zero");
+  b.cst_1();
+  b.retv();
+  b.label("not_zero");
+  b.get("n");
+  b.cst_1();
+  b.sub();
+  b.call("factorial");
+  b.get("n");
+  b.mul();
+  b.retv();
+}
+\end{TwoColumns}
+
+The first part, in the left column, compares $n$, the $0^{th}$ word in the
+function's stack frame, with 0. If it is not equal to 0, it jumps to the second
+part, in the right column. Otherwise it returns 1. The second part, in the
+right column, subtracts 1 from $n$, calls the factorial function with this
+argument (we assume here that it is stored at \rs{hex(address)}), and returns
+the result multiplied by $n$. In order to write this program we need to type on
+the keyboard the following {\em numbers}:
+
+\rs{b.get_bytecode_listing(0..b.get_instruction_count() as usize, false)}
+
+Typing numbers is error prone, and understanding their meaning requires a lot
+of effort. It would be much easier if we could type the following {\em text}
+instead:
+
+\begin{Code}
+fn 1
+  get 0 cst_0 ifne 10 cst_1 retv
+  get 0 cst_1 sub call 4096 get 0 mul retv
+\end{Code}
+
+In fact this text still contains some numbers, such as 0, 10=\hexa{A} and
+4096=\hexa{1000}. The last two are quite tedious to compute. For instance, one
+must sum the size of all the instructions up to the first \insn{retv}
+(included) to get the value 10. Function addresses such as 4096 also require to
+compute the bytecode size of each function to keep track of their addresses. To
+avoid having to do this, it would be simpler if we could use {\em labels} to
+designate instructions, and {\em identifiers} to designate functions:
+
+\begin{Code}
+fn \textbf{factorial} 1
+  get 0 cst_0 ifne \textbf{not_zero} cst_1 retv
+  \textbf{:not_zero} get 0 cst_1 sub call \textbf{factorial} get 0 mul retv
+\end{Code}
+
+Similarly, to get rid of the last numbers, it would be useful to be able to
+give names to the function parameters. We could then replace 1, the number of
+parameters of the factorial function, with a list of parameter names. And we
+could replace 0 with $n$:
+
+\begin{Code}
+fn factorial\textbf{(n)}
+  get \textbf{n} cst_0 ifne not_zero cst_1 retv
+  :not_zero get \textbf{n} cst_1 sub call factorial get \textbf{n} mul retv
+\end{Code}
+
+This text would already be much easier to type and to understand than the above
+numbers. However, it still contains long sequences of bytecode instructions
+which are more complex than the mathematical {\em expressions} they compute.
+For instance, \verb!get n cst_1 sub call factorial get n mul! computes
+$factorial(n-1)*n$. It would be much easier if we could use these expressions
+directly (this example also adds some ``punctuation'' signs, namely curly
+braces, commas, and semi-colons):
+
+\begin{Code}
+fn factorial(n) \textbf{\{}
+  \textbf{n, 0} ifne not_zero; \textbf{1} retv;
+  :not_zero \textbf{factorial(n - 1) * n} retv;
+\textbf{\}}
+\end{Code}
+
+It would also be more natural if we could write the last remaining bytecode
+instructions in a different order, closer to the order of words in English. And
+instead of writing ``if $n$ is not 0, jump to :not\_zero to not return 1'', it
+would be simpler to write ``if $n$ is 0, return 1''. We could even get rid of
+the label by putting the instructions to execute when $n$ is 0 inside curly
+braces:
+
+\begin{Code}
+fn factorial(n) \{
+  \textbf{if} n \textbf{==} 0 \textbf{\{ return} 1; \textbf{\}}
+  \textbf{return} factorial(n - 1) * n;
+\}
+\end{Code}
+
+Finally, to make it clear that this function returns a value (some do not), and
+takes a number as parameter, it would be practical to have some {\em type
+declarations}, such as the following (where \verb!u32! means an ``unsigned 32
+bit'' value):
+
+\begin{Code}
+fn factorial(n: \textbf{u32}) \textbf{-> u32} \{
+  if n == 0 \{ return 1; \}
+  return factorial(n - 1) * n;
+\}
+\end{Code}
+
+In fact the goal of this part is to be able to type programs in this form
+(inspired from Rust~\cite{RustProgrammingLanguage}), and to {\em automatically}
+get the corresponding bytecode instructions, in numerical form (also called
+{\em binary} form). For this we write a program, called a {\em compiler}, which
+transforms the program text, called the {\em source code}, into {\em compiled
+code}, \ie, bytecode instructions in binary form. This compiler is a large
+program, and we can't write it in source code because we don't have a compiler
+yet! On the other hand, writing it in binary form would be very hard. To solve
+this problem we write the compiler in several steps:
+
+\begin{enumerate}
+\item Write a small compiler to compile textual bytecode instructions (\eg,
+{\tt fn 1 get 0 $\ldots$}). Write this {\em opcodes compiler} in binary form.
+
+\item Write a compiler for programs using textual bytecode instructions with
+function names and instruction labels. Write this {\em labels compiler}, also
+called an {\em assembler}, with pure textual bytecode instructions. Compile it
+with the opcodes compiler.
+
+\item Rewrite the labels compiler with function names and labels, and improve
+it so that it can compile programs using expressions such as {\tt factorial(n -
+1) * n}. Compile this {\em expressions compiler} with the labels compiler.
+
+\item Rewrite the expressions compiler with expressions, and improve it in
+order to support programs using {\em statements} such as {\tt if} and {\tt
+return}. Compile this {\em statements compiler} with the expressions compiler.
+
+\item Rewrite the statements compiler with statements, and improve it to accept
+programs with type declarations such as {\tt factorial(n: u32) -> u32 \{ ...
+\}}. Compile this {\em types compiler} with the statements compiler.
+\end{enumerate}
+
+With this method, only the first compiler needs to be written in binary form.
+And this compiler is small because its task is quite simple. Moreover, each
+step is easier to do than the previous one because it can use simplifying
+features introduced in the previous steps. However, in order to implement this
+method, we need a way to type text, \ie, a {\em text editor}. Indeed, all we
+have for now is the memory editor, and entering text in memory with it would
+require typing the ASCII code {\em numbers} corresponding to each character of
+the text! Obviously, this would be even worse than entering programs directly
+in binary form, since a program in text form is usually longer than in binary
+form. Unfortunately, we can't write a text editor program in any textual form,
+since we don't have a text editor yet! We thus start by writing a simple text
+editor, directly in binary form.
+
+Before all this, however, we also need a way to store programs in source or
+binary form in flash memory. Otherwise, we would loose everything we typed if
+we ever do a mistake causing a crash. For this we implement one more driver,
+called the flash memory driver (we didn't need this in the previous part
+because flashing programs was done from the external computer). This driver
+also needs to be implemented in binary form. The rest of this part presents the
+above steps in detail. It is organized as follows:
+
+\begin{itemize}
+\item \cref{chapter:flash-driver} presents the flash memory driver, used to
+read and write data in flash memory. We use it at the end to save itself in
+flash memory.
+
+\item \cref{chapter:text-editor} explains how our text editor works, and
+presents its implementation in binary form.
+
+\item \cref{chapter:opcodes-compiler} explains how the opcodes compiler works,
+and presents its implementation in binary form.
+
+\item \cref{chapter:labels-compiler} explains how the labels compiler works, and
+presents its implementation in textual form.
+
+\item \cref{chapter:expressions-compiler} explains what expressions are, how
+they can be compiled, and presents the ones supported by our toy compiler. It
+then gives the corresponding implementation.
+
+\item \cref{chapter:statements-compiler} does the same with statements.
+
+\item \cref{chapter:types-compiler} does the same with type declarations.
+
+\item \cref{chapter:native-compiler} finally provides a new version of our toy
+compiler which produces ARM instructions instead of bytecode instructions. We
+use it in the next part to eventually get rid of our virtual machine.
+\end{itemize}

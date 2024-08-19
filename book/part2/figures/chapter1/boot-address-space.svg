@@ -1,0 +1,121 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs/>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="3" height="7" x="84" y="20" fill="#41a1c1"/>
+    <path d="M 13,45 16,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 27,45 24,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 35,45 32,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 21,45 24,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 77,45 70,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 47.5,45 32,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 47.5,45 0,27" stroke="#ef476f" stroke-dasharray="0.2 0.4"/>
+    <path d="M 48,45 64,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 84,20 81,19" stroke="#9a9a9a" stroke-dasharray="0.2, 0.4"/>
+    <path d="m 87,20 3,-1" stroke="#9a9a9a" stroke-dasharray="0.2, 0.4"/>
+    <path d="M 48,45 16,27" stroke="#ef476f" stroke-dasharray="0.2 0.4"/>
+    <path d="M 79,45 72,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 93.5,45 86,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 94.5,45 87,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="m 108,41 3,-14" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="m 114,41 0,-14" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 113,41 112,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 119,41 115,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="m 130,41 3,-14" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="m 136,41 1,-14" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 135,41 134,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 141,41 139,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 120,41 118,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 125,41 119,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 93.5,45 101,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 94.5,45 102,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 77,45 84,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <path d="M 79,45 86,27" stroke="#9a9a9a" stroke-dasharray="0.2 0.4"/>
+    <text x="48" y="25" text-anchor="middle">ROM</text>
+    <text x="86" y="25" text-anchor="middle">RAM</text>
+    <text x="-28" y="1" transform="rotate(-90)" font-size="3.5px" text-anchor="end">0</text>
+    <text x="-28" y="17" transform="rotate(-90)" font-size="3.5px" text-anchor="end">512~KB</text>
+    <text x="-28" y="33" transform="rotate(-90)" font-size="3.5px" text-anchor="end">1~MB</text>
+    <text x="-28" y="65" transform="rotate(-90)" font-size="3.5px" text-anchor="end">2~MB</text>
+    <text x="-28" y="71" transform="rotate(-90)" font-size="3.5px" text-anchor="end">512~MB</text>
+    <text x="-28" y="103" transform="rotate(-90)" font-size="3.5px" text-anchor="end">513~MB</text>
+    <text x="-28" y="109" transform="rotate(-90)" font-size="3.5px" text-anchor="end">1~GB</text>
+    <text x="-28" y="131" transform="rotate(-90)" font-size="2.8px" text-anchor="end">3~GB</text>
+    <text x="138" y="25" text-anchor="middle">System</text>
+    <text x="8" y="25" text-anchor="middle">Boot</text>
+    <text x="24" y="25" text-anchor="middle">Flash</text>
+    <rect width="64" height="7" x="0" y="20" fill="none" stroke="#000000"/>
+    <rect width="32" height="7" x="70" y="20" fill="none" stroke="#000000"/>
+    <path d="m 16,20 v 7" stroke="#000000"/>
+    <path d="m 32,20 v 7" stroke="#000000"/>
+    <path d="m 86,20 v 7" stroke="#000000" stroke-dasharray="0.2 0.8"/>
+    <path d="M 64,20 H 67 l -1,4 H 67 l -1,3 h -2 z" fill="#ebebeb" stroke="#000000"/>
+    <path d="M 70,20 H 68 L 67,23 h 1 L 67,27 h 3 v -7" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 102,20 h 3 l -1,4 h 1 l -1,3 h -2 z" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 108,20 h -2 l -1,3 h 1 l -1,4 h 3 v -7" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 108,20 h 19 l -1,4 h 1 l -1,3 h -18 z" fill="none" stroke="#000000"/>
+    <path d="m 130,20 h 14 l 1,3.5 -1,3.5 h -14 z" fill="none" stroke="#000000"/>
+    <path d="m 130,20 h -2 l -1,3 h 1 l -1,4 h 3 v -7" fill="#ebebeb" stroke="#000000"/>
+    <text x="118" y="25" text-anchor="middle">Controllers</text>
+    <text x="-2.1213202" y="24.748737" transform="rotate(-45)" font-size="3.5px">00080000$_{16}$</text>
+    <text x="9.1923885" y="36.062447" transform="rotate(-45)" font-size="3.5px">00100000$_{16}$</text>
+    <text x="31.819805" y="58.689865" transform="rotate(-45)" font-size="3.5px">00200000$_{16}$</text>
+    <text x="36.057899" y="62.921528" transform="rotate(-45)" font-size="3.5px">20000000$_{16}$</text>
+    <text x="47.371609" y="74.235237" transform="rotate(-45)" font-size="3.5px">20080000$_{16}$</text>
+    <text x="43.840618" y="70.710678" transform="rotate(-45)" font-size="3.5px" fill="#41a1c1">20070000$_{16}$</text>
+    <text x="50.911686" y="77.781746" transform="rotate(-45)" font-size="3.5px" fill="#41a1c1">20088000$_{16}$</text>
+    <text x="58.668034" y="85.731224" transform="rotate(-45)" font-size="3.5px">20100000$_{16}$</text>
+    <text x="62.993705" y="89.813538" transform="rotate(-45)" font-size="3.5px">40000000$_{16}$</text>
+    <text x="78.433578" y="105.33365" transform="rotate(-45)" font-size="3.5px">E0000000$_{16}$</text>
+    <rect width="10" height="1" x="12" y="46" fill="#cccccc"/>
+    <rect width="10" height="1" x="12" y="48" fill="#cccccc"/>
+    <rect width="10" height="1" x="12" y="50" fill="#cccccc"/>
+    <rect width="8" height="7" x="13" y="45" fill="#062f3d"/>
+    <rect width="10" height="1" x="26" y="46" fill="#cccccc"/>
+    <rect width="4" height="1" x="76" y="46" fill="#cccccc"/>
+    <rect width="3" height="1" x="92.5" y="46" fill="#cccccc"/>
+    <rect width="3" height="1" x="92.5" y="48" fill="#cccccc"/>
+    <rect width="3" height="1" x="92.5" y="50" fill="#cccccc"/>
+    <rect width="4" height="1" x="76" y="48" fill="#cccccc"/>
+    <rect width="4" height="1" x="76" y="50" fill="#cccccc"/>
+    <rect width="2" height="7" x="77" y="45" fill="#062f3d"/>
+    <rect width="10" height="1" x="26" y="48" fill="#cccccc"/>
+    <rect width="10" height="1" x="26" y="50" fill="#cccccc"/>
+    <rect width="8" height="7" x="27" y="45" fill="#062f3d"/>
+    <rect width="1" height="7" x="93.5" y="45" fill="#062f3d"/>
+    <rect width="2.5" height="1" x="46.5" y="46" fill="#cccccc"/>
+    <rect width="2.5" height="1" x="46.5" y="48" fill="#cccccc"/>
+    <rect width="2.5" height="1" x="46.5" y="50" fill="#cccccc"/>
+    <rect width="0.5" height="7" x="47.5" y="45" fill="#062f3d"/>
+    <text x="17" y="44" font-size="3.5px" text-anchor="middle">256~KB</text>
+    <text x="31" y="44" font-size="3.5px" text-anchor="middle">256~KB</text>
+    <text x="47.5" y="44" font-size="3.5px" text-anchor="middle">16~KB</text>
+    <text x="78" y="44" font-size="3.5px" text-anchor="middle">64~KB</text>
+    <text x="78" y="35" font-size="3.5px" text-anchor="middle">8x</text>
+    <text x="94" y="35" font-size="3.5px" text-anchor="middle">16x</text>
+    <text x="48" y="35" font-size="3.5px" text-anchor="middle">64x</text>
+    <text x="25" y="35" font-size="3.5px" text-anchor="middle" fill="#ef476f">32x</text>
+    <text x="94" y="44" font-size="3.5px" text-anchor="middle">32~KB</text>
+    <text x="-55" y="112" transform="rotate(-90)">SPI</text>
+    <text x="78" y="56" text-anchor="middle">RAM0</text>
+    <text x="94" y="56" text-anchor="middle">RAM1</text>
+    <text x="17" y="56" text-anchor="middle">Flash0</text>
+    <text x="31" y="56" text-anchor="middle">Flash1</text>
+    <text x="48" y="56" text-anchor="middle">ROM</text>
+    <text x="-55" y="118" transform="rotate(-90)">USART</text>
+    <text x="-55" y="124" transform="rotate(-90)">PIOA</text>
+    <text x="-55" y="127" transform="rotate(-90)">...</text>
+    <text x="-55" y="143" transform="rotate(-90)">...</text>
+    <text x="-55" y="140" transform="rotate(-90)">MPU</text>
+    <text x="-55" y="134" transform="rotate(-90)">SysTick</text>
+    <rect width="5" height="15" x="108" y="41" fill="none" stroke="#000000"/>
+    <rect width="5" height="15" x="130" y="41" fill="none" stroke="#000000"/>
+    <rect width="5" height="15" x="136" y="41" fill="none" stroke="#000000"/>
+    <rect width="5" height="15" x="114" y="41" fill="none" stroke="#000000"/>
+    <rect width="5" height="15" x="120" y="41" fill="none" stroke="#000000"/>
+  </g>
+</svg>

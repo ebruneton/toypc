@@ -1,0 +1,32 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <text x="13" y="9" text-anchor="end">$c$</text>
+    <text x="13" y="16" text-anchor="end">wire1</text>
+    <text x="13" y="37" text-anchor="end">wire4</text>
+    <text x="143" y="39" text-anchor="end">time</text>
+    <text x="13" y="23" text-anchor="end">wire2</text>
+    <text x="13" y="30" text-anchor="end">wire3</text>
+    <path d="M 15,11 H 35 V 5 h 2 V 11 H 70 V 5 h 3 V 11 h 40 V 5 h 11 V 11 l 6,0" fill="none" stroke="#0e6e8e"/>
+    <path d="m 15,18 h 5 V 12 h 15 v 6 l 95,0" fill="none" stroke="#0e6e8e"/>
+    <path d="m 15,25 h 5 V 19 h 15 v 6 l 95,0" fill="none" stroke="#0e6e8e"/>
+    <path d="m 15,32 20,0 v -6 h 35 v 6 l 60,0" fill="none" stroke="#0e6e8e"/>
+    <path d="m 15,39 55,0 v -6 h 43 v 6 l 17,0" fill="none" stroke="#0e6e8e"/>
+    <path d="M 70,12 V 24" stroke="#000000" stroke-dasharray="0.2, 0.399999"/>
+    <path d="m 20,26 v 4" stroke="#000000" stroke-dasharray="0.2, 0.399999"/>
+    <path d="M 113,12 V 31" stroke="#000000" stroke-dasharray="0.2, 0.399999"/>
+    <path d="M 15,40 H 144" stroke="#000000" stroke-linejoin="bevel" marker-end="url(#arrow)"/>
+    <text x="21" y="30" font-size="2.8px">power on</text>
+    <text x="131" y="11" font-size="2.8px" text-anchor="middle">0</text>
+    <text x="131" y="7" font-size="2.8px" text-anchor="middle">1</text>
+  </g>
+</svg>

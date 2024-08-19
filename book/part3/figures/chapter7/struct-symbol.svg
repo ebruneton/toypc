@@ -1,0 +1,88 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <text x="0" y="26">struct Person \{</text>
+    <text x="3" y="31">parent: \&amp;Person,</text>
+    <text x="3" y="36">name: \&amp;u32,</text>
+    <text x="3" y="41">age: u32</text>
+    <text x="0" y="46">\}</text>
+    <path d="M 51,24 H 67" stroke="#000000"/>
+    <path d="M 51,28 H 67" stroke="#000000"/>
+    <path d="M 51,32 H 67" stroke="#000000"/>
+    <path d="M 51,36 H 67" stroke="#000000"/>
+    <path d="M 51,40 H 67" stroke="#000000"/>
+    <path d="M 51,44 H 67" stroke="#000000"/>
+    <text x="66" y="23" font-size="3.5px" text-anchor="end">"Person"</text>
+    <text x="66" y="27" font-size="3.5px" text-anchor="end">6</text>
+    <text x="66" y="31" font-size="3.5px" text-anchor="end">STRUCT</text>
+    <text x="66" y="35" font-size="3.5px" text-anchor="end">3</text>
+    <text x="66" y="43" font-size="3.5px" text-anchor="end">0</text>
+    <rect width="16" height="28" x="51" y="20" fill="none" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 76,24 H 92" stroke="#000000"/>
+    <path d="M 76,28 H 92" stroke="#000000"/>
+    <path d="M 76,32 H 92" stroke="#000000"/>
+    <path d="M 76,36 H 92" stroke="#000000"/>
+    <path d="M 76,40 H 92" stroke="#000000"/>
+    <path d="M 76,44 H 92" stroke="#000000"/>
+    <text x="91" y="23" font-size="3.5px" text-anchor="end">"parent"</text>
+    <text x="91" y="27" font-size="3.5px" text-anchor="end">6</text>
+    <text x="91" y="31" font-size="3.5px" text-anchor="end">FIELD</text>
+    <text x="91" y="35" font-size="3.5px" text-anchor="end">0</text>
+    <text x="91" y="43" font-size="3.5px" text-anchor="end">1</text>
+    <rect width="16" height="28" x="76" y="20" fill="none" stroke="#000000"/>
+    <path d="m 126,24 h 16" stroke="#000000"/>
+    <path d="m 126,28 h 16" stroke="#000000"/>
+    <path d="m 126,32 h 16" stroke="#000000"/>
+    <path d="m 126,36 h 16" stroke="#000000"/>
+    <path d="m 126,40 h 16" stroke="#000000"/>
+    <path d="m 126,44 h 16" stroke="#000000"/>
+    <text x="141" y="23" font-size="3.5px" text-anchor="end">"age"</text>
+    <text x="141" y="27" font-size="3.5px" text-anchor="end">3</text>
+    <text x="141" y="31" font-size="3.5px" text-anchor="end">FIELD</text>
+    <text x="141" y="35" font-size="3.5px" text-anchor="end">2</text>
+    <text x="141" y="39" font-size="3.5px" text-anchor="end">0</text>
+    <text x="141" y="43" font-size="3.5px" text-anchor="end">0</text>
+    <rect width="16" height="28" x="126" y="20" fill="none" stroke="#000000"/>
+    <path d="m 115,46 -19,0 V 22 h -4" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 140,46 -19,0 V 22 h -4" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="M 90,38 H 73 V 22 h -6" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 65,38 h 5 v 13 h 75 V 22 h -3" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 101,24 h 16" stroke="#000000"/>
+    <path d="m 101,28 h 16" stroke="#000000"/>
+    <path d="m 101,32 h 16" stroke="#000000"/>
+    <path d="m 101,36 h 16" stroke="#000000"/>
+    <path d="m 101,40 h 16" stroke="#000000"/>
+    <path d="m 101,44 h 16" stroke="#000000"/>
+    <text x="116" y="23" font-size="3.5px" text-anchor="end">"name"</text>
+    <text x="116" y="27" font-size="3.5px" text-anchor="end">4</text>
+    <text x="116" y="31" font-size="3.5px" text-anchor="end">FIELD</text>
+    <text x="116" y="35" font-size="3.5px" text-anchor="end">1</text>
+    <text x="116" y="39" font-size="3.5px" text-anchor="end">0</text>
+    <text x="116" y="43" font-size="3.5px" text-anchor="end">1</text>
+    <text x="91" y="47" font-size="3.5px" text-anchor="end">null</text>
+    <rect width="16" height="28" x="101" y="20" fill="none" stroke="#000000"/>
+    <circle cx="65" cy="38" r="1"/>
+    <circle cx="90" cy="38" r="1"/>
+    <circle cx="115" cy="46" r="1"/>
+    <circle cx="65" cy="46" r="1"/>
+    <circle cx="140" cy="46" r="1"/>
+    <path d="m 65,46 -9,0" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="M 56,46 H 53" stroke="#000000" stroke-dasharray="0.2 0.2"/>
+    <text x="50" y="23" font-size="3.5px" text-anchor="end" fill="#9a9a9a">name</text>
+    <text x="50" y="27" font-size="3.5px" text-anchor="end" fill="#9a9a9a">length</text>
+    <text x="50" y="31" font-size="3.5px" text-anchor="end" fill="#9a9a9a">kind</text>
+    <text x="50" y="35" font-size="3.5px" text-anchor="end" fill="#9a9a9a">value</text>
+    <text x="50" y="39" font-size="3.5px" text-anchor="end" fill="#9a9a9a">type</text>
+    <text x="50" y="43" font-size="3.5px" text-anchor="end" fill="#9a9a9a">dim</text>
+    <text x="50" y="47" font-size="3.5px" text-anchor="end" fill="#9a9a9a">next</text>
+  </g>
+</svg>

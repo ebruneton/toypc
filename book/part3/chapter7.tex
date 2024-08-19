@@ -1,0 +1,2146 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter7}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "types_compiler.txt")?;
+}
+
+\chapter{Types Compiler}\label{chapter:types-compiler}
+
+We can now write programs in a simple syntax, and automatically obtain the
+corresponding bytecode with our toy compiler. This avoids a lot of tedious and
+error-prone manual tasks which would otherwise be needed to convert statements
+and expressions into low level instructions, and to compute function addresses,
+instruction offsets, or stack frame slot indices. However, many errors can
+still be made when writing programs in our toy programming language. For
+instance, we may inadvertently use a wrong number of arguments in a function
+call. We may also pass a pointer to some value instead of the value itself, or
+vice versa. Or try to use the result of a function not returning any value.
+This chapter extends our toy programming language so that our compiler can
+detect the majority of these errors.
+
+\section{Requirements}
+
+\subsection{Type declarations}
+
+The function parameters and local variables of our programs are all 32 bit
+values. However, these values represent different things depending on each
+parameter and local variable. For instance, a value can represent a character,
+a pointer to a character, a pointer to a local variable itself storing a
+pointer to a character, etc. Other values represent the address of a list of
+values, each with its own representation (\eg, in our compiler, {\tt
+*(self+tc\_src)} is a pointer to a character, while {\tt
+*(self+tc\_next\_char)} is a character).
+
+Passing a character to a function expecting a pointer to a character will
+almost certainly lead to a crash. Storing a pointer to a character in a local
+variable representing a character will likely have the same result.
+Unfortunately this kind of error can easily happen if one forgets a ``{\tt
+\&}'' or ``{\tt *}'' operator. And the compiler cannot detect them since it
+does not ``know'' what each function parameter or local variable represents.
+The solution is to ``tell'' it. For this we add a new requirement for our
+programming language, namely a syntax to specify what a value represents, which
+is called its {\em type}. We define one as follows.
+
+The type of an integer value (such as a character, or a number of characters)
+is noted ``{\tt u32}'', for ``unsigned 32 bit value''. By analogy with the
+address-of operator ``{\tt \&}'' the type of the address of an integer, \ie,
+of a pointer to an integer, is noted ``{\tt \&u32}''. The type of a pointer to
+an integer pointer is noted ``{\tt \&\&u32}''. And so on. The type of a list of
+values is defined with the syntax illustrated on the following example:
+
+\begin{Code}
+struct Symbol \{
+  name: \&u32,
+  length: u32,
+  next: \&Symbol
+\}
+\end{Code}
+
+\noindent This syntax defines a new type, here called {\tt Symbol}. A value of
+this type is made of 3 consecutive words in memory, the first one representing
+an integer pointer, the second one an integer, and the third one a pointer to a
+{\tt Symbol} value. {\tt name}, {\tt length} and {\tt next} are called the {\em
+fields} of the {\tt Symbol} {\em data structure}.
+
+Thanks to this new syntax we can now require each function parameter and local
+variable to {\em declare} its type, as illustrated in the following example:
+
+\begin{Code}
+fn load8(ptr\ToyInsert{: \&u32})\ToyInsert{ -> u32} \{ let value\ToyInsert{:
+u32} = (*ptr) \& 255; return value; \}
+\end{Code}
+
+\noindent The new elements, in green, specify that {\tt load8} takes an integer
+pointer as parameter, and returns an integer. They also specify that ``{\tt
+value}'' represents an integer. Finally, we require our compiler to use these
+declarations to keep track of the type of each expression, and to check that
+they are correctly used. For instance, knowing that {\tt ptr} has type {\tt
+\&u32}, the compiler should deduce that {\tt *ptr}, the value at address {\tt
+ptr}, has type {\tt u32}. It should then confirm that combining it with the
+integer constant 255 and storing the result in {\tt value} is valid. On the
+other hand, it should detect that ``{\tt load8(1)}'', for instance, is
+incorrect, since it passes an integer to a function expecting an integer
+pointer. We define these requirements in the next section.
+
+Besides enabling the detection of more errors, the above requirements have two
+additional benefits:
+\begin{itemize}
+  \item {\em Path expressions}. So far we used {\tt struct}s without knowing
+  it, with manually defined constants such as {\tt sym\_length}, used in
+  expressions such as {\tt *(symbol+sym\_length)}. We can now replace this with
+  a new ``{\tt symbol.length}'' syntax and require the compiler to compile it
+  into the code corresponding to {\tt *(symbol+4)}. Likewise, we can replace
+  {\tt *(symbol+sym\_next)+sym\_length} with the new syntax ``{\tt
+  \&symbol.next.length}'' (a pointer to the {\tt length} field of the {\tt
+  symbol}'s {\tt next} symbol). Indeed, it is easy to deduce, from the
+  definition of {\tt Symbol}, that {\tt name}, {\tt length}, and {\tt next} are
+  {\em offset} by 0, 4, and 8 bytes, respectively, from the start of a symbol.
+
+  \item {\em Implicit return}. Return type declarations, with the above ``{\tt
+  ->}'' notation, enable the compiler to check that {\tt return} statements
+  return values of the correct type. They also enable it to check that
+  functions without return type declaration, called {\em void} functions, do
+  not return any value. But we can go further by combining this with the
+  reachability analysis of the previous chapter. Indeed, we can require the
+  compiler to automatically generate a {\tt return;} at the end of void
+  functions, if it is missing.
+\end{itemize}
+
+\subsection{Type checking}\label{subsection:type-checking}
+
+We require our compiler to compute the type of an expression $e$, and whether
+it is correct or not, as follows:
+\begin{itemize}
+  \item if $e$ is an INTEGER it is correct and has type {\tt u32}.
+
+  \item if $e$ is an IDENTIFIER:
+  \begin{itemize}
+    \item referring to a {\tt const} name: $e$ is correct and has the
+    constant's declared type (we require constants to declare their type with
+    the ``{\tt const $X$: $\it{type}$ = $x$;}'' syntax).
+
+    \item referring to a {\tt static} name: $e$ is correct and has type {\tt
+    \&u32}.
+
+    \item referring to a function parameter or a local variable: $e$ is correct
+    and has the declared type of this parameter or variable.
+  \end{itemize}
+
+  \item if $e=$ {\tt $e_1$.field}: $e_1$ must have a {\tt
+  \&$S$} type, where $S$ is a {\tt struct} name, and {\tt field} must be a field
+  of this struct. Then $e$'s type is the declared type of {\tt field}.
+
+  \item if $e=$ {\tt *$e_1$}: $e_1$ must have a pointer type {\tt \&$t$}, where
+  $t$ is a non-void type (see below). Then $e$'s type is $t$, the type of the
+  value at address $e_1$.
+
+  \item if $e=$ {\tt \&$e_1$}: $e_1$ must have a non-void type $t$. Then $e$'s
+  type is the pointer type {\tt \&$t$}.
+
+  \item if $e=$ {\tt $e_1$*$e_2$}, {\tt $e_1$/$e_2$}, {\tt $e_1${<}{<}$e_2$},
+  {\tt $e_1${>}{>}$e_2$}, {\tt $e_1$\&$e_2$}, or {\tt $e_1$|$e_2$}: $e_1$ and
+  $e_2$ must have type {\tt u32}, and $e$ gets the same type.
+
+  \item if $e=$ {\tt $f$($e_1,\ldots,e_n$)}: $f$ must have $n$ parameters, and
+  $e_1,\ldots,e_n$ must have the declared type of these parameters. Then $e$'s
+  type is the declared return type of $f$. If $f$ does not return any value,
+  this type is the {\em void} type (for which there is no syntax).
+\end{itemize}
+
+Additions {\tt $e_1$+$e_2$} and subtractions {\tt $e_1$-$e_2$} are a special
+case. If $e_1$ and $e_2$ have type {\tt u32} then $e$ is correct and has the
+same type. But this is not the only valid case. If $e_1$ has a pointer type
+{\tt \&$t$} and $e_2$ has type {\tt u32} then $e$ is correct too, and has type
+{\tt \&$t$}. This allows expressions computing a pointer by adding a byte
+offset to another pointer, such as {\tt TC\_KEYWORDS+i} (the address of the
+$i^{th}$ byte of {\tt TC\_KEYWORDS}). Finally, the case where $e_1$ and $e_2$
+have the same pointer type {\tt \&$t$} is also valid, {\em for the subtraction
+only}. Then $e$ has type {\tt u32}. This allows expressions computing the
+offset in bytes between two pointers.
+
+The two sides of a comparison {\tt $e_1$<$e_2$}, {\tt $e_1$==$e_2$}, {\tt
+$e_1$>$e_2$}, {\tt $e_1$<=$e_2$}, {\tt $e_1$!=$e_2$}, or {\tt $e_1$>=$e_2$}
+must have the same non-void type. This allows comparing integers but also
+addresses. This rule also applies to the two sides of an assignment. Finally,
+as described above, {\tt return} statements must be consistent with the
+function's return type.
+
+With these rules the compiler can compute the type of any valid expression,
+including the right hand side $e$ of a ``{\tt let $x$: $t$ = $e$;}'' statement.
+It is therefore not necessary to declare the type of a local variable, and it
+should be possible to omit this declaration, as in ``{\tt let $x$ = $e$;}''. In
+this case $x$'s ``declared type'' is $e$'s type. However, if $t$ is declared,
+then $e$'s type should be equal to it.
+
+In some cases a value represents different things depending on the context. For
+instance, in our compiler, the value of a {\tt SYM\_CONST} symbol is an
+integer, but the value of a {\tt SYM\_STATIC} symbol is a pointer. To handle
+these cases we add a new ``{\tt $e$ as $t$}'' syntax requirement. Such a {\em
+cast} expression has type $t$, whatever the type of $e$ (provided it is not
+void). In the previous example, we can then declare the symbol's {\tt value}
+field with type {\tt u32}, and cast it to {\tt \&u32} when dealing with a {\tt
+SYM\_STATIC} symbol.
+
+In some other cases 0 is used as a special pointer value, for instance to
+represent the end of a linked list or a ``not found'' symbol. The above rules
+no longer allow this. For instance, passing 0 to a function expecting a {\tt
+Symbol} pointer is incorrect. A workaround is to use ``{\tt 0 as \&Symbol}''
+instead, but this is not really satisfactory. Instead, we extend the above
+rules so that, anywhere an expression with a well-defined pointer type is
+required, a new ``{\tt null}'' keyword can be used instead. This expression,
+compiled to {\tt cst\_0}, can thus be used in ``{\tt f(null)}'' if {\tt f} has
+a pointer parameter, ``{\tt x != null}'' if {\tt x} has a pointer type, ``{\tt
+return null;}'' in a function returning a pointer, etc. However, we do not
+allow ``{\tt let x = null;}'' since this does not provide a well-defined type
+for {\tt x} (something like ``{\tt let x: \&u32 = null;}'' must be used
+instead).
+
+Finally, in order to simplify the compiler, we add two important restrictions.
+The first is that {\tt struct} types must be defined before they can be used.
+The second is that no function parameter, local variable or expression may have
+a {\tt struct} type (only {\tt struct} {\em pointer} types are allowed). This
+ensures that any value still fits in a word, as in the statements compiler.
+
+\subsection{Grammar}
+
+In order to support the above requirements we extend the grammar of our
+programming language as follows (unchanged parts are in gray or not shown):
+
+\begin{Paragraph}
+\unchanged{program: (fn} | struct \unchanged{| static | const)* END}\\
+\unchanged{$\ldots$}\\
+\unchanged{fn\_parameters: ``{\tt (}'' (IDENTIFIER} ``{\tt :}'' type
+\unchanged{(``{\tt ,}'' IDENTIFIER} ``{\tt :}'' type\unchanged{)*)? 
+``{\tt )}''}\\
+\phantom{fn\_parameters: } (``{\tt ->}'' type)?\\
+\unchanged{fn\_body: ``{\tt \{}'' (}const | \unchanged{let\_stmt | stmt)*
+``{\tt \}}''}
+| ``{\tt =}'' INTEGER ``{\tt ;}'' \unchanged{| ``{\tt ;}''}\\
+\unchanged{let\_stmt: ``{\tt let}'' IDENTIFIER} (``{\tt :}'' type)?
+\unchanged{``{\tt =}'' expr
+``{\tt ;}''}\\
+\unchanged{$\ldots$}\\
+\unchanged{mult\_expr:} cast\_expr \unchanged{((``{\tt *}'' | ``{\tt /}'')}
+cast\_expr\unchanged{)*}\\
+cast\_expr: pointer\_expr (``{\tt as}'' type)?\\
+\unchanged{pointer\_expr: ``{\tt *}'' pointer\_expr | ``{\tt \&}''} path\_expr |
+path\_expr\\
+path\_expr: primitive\_expr (``{\tt .}'' IDENTIFIER)*\\
+\unchanged{primitive\_expr: INTEGER | IDENTIFIER fn\_arguments?} |
+sizeof\_expr | ``{\tt null}'' |\\
+\phantom{primitive\_expr: } \unchanged{``{\tt (}'' expr ``{\tt )}''}\\
+sizeof\_expr: ``{\tt sizeof}'' ``{\tt (}'' IDENTIFIER ``{\tt )}''\\
+\unchanged{fn\_arguments: ``{\tt (}'' (expr (``{\tt ,}'' expr)*)? ``{\tt )}''}\\
+struct: ``{\tt struct}'' IDENTIFIER\\
+\phantom{struct: } ``{\tt \{}'' (IDENTIFIER ``{\tt :}'' type (``{\tt ,}''
+IDENTIFIER ``{\tt :}'' type)*)? ``{\tt \}}''\\
+\unchanged{static: ``{\tt static}'' IDENTIFIER ``{\tt =}'' ``{\tt [}''
+INTEGER (``{\tt ,}'' INTEGER)* ``{\tt ]}'' ``{\tt ;}''}\\
+\unchanged{const: ``{\tt const}'' IDENTIFIER} ``{\tt :}'' type
+\unchanged{``{\tt =}'' INTEGER
+''{\tt ;}''}\\
+type: ``{\tt \&}''* (``{\tt u32}'' | IDENTIFIER)
+''{\tt ;}''
+\end{Paragraph}
+
+The new ``struct'' and ``type'' rules correspond to type definitions.
+Expressions rules are updated to allow cast expressions ``{\tt $e$ as $t$}'',
+path expressions ``{\tt $e$.$f$}'', and {\tt null} expressions, but also a new
+``{\tt sizeof($S$)}'' syntax. This expression evaluates to the size in bytes of
+$S$, which must be a {\tt struct} type name (the size of $S$ is 4 times its
+number of fields). The other rules are updated to take type declarations into
+account.
+
+Note that the address-of operator ``{\tt \&}'' can now be followed by an
+arbitrary path expression (previously only identifiers could be used). This
+allows valid expressions such as ``{\tt \&symbol.next.length}''. But this rule
+now also allows invalid expressions such as ``{\tt \&1}'' or ``{\tt \&(1+2)}''
+(numbers don't have an address). As for assignments, the compiler must then use
+another method than grammar rules to detect these errors.
+
+\rust{
+  let delay =
+      context.memory_region("clock_driver").label_address("delay") - 0xC0000;
+}
+
+Note also that two small changes unrelated to types are made in the
+``fn\_body'' rule. The first one allows the definition of constants inside a
+function. We call them local constants, because a constant defined in a
+function can only be used inside this function. The second change allows an
+external function to be {\em imported} in a program. For instance, ``{\tt fn
+delay(millis: u32) = \rs{dec(delay)};}'' allows a program to call the {\tt
+delay} function at address \hexa{C0000}$+\rs{dec(delay)}$ (see
+\cref{table:clock_driver_functions}).
+
+Finally, we also require the possibility to add comments inside programs,
+anywhere a space character is allowed. Comments must start with ``{\tt /*}''
+and end with ``{\tt */}'', as in ``{\tt /* This is a comment. */}''. The
+compiler must simply skip them, like spaces.
+
+\section{Algorithms}
+
+\subsection{Scanner}\label{subsection:toyc4-scanner}
+
+The scanner must be updated to support the new keywords (``{\tt u32}'', ``{\tt
+struct}'', etc) and the new ``{\tt .}'' and ``{\tt ->}'' tokens. It must also
+recognize comments and skip them, just like spaces, tabs and ``new line''
+characters are skipped.
+
+Adding the new keywords is trivial. However, to introduce a very useful
+algorithm, we define here a new method to find if an identifier $x$ is equal to
+a keyword. The current algorithm compares $x$ with each keyword, one by one,
+until it finds a match or all keywords have been tested. It thus takes more and
+more time, as new keywords are added. In fact, if $x$ has $n$ characters we
+only need to compare it with the keywords having $n$ characters. Said
+otherwise, if $\it{length}(x)=n$ we only need to compare $x$ with the keywords
+$k$ for which $\it{length}(k)=n$. And this applies to any function $h$
+computing a number from an identifier. With a well chosen function, the
+keywords verifying $h(k)=h(x)$ can be reduced to at most one. Then we only need
+to compare $x$ with a single keyword at most, which is much faster than the
+current algorithm. In practice $h$ is called a {\em hashing} function, $h(x)$
+is called the {\em hashcode} of $x$, and the map from keyword hashcodes $h(k)$
+to the list of keywords having this hashcode is called a {\em hash map} or {\em
+hash table}.
+
+In our compiler we compute $h(x)$ with a similar method as the one used to
+compute token values $v$ and $lsb(v)$ in \cref{chapter:opcodes-compiler}. More
+precisely, for $x$=``$c_{n-1}\ldots c_1c_0$'', we initialize $v$ to 0 and
+update $v$ to $31v+c_i$ for each character $c_i$ from left to right. We then
+define $h(x)$ as $v$ modulo $64$, also equal to $v \wedge 63$ or ``{\tt v \&
+63}''. With this choice all our keywords have a unique hashcode, and we can
+store them in a table with 64 rows. The $i^{th}$ row is either empty, or
+contains the keyword $k$ such that $h(k)=i$, and its associated $\it{token}$
+value.
+
+In order to support the new ``{\tt ->}'' token, that we associate with new
+$\it{token}$ value 20, we extend the {\tt OPERATORS} table with a new
+row and a new column, as follows:
+
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|r|r|r|}\hline
+\makecell{\unchanged{$1^{st}$ character}} & \unchanged{{\tt !}} &
+\unchanged{{\tt \&}} & \unchanged{{\tt <}} & \unchanged{{\tt =}} &
+\unchanged{{\tt >}} & \unchanged{{\tt |}} & {\tt -}\\
+\makecell{\unchanged{\tt CHAR\_TYPES}} & \unchanged{10} & \unchanged{11} &
+\unchanged{12} & \unchanged{13} & \unchanged{14} & \unchanged{15} & 16\\ \hline
+\makecell{\unchanged{any other case}} & \unchanged{1} & \unchanged{\insn{and}} &
+\unchanged{\insn{iflt}} & \unchanged{{\tt '='}} & \unchanged{\insn{ifgt}} &
+\unchanged{\insn{or}} & \insn{sub} \\
+\makecell{\unchanged{$2^{nd}$ character = $1^{st}$}} & \unchanged{1} &
+\unchanged{18} &
+\unchanged{\insn{lsl}} & \unchanged{\insn{ifeq}} & \unchanged{\insn{lsr}} &
+\unchanged{19} & 1 \\
+\makecell{\unchanged{$2^{nd}$ character = {\tt =}}} & \unchanged{\insn{ifne}} &
+\unchanged{1} & \unchanged{\insn{ifle}} & \unchanged{\insn{ifeq}} &
+\unchanged{\insn{ifge}} & \unchanged{1} & 1\\
+\makecell{$2^{nd}$ character = {\tt >}} & 1 & 1 & 1 & 1 & \insn{lsr} & 1 & 20\\
+\hline
+\end{tabular}
+\end{center}
+
+Finally, in order to read comments and skip them, we extend the loop reading
+and skipping spacing characters in {\tt tc\_read\_token}. If the next character
+is a ``{\tt /}'', this loop now calls a new function which ``looks ahead'' at
+the second next character. If it is a ``{\tt *}'' this function reads and skips
+a comment. Otherwise, it returns without reading any of these two characters,
+so that ``{\tt /}'' is read as a normal token.
+
+\subsection{Backend}\label{subsection:toyc4-backend}
+
+The only new grammar rules for which bytecode must be generated are the ``{\tt
+null}'', ``{\tt sizeof}'', and path expression rules (including in address-of
+expressions). The first two are trivial and can be compiled with the already
+existing {\tt tc\_write\_cst\_insn} backend function. The third case is less
+simple. To simplify the compiler, we want to compile all path expressions in
+the same way. As a consequence, when compiling ``{\tt \&x}'', for instance,
+compiling the path expression ``{\tt x}'' produces a \insn{get} instruction. To
+get a \insn{ptr} instruction instead, we use the same solution as for
+assignments: we erase the last written instruction and write another instead
+(see \cref{subsubsection:toyc3-assign}). As for assignments, this last
+instruction must either be a \insn{get} (rewritten to \insn{ptr}) or a
+\insn{load} (simply erased).
+
+So far we reserved 12~KB in RAM for the code generated by the backend. Any
+larger code would override the compiler's variables and then the heap (see
+\cref{fig:toyc-memory-map}), which would most probably lead to a crash. To
+avoid this we add a new $\it{dst\_limit}$ compiler variable, and we raise an
+error if any attempt is made to increase $\it{dst}$ beyond that. We also add a
+similar $\it{heap\_limit}$ variable for the heap.
+
+\subsection{Parser}
+
+\subsubsection{Type declarations}
+
+In order to compute the type of each expression, and to check that all
+expressions have a correct type, we first need a way to represent a type in
+memory. From the ``type'' grammar rule we see that a type is made of some
+number $n$ of ``{\tt \&}'', followed either by ``{\tt u32}'' or by the name of
+a {\tt struct}. Assuming for now that each struct name has an associated symbol
+in the list of symbols (we define it below), this suggests a simple way to
+represent a type $t$. Namely with two words, one storing $n$ and the other
+being either {\tt null} (for {\tt u32}) or a pointer to a symbol representing a
+struct. We call them the {\em dimension} and the {\em base type} of $t$,
+respectively.
+
+We can then store the declared type of a function parameter or of a local
+variable by adding two new words in each symbol. Indeed, we already use one
+symbol per parameter and local variable, storing their name and stack frame
+slot index. Hence, storing their base type and dimension only requires two
+additional words. For brevity, we note them {\tt type} and {\tt dim},
+respectively.
+
+The above discussion assumes that each struct name has an associated symbol.
+This symbol should somehow contain an in-memory representation of each field of
+the struct, including their name, type, and index. Indeed, this is needed to
+check and compile a path expression such as ``{\tt $e$.field}''. First to check
+that {\tt field} is indeed a field of $e$, then to compute the type of this
+expression (equal to the {\tt field}'s type), and finally to produce the
+bytecode equivalent to {\tt *($e$+$4i$)} (where $i$ is the field index). In
+order to do this, we define the symbol of a struct as follows (see
+\cref{fig:struct-symbol}):
+\begin{itemize}
+  \item the symbol's name is the struct name.
+
+  \item the symbol's kind is a new {\tt STRUCT} kind value.
+
+  \item the symbol's value is the number of fields of the struct (this is used
+  for {\tt sizeof}).
+
+  \item the symbol's {\tt type} is a list of symbols, one for each field, in
+  reverse order\footnote{This list should in theory be stored in the symbol's
+  value -- a struct definition {\em is} a type, the type field is thus here a
+  ``metatype''. In practice using the type field is easier because it avoids
+  some casts.}. Each symbol contains a field name and has a new {\tt FIELD}
+  kind. Its value is the field index, and its {\tt type} and {\tt dim} values
+  are the base type and the dimension of the field's declared type.
+
+  \item the symbol's {\tt dim} is unused and set to 0.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter7/struct-symbol.tex}
+
+  \caption{A {\tt struct} with 3 fields, represented with 4 symbols. Symbols
+  are represented more abstractly than in \cref{fig:toyc1-symbols-list} for
+  clarity, but are actually stored one after the other as in
+  \cref{fig:toyc1-symbols-list}, with name values pointing to the source code
+  (left).}\label{fig:struct-symbol}
+\end{Figure}
+
+Currently our compiler uses one symbol per function, containing the function
+name and the argument to use in \insn{call} instructions to call it (or a list
+of placeholders). This is not sufficient to check that a function is called
+with the correct number of arguments, each with a correct type. Nor to compute
+the type of a function call expression. In order to do this the symbol
+representing a function must contain an in-memory representation of the
+parameter and return types of this function. To this end, we store these types
+in the function's symbol {\tt type}, as follows (see
+\cref{fig:function-symbol}):
+\begin{itemize}
+  \item the {\tt type} of a function's symbol is a symbol representing the
+  function's return type. For functions returning a value it has a {\tt null}
+  name, a {\tt VARIABLE} kind, a 0 value, and its {\tt type} and {\tt dim}
+  values are the base type and the dimension of the function's return type. For
+  functions returning no value a new {\tt VOID} kind is used instead; {\tt
+  type} and {\tt dim} are unused and set to 0.
+
+  \item the {\tt next} symbol of the above symbol is the start of a list of
+  symbols, one per function parameter, in reverse order. Each symbol contains a
+  parameter name and has the {\tt VARIABLE} kind. Its value is the parameter
+  index, and its {\tt type} and {\tt dim} values are the base type and the
+  dimension of the parameters's declared type.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter7/function-symbol.tex}
+
+  \caption{A ``{\tt fn orphan(name: \&u32, age: u32) -> \&Person}'' function at
+  address \hexa{C0000}$+a$ is represented with 4 symbols, for the function, its
+  two parameters and its return type (from left to right), linked in reverse
+  order.}\label{fig:function-symbol}
+\end{Figure}
+
+\subsubsection{Type checking}
+
+We now have everything we need to compute the type of each expression, and to
+check if it is correct or not. Each type checking rule in
+\cref{subsection:type-checking} can be implemented in the corresponding
+expression parsing function. For instance, the rule stating that a
+shift expression $e$={\tt $e_1${<}{<}$e_2$} is correct and has type {\tt
+u32} if and only if $e_1$ and $e_2$ have type {\tt u32} can be implemented in
+the {\tt tc\_parse\_shift\_expr} function. For this we could make each
+expression parsing function return the type of the parsed expression. Then,
+for instance, {\tt tc\_parse\_shift\_expr} would get the types of $e_1$ and
+$e_2$ as a result of parsing them with {\tt tc\_parse\_add\_expr}.
+Unfortunately, each expression parsing function already returns a value, the
+origin of the expression's value. And a function cannot return several values.
+Our solution is to define a struct to store both the origin and the type of a
+parsed expression, and to store these structs in a stack:
+\begin{itemize}
+  \item we define a {\tt Value} struct with an {\tt origin}, a {\tt type} and a
+  {\tt dim} field (storing the origin of the expression value, and the base
+  type and the dimension of its type, respectively). We also add a {\tt slot}
+  field, used for expressions whose value comes from a function parameter, a
+  local variable, or a field. By definition, it contains the stack frame slot
+  index of the function parameter or local variable, or the index of the field
+  in its struct.
+
+  \item we store the {\tt Value} struct data in the {\em heap}, after the
+  symbols (see \cref{fig:toyc-memory-map}), and organize them in a stack. When
+  the compiled code for an expression runs it uses the ``real'' stack, managed
+  with the Stack Pointer SP (see \cref{subsection:stack-pointer}). For
+  instance, {\tt $e_1${<}{<}$e_2$} pushes the value of $e_1$, then the value of
+  $e_2$, pops these two values, and pushes the result {\tt $e_1${<}{<}$e_2$}.
+  We use a similar method for computing and checking the type of expressions.
+  For instance, we push the {\tt Value} of $e_1$ while compiling it with {\tt
+  tc\_parse\_add\_expr}, and do the same for $e_2$. Then, in {\tt
+  tc\_parse\_shift\_expr}, we pop these two {\tt Value}s, check that their type
+  is {\tt u32}, and finally push a new {\tt Value} with the {\tt u32} type (see
+  \cref{fig:value-stack}).
+\end{itemize}
+
+
+\begin{Figure}
+  \input{figures/chapter7/value-stack.tex}
+
+  \caption{Evaluating {\tt x{<}{<}y} with {\tt x} and {\tt y} two local
+  variables equal to $6$ and $2$ pushes $6$, then $2$, then pops $6$ and $2$
+  and pushes the result $6\ll 2=24$ (left). Compiling it pushes {\tt x}'s {\tt
+  Value} on the {\em heap}, then {\tt y}'s {\tt Value}, pops these two values,
+  checks them, and pushes a result {\tt Value} (right). Addresses increase
+  towards the bottom.}\label{fig:value-stack}
+\end{Figure}
+
+\paragraph*{null and void} The {\tt null} keyword is a special case in the type
+checking rules. To handle it we define a new {\tt NULL} origin value (this is
+easier than using a special type, with some specific {\tt type} and {\tt dim}
+values). Similarly, we define a new {\tt VOID} origin value for expressions
+calling functions without return type. Compiling such an expression pushes a
+{\tt Value} with a {\tt VOID} origin, unlike running the corresponding code
+(which leaves the stack unchanged). This simplifies all the expression parsing
+functions, which would otherwise have to check that the compilation of their
+subexpressions produces as many values.
+
+\begin{Figure}
+  \input{figures/chapter7/memory-map.tex}
+
+  \caption{The compiler variables (in red) are between the compiled code
+  (white) and the $\it{heap}$ in RAM. The $\it{heap}$ contains global {\tt
+  const}, {\tt static}, {\tt struct} and {\tt fn} symbols (dark blue), local
+  symbols (blue), and a stack of {\tt Value}s (light blue). Global symbols are
+  only added when there are no local symbols nor {\tt Value}s. Local symbols
+  are only added when the {\tt Value} stack is empty. Unused memory is in gray.
+  The native stack and its Stack Pointer SP are shown on the
+  right.}\label{fig:toyc-memory-map}
+\end{Figure}
+
+\section{Implementation}
+
+\rust{
+  let mut t = Transpiler4::new();
+}
+
+We can now extend the statements compiler in order to support types. As before,
+we need to write it in two steps, first without using types, then with them. To
+save space, we give the two compiler versions at the same time (without types
+in red, with in green). The start of the compiler does not change in the
+$1^{st}$ version, but can be rewritten with types and implicit {\tt return}s in
+the $2^{nd}$:
+
+\toy{
+@fn tc_main(src_buffer: &u32, dst_buffer: &u32, flash_buffer: &u32) -> u32;
+@fn main(src_buffer: &u32, dst_buffer: &u32, flash_buffer: &u32) -> u32 {
+@  return tc_main(src_buffer, dst_buffer, flash_buffer);
+@}
+@
+@fn load8(ptr: &u32) -> u32 { return (*ptr) & 255; }
+@fn load16(ptr: &u32) -> u32 { return (*ptr) & 65535; }
+@fn store8(ptr: &u32, value: u32) { *ptr = (*ptr) & 4294967040 | value; }
+@fn store16(ptr: &u32, value: u32) { *ptr = (*ptr) & 4294901760 | value; }
+@
+@const PANIC_BUFFER: &&u32 = 1074666152;
+@fn panic_copy(src: &u32, dst: &u32) {
+@  *dst = *src;
+@  *(dst + 4) = *(src + 4);
+@  *(dst + 8) = *(src + 8);
+@  *(dst + 12) = *(src + 12);
+@}
+@fn panic_result(ptr: &u32) -> u32 {
+@  panic_copy(&ptr as &u32 - 16, ptr);
+@  *PANIC_BUFFER = ptr;
+@  return 0;
+@}
+@fn panic(error: u32) -> u32 {
+@  panic_copy(*PANIC_BUFFER, &error - 16);
+@  return error;
+@}
+}%toy
+
+\subsection{Shared constants and data structures}
+
+Here we add new constants for the new token values and the new symbol kinds. We
+also add the new symbol fields and compiler variables discussed above, plus a
+new {\tt fn\_return\_type} variable, storing the symbol corresponding to the
+return type of the currently compiled function.
+
+\toy{
+@const TC_INTEGER: u32 = 2;
+@const TC_IDENTIFIER: u32 = 3;
+@const TC_ADD: u32 = 4;
+@const TC_SUB: u32 = 5;
+@const TC_MUL: u32 = 6;
+@const TC_DIV: u32 = 7;
+@const TC_BIT_AND: u32 = 8;
+@const TC_BIT_OR: u32 = 9;
+@const TC_SHIFT_LEFT: u32 = 10;
+@const TC_SHIFT_RIGHT: u32 = 11;
+@const TC_LT: u32 = 12;
+@const TC_GE: u32 = 17;
+@const TC_AND: u32 = 18;
+@const TC_OR: u32 = 19;
+const TC_ARROW: u32 = 20;
+const TC_AS: u32 = 138;
+@const TC_BREAK: u32 = 128;
+@const TC_CONST: u32 = 129;
+@const TC_ELSE: u32 = 130;
+@const TC_FN: u32 = 131;
+@const TC_IF: u32 = 132;
+@const TC_LET: u32 = 133;
+@const TC_LOOP: u32 = 134;
+const TC_NULL: u32 = 139;
+@const TC_RETURN: u32 = 135;
+const TC_SIZEOF: u32 = 140;
+@const TC_STATIC: u32 = 136;
+const TC_STRUCT: u32 = 141;
+const TC_U32: u32 = 142;
+@const TC_WHILE: u32 = 137;
+
+@const SYM_FN: u32 = 0;
+@const SYM_FORWARD_FN: u32 = 1;
+@const SYM_VARIABLE: u32 = 2;
+@const SYM_CONST: u32 = 3;
+@const SYM_STATIC: u32 = 4;
+const SYM_STRUCT: u32 = 5;
+const SYM_FIELD: u32 = 6;
+const SYM_VOID: u32 = 7;
+
+@struct Symbol,sym_,symbol {
+@  name: &u32,
+@  length: u32,
+@  kind: u32,
+@  value: u32,
+  type: &Symbol,
+  dim: u32,
+  next: &Symbol
+}
+}%toy
+\toy{
+@struct Compiler,tc_,compiler {
+@  src: &u32,
+@  src_end: &u32,
+@  next_char: u32,
+@  next_char_type: u32,
+@  next_token: u32,
+@  next_token_data: u32,
+@  next_token_length: u32,
+@  dst: &u32,
+  dst_limit: &u32,
+  heap: &u32,
+  heap_limit: &u32,
+  symbols: &Symbol,
+  fn_dst: &u32,
+  fn_return_type: &Symbol,
+  flash_offset: u32
+}
+}%toy
+
+\subsection{Scanner}
+
+We start the scanner by setting the {\tt CHAR\_TYPES} of ``{\tt .}'' to its
+ASCII code 46, by changing the one of ``{\tt -}'' to 16, and by updating the
+{\tt OPERATORS} table (see \cref{subsection:toyc4-scanner}):
+
+\toy{
+@static TC_CHAR_TYPES = [
+@  1,1,1,1,1,1,1,1,1,32,32,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  32,10,1,1,1,1,11,39,40,41,6,4,44,16,46,7,2,2,2,2,2,2,2,2,2,2,58,59,12,13,
+@  14,1,1,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,91,1,93,1,3,
+@  1,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,123,15,125,1,1,
+@  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+@  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+@  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+@  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+
+static TC_OPERATORS = [
+  1,1,16,1,8,18,1,1,12,10,15,1,61,13,13,1,14,11,17,11,9,19,1,1,5,1,1,20];
+}%toy
+
+We then add the new keywords, but we insert before them 64 bytes. If there is a
+keyword whose hashcode is $i$, then the $i^{th}$ byte is the offset of this
+keyword in {\tt TC\_KEYWORD}. Otherwise it is $0$. For instance, the $0^{th}$
+byte is $0$ because no keyword has hashcode $0$. And the $8^{th}$ byte is $88$
+because the ``{\tt fn}'' keyword has hashcode $8$ ({\tt 'f'$=102$}, {\tt
+'n'$=110$} and $102*31+110\mod\,64=8$) and starts at the $88^{th}$ byte (with
+its length, followed by its characters and its token value).
+
+\toy{
+@static TC_KEYWORDS = [
+  0,0,0,0,0,0,0,107,88,0,0,0,0,0,0,0,0,0,0,0,145,137,
+  0,0,121,0,0,96,0,92,0,0,0,0,0,75,101,0,0,0,0,0,0,0,
+  0,0,129,0,113,150,64,0,0,0,0,0,0,82,0,0,0,0,0,68,
+  2,'a','s',138,
+@  5,'b','r','e','a','k',128,
+@  5,'c','o','n','s','t',129,
+@  4,'e','l','s','e',130,
+@  2,'f','n',131,
+@  2,'i','f',132,
+@  3,'l','e','t',133,
+@  4,'l','o','o','p',134,
+  4,'n','u','l','l',139,
+@  6,'r','e','t','u','r','n',135,
+  6,'s','i','z','e','o','f',140,
+@  6,'s','t','a','t','i','c',136,
+  6,'s','t','r','u','c','t',141,
+  3,'u','3','2',142,
+  5,'w','h','i','l','e',137];
+
+@fn mem_compare(ptr1: &u32, ptr2: &u32, size: u32) -> u32 {
+@  let i = 0;
+@  while i < size && load8(ptr1 + i) == load8(ptr2 + i) {
+@    i = i + 1;
+@  }
+@  return size - i;
+@}
+}%toy
+
+Thanks to this hash table {\tt tc\_get\_keyword} now only needs to compare the
+given identifier with at most one keyword, the one with the identifier's {\tt
+hashcode} (which must be computed by the caller):
+
+\toy{
+fn tc_get_keyword(start: &u32, length: u32, hashcode: u32) -> u32 {
+  let keyword = load8(TC_KEYWORDS + hashcode);
+  if keyword != 0 &&
+    length == load8(TC_KEYWORDS + keyword) &&
+    mem_compare(start, TC_KEYWORDS + keyword + 1, length) == 0 {
+      return load8(TC_KEYWORDS + keyword + length + 1);
+  }
+  return TC_IDENTIFIER;
+}
+
+@fn tc_read_char(self: &Compiler) -> u32 {
+@  let src = self.src;
+@  let src_end = self.src_end;
+@  if src >= src_end { panic(10); }
+@  src = src + 1;
+@  let c = 0;
+@  let type = 0;
+@  if src < src_end {
+@    c = load8(src);
+@    type = load8(TC_CHAR_TYPES + c);
+@  }
+@  self.src = src;
+@  self.next_char = c;
+@  self.next_char_type = type;
+@  return type;
+@}
+@fn tc_read_integer(self: &Compiler) -> u32 {
+@  let type = self.next_char_type;
+@  let v = 0;
+@  while type == TC_INTEGER {
+@    v = v * 10 + (self.next_char - '0');
+@    type = tc_read_char(self);
+@  }
+@  self.next_token_data = v;
+@  return TC_INTEGER;
+@}
+@fn tc_read_quoted_char(self: &Compiler) -> u32 {
+@  tc_read_char(self);
+@  let value = self.next_char;
+@  if value < 32 || value >= 127 { panic(11); }
+@  if tc_read_char(self) != ''' { panic(12); }
+@  tc_read_char(self);
+@  self.next_token_data = value;
+@  return TC_INTEGER;
+@}
+}%toy
+
+We compute this hashcode with a few changes in the following function:
+
+\toy{
+@fn tc_read_identifier(self: &Compiler) -> u32 {
+  let hashcode = 0;
+@  let start = self.src;
+@  let type = self.next_char_type;
+@  while type == TC_IDENTIFIER || type == TC_INTEGER {
+    hashcode = 31 * hashcode + self.next_char;
+@    type = tc_read_char(self);
+@  }
+@  let length = self.src - start;
+@  self.next_token_data = start as u32;
+@  self.next_token_length = length;
+  return tc_get_keyword(start, length, hashcode & 63);
+}
+}%toy
+
+The next function is updated to use the new {\tt OPERATORS} table:
+
+\toy{
+@fn tc_read_operator(self: &Compiler, first_char_type: u32) -> u32 {
+@  let second_char_type = tc_read_char(self);
+  let index = 4 * (first_char_type - 10);
+@  if second_char_type == first_char_type {
+@    tc_read_char(self);
+@    index = index + 1;
+@  } else if self.next_char == '=' {
+@    tc_read_char(self);
+@    index = index + 2;
+  } else if self.next_char == '>' {
+    tc_read_char(self);
+    index = index + 3;
+@  }
+@  return load8(TC_OPERATORS + index);
+@}
+}%toy
+
+We finish the scanner with a new function to read comments, used in the loop
+skipping spacing characters in {\tt tc\_read\_token}. This new function assumes
+that the next character is a ``{\tt /}''. It returns $0$ if it not followed by a
+``{\tt *}''. Otherwise it ``reads'' the comment and returns 1. In fact this
+function only increments $\it{src}$, without updating the other scanner
+variables. This is why it does not ``read'' the last ``{\tt /}'', leaving this
+to the caller. Note also how the end of the comment is found: by comparing two
+characters at once with ``{\tt */}'' ({\tt '*'$=42$}, {\tt '/'$=47$} and
+$42+47*256=12074$).
+
+\toy{
+fn tc_read_comment(self: &Compiler, src: &u32) -> u32 {
+  if src + 1 >= self.src_end || load8(src + 1) != '*' { return 0; }
+  while src + 3 < self.src_end && load16(src + 2) != 12074 {
+    src = src + 1;
+  }
+  self.src = src + 3; /* The last '/' is NOT read. */
+  return 1;
+}
+
+@fn tc_read_token(self: &Compiler) {
+@  let type = self.next_char_type;
+  while type == ' ' || type == TC_DIV {
+    if type == TC_DIV && tc_read_comment(self, self.src) == 0 { break; }
+@    type = tc_read_char(self);
+@  }
+@  let token = type;
+@  if type == TC_INTEGER {
+@    token = tc_read_integer(self);
+@  } else if type == ''' {
+@    token = tc_read_quoted_char(self);
+@  } else if type == TC_IDENTIFIER {
+@    token = tc_read_identifier(self);
+@  } else if type >= 10 && type < 20 {
+@    token = tc_read_operator(self, type);
+@  } else if type != 0 {
+@    tc_read_char(self);
+@  }
+@  self.next_token = token;
+@}
+}%toy
+
+\subsection{Backend}
+
+In order to check that $\it{dst}$ and $\it{heap}$ do not grow beyond
+$\it{dst\_limit}$ and $\it{heap\_limit}$, respectively, we add a new
+$\it{ptr\_limit}$ parameter in the following function. We then check that
+$\it{ptr}+\it{size}\le\it{ptr\_limit}$ and panic otherwise. In fact
+$\it{ptr}+\it{size}$ could overflow the capacity of a word and thus incorrectly
+appear as less than $\it{ptr\_limit}$. The code below uses a reformulation of
+this test which avoids any possible overflow.
+
+\toy{
+fn mem_allocate(size: u32, ptr_p: &&u32, ptr_limit: &u32) -> &u32 {
+@  let ptr = *ptr_p;
+  if size > ptr_limit as u32 || ptr > ptr_limit - size { panic(1); }
+@  *ptr_p = ptr + size;
+@  return ptr;
+@}
+@fn tc_write8(self: &Compiler, value: u32) {
+  store8(mem_allocate(1, &self.dst, self.dst_limit), value);
+@}
+@fn tc_write16(self: &Compiler, value: u32) {
+  store16(mem_allocate(2, &self.dst, self.dst_limit), value);
+@}
+@fn tc_write32(self: &Compiler, value: u32) {
+  *mem_allocate(4, &self.dst, self.dst_limit) = value;
+@}
+@fn tc_write_insn(self: &Compiler, opcode: u32, argument: u32) {
+@  tc_write8(self, opcode);
+@  tc_write8(self, argument);
+@}
+@fn tc_write_placeholder(self: &Compiler, placeholder_p: &&u32) {
+@  let new_placeholder = self.dst;
+@  let last_placeholder = *placeholder_p;
+@  *placeholder_p = new_placeholder;
+@  if last_placeholder == null { last_placeholder = new_placeholder; }
+@  tc_write16(self, new_placeholder - last_placeholder);
+@}
+@fn tc_fill_placeholders(placeholder: &u32, value: u32) {
+@  let offset = 0;
+@  while placeholder != null {
+@    offset = load16(placeholder);
+@    store16(placeholder, value);
+@    if offset == 0 { break; }
+@    placeholder = placeholder - offset;
+@  }
+@}
+@fn tc_fill_label_placeholders(self: &Compiler, placeholder: &u32) {
+@  tc_fill_placeholders(placeholder, self.dst - self.fn_dst);
+@}
+@fn tc_write_cst_insn(self: &Compiler, value: u32) {
+@  if value <= 1 {
+@    tc_write8(self, value);
+@  } else if value < 256 {
+@    tc_write_insn(self, /*cst8*/2, value);
+@  } else {
+@    tc_write8(self, /*cst*/3);
+@    tc_write32(self, value);
+@  }
+@}
+@fn tc_write_static_insn(self: &Compiler, dst: u32) {
+@  tc_write_cst_insn(self, dst - self.flash_offset);
+@}
+@fn tc_write_binary_insn(self: &Compiler, token: u32) {
+@  tc_write8(self, token);
+@}
+@fn tc_write_jump_insn(self: &Compiler, token: u32, placeholder_p: &&u32) {
+@  tc_write8(self, token);
+@  tc_write_placeholder(self, placeholder_p);
+@}
+@fn tc_write_goto_insn(self: &Compiler, placeholder_p: &&u32) {
+@  tc_write_jump_insn(self, /*goto*/18, placeholder_p);
+@}
+@fn tc_write_loop_insn(self: &Compiler, loop_dst: &u32) {
+@  tc_write8(self, /*goto*/18);
+@  tc_write16(self, loop_dst - self.fn_dst);
+@}
+}%toy
+\rust{
+  context.add_error_code(1, "Out-of-memory");
+}
+
+The next function now writes the code to load the field of a struct, given by
+its index. It loads the value starting $4*\it{field}$ bytes after the struct's
+address.
+
+\toy{
+fn tc_write_load_insn(self: &Compiler, field: u32) {
+  if field > 0 {
+    tc_write_cst_insn(self, field << 2);
+    tc_write8(self, /*add*/4);
+  }
+@  tc_write8(self, /*load*/19);
+@}
+@fn tc_erase_load_insn(self: &Compiler) {
+@  self.dst = self.dst - 1;
+@}
+}%toy
+
+A new $\it{field}$ parameter is also added to the next function. It is
+introduced to simplify the next chapter, although it is unused for now. For the
+same reason, a new function, empty for now, is added to write the code
+computing the address of a field.
+
+\toy{
+fn tc_write_store_insn(self: &Compiler, field: u32) {
+  tc_write8(self, /*store*/20);
+}
+fn tc_write_address_of_insn(self: &Compiler, field: u32) {
+}
+@fn tc_write_ptr_insn(self: &Compiler, variable: u32) {
+@  tc_write_insn(self, /*ptr*/21, variable);
+@}
+@fn tc_write_get_insn(self: &Compiler, variable: u32) {
+@  tc_write_insn(self, /*get*/22, variable);
+@}
+}%toy
+
+The following function no longer returns the argument of the erased
+instruction. This is no longer necessary since we now keep track of the stack
+frame slot indices in the {\tt Value}'s {\tt slot} field. In fact this field
+was added to simplify this function.
+
+\toy{
+fn tc_erase_get_insn(self: &Compiler) {
+  self.dst = self.dst - 2;
+}
+@fn tc_write_set_insn(self: &Compiler, variable: u32) {
+@  tc_write_insn(self, /*set*/23, variable);
+@}
+@fn tc_write_pop_insn(self: &Compiler) {
+@  tc_write8(self, /*pop*/24);
+@}
+@fn tc_write_fn_insn(self: &Compiler, arity: u32) {
+@  tc_write_insn(self, /*fn*/25, arity);
+@}
+@fn tc_get_fn_value(self: &Compiler, fn_dst: u32) -> u32 {
+@  return fn_dst - self.flash_offset - 786432;
+@}
+@fn tc_write_call_insn(self: &Compiler, function: &Symbol) {
+@  tc_write8(self, /*call*/26);
+@  if function.kind == SYM_FORWARD_FN {
+@    tc_write_placeholder(self, &function.value as &&u32);
+@  } else {
+@    tc_write16(self, function.value);
+@  }
+@}
+}%toy
+
+Finally, the last backend function is updated to generate either a \insn{ret}
+or a \insn{retv} instruction, depending on the return type of the currently
+compiled function.
+
+\toy{
+@fn tc_write_return_insn(self: &Compiler) {
+  if self.fn_return_type.kind == SYM_VOID {
+    tc_write8(self, /*ret*/29);
+  } else {
+    tc_write8(self, /*retv*/30);
+  }
+@}
+}%toy
+
+\subsection{Parser}
+
+\toy{
+@fn sym_lookup(symbol: &Symbol, name: &u32, length: u32) -> &Symbol {
+@  while symbol != null {
+@    if symbol.length == length && mem_compare(symbol.name, name, length) == 0 {
+@      return symbol;
+@    }
+@    symbol = symbol.next;
+@  }
+@  return null;
+@}
+}%toy
+
+The symbols represented in \cref{fig:struct-symbol,fig:function-symbol} are not
+in the $\it{symbols}$ list. To create them we split {\tt tc\_add\_symbol}
+in two, with new {\tt type} and {\tt dim} parameters:
+
+\toy{
+fn tc_new_symbol(self: &Compiler, name: &u32, length: u32, kind: u32,
+    value: u32, type: &Symbol, dim: u32, next: &Symbol) -> &Symbol {
+  let symbol = mem_allocate(sizeof(Symbol), &self.heap, self.heap_limit) \
+as &Symbol;
+  if sym_lookup(next, name, length) != null { panic(30); }
+@  symbol.name = name;
+@  symbol.length = length;
+@  symbol.kind = kind;
+@  symbol.value = value;
+  symbol.type = type;
+  symbol.dim = dim;
+  symbol.next = next;
+@  return symbol;
+@}
+fn tc_add_symbol(self: &Compiler, name: &u32, length: u32, kind: u32,
+    value: u32, type: &Symbol, dim: u32) -> &Symbol {
+  self.symbols = tc_new_symbol(
+      self, name, length, kind, value, type, dim, self.symbols);
+  return self.symbols;
+}
+@fn tc_add_or_resolve_fn_symbol(self: &Compiler, name: &u32, length: u32, \
+value: u32) -> &Symbol {
+@  let symbol = sym_lookup(self.symbols, name, length);
+@  if symbol == null {
+    return tc_add_symbol(self, name, length, SYM_FN, value, null, 0);
+@  }
+@  if symbol.kind != SYM_FORWARD_FN { panic(31); }
+@  tc_fill_placeholders(symbol.value as &u32, value);
+@  symbol.kind = SYM_FN;
+@  symbol.value = value;
+@  return symbol;
+@}
+@fn tc_parse_token(self: &Compiler, token: u32) {
+@  if self.next_token != token { panic(20); }
+@  tc_read_token(self);
+@}
+@fn tc_parse_integer(self: &Compiler) -> u32 {
+@  if self.next_token != TC_INTEGER { panic(21); }
+@  let value = self.next_token_data;
+@  tc_read_token(self);
+@  return value;
+@}
+@fn tc_parse_identifier(self: &Compiler, length_p: &u32) -> &u32 {
+@  if self.next_token != TC_IDENTIFIER { panic(22); }
+@  let name = self.next_token_data as &u32;
+@  *length_p = self.next_token_length;
+@  tc_read_token(self);
+@  return name;
+@}
+@fn tc_parse_symbol(self: &Compiler, symbol: &Symbol) -> &Symbol {
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+@  symbol = sym_lookup(symbol, name, length);
+@  if symbol == null { panic(33); }
+@  return symbol;
+@}
+}%toy
+
+The following function implements a corrected version of the ``type'' grammar
+rule. Indeed, a type declaration such as ``{\tt \&\&\&u32}'' is not read by the
+scanner as 3 ``{\tt \&}'' tokens followed by ``{\tt u32}'', but as the 3 tokens
+``{\tt \&\&}'', ``{\tt \&}'', and ``{\tt u32}''. It is used in {\tt
+tc\_parse\_const} to parse the constant's declared type.
+
+\toy{
+fn tc_parse_type(self: &Compiler, dim: &u32) -> &Symbol {
+  *dim = 0;
+  while self.next_token == TC_BIT_AND || self.next_token == TC_AND {
+    *dim = *dim + 1;
+    if self.next_token == TC_AND { *dim = *dim + 1; }
+    tc_read_token(self);
+  }
+  if self.next_token == TC_U32 {
+    tc_read_token(self);
+    return null;
+  }
+  let symbol = tc_parse_symbol(self, self.symbols);
+  if *dim == 0 || symbol.kind != SYM_STRUCT { panic(42); }
+  return symbol;
+}
+
+@fn tc_parse_const(self: &Compiler) {
+@  tc_parse_token(self, TC_CONST);
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+  tc_parse_token(self, ':');
+  let dim = 0;
+  let type = tc_parse_type(self, &dim);
+@  tc_parse_token(self, '=');
+  tc_add_symbol(self, name, length, SYM_CONST, tc_parse_integer(self), \
+type, dim);
+@  tc_parse_token(self, ';');
+@}
+
+@fn tc_parse_static(self: &Compiler) {
+@  tc_parse_token(self, TC_STATIC);
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+  tc_add_symbol(self, name, length, SYM_STATIC, self.dst as u32, null, 1);
+@  tc_parse_token(self, '=');
+@  tc_parse_token(self, '[');
+@  tc_write8(self, tc_parse_integer(self));
+@  while self.next_token == ',' {
+@    tc_read_token(self);
+@    tc_write8(self, tc_parse_integer(self));
+@  }
+@  tc_parse_token(self, ']');
+@  tc_parse_token(self, ';');
+@}
+}%toy
+\rust{
+  context.add_error_code(42, "Illegal raw struct type");
+}
+
+The next function implements the new ``struct'' rule. It first adds to
+$\it{symbols}$ a symbol for the struct itself (without fields), so that the
+symbols for its fields, collected in {\tt fields}, can use it as their type.
+
+\toy{
+fn tc_parse_struct(self: &Compiler) {
+  tc_parse_token(self, TC_STRUCT);
+  let length = 0;
+  let name = tc_parse_identifier(self, &length);
+  let symbol = tc_add_symbol(self, name, length, SYM_STRUCT, 0, null, 0);
+  tc_parse_token(self, '\{');
+  let dim = 0;
+  let type: &Symbol = null;
+  let fields: &Symbol = null;
+  let value = 0;
+  while self.next_token != '\}' {
+    if value > 0 { tc_parse_token(self, ','); }
+    name = tc_parse_identifier(self, &length);
+    tc_parse_token(self, ':');
+    type = tc_parse_type(self, &dim);
+    fields = tc_new_symbol(self, name, length, SYM_FIELD, value, type, dim, \
+fields);
+    value = value + 1;
+  }
+  tc_read_token(self);
+  symbol.value = value;
+  symbol.type = fields;
+}
+}%toy
+
+We then define the new {\tt NULL} and {\tt VOID} origins, and the new
+{\tt Value} struct. The next two functions check if the type of a value is
+equal to a required type, either given directly or via a {\tt Symbol}, and
+panic otherwise. They take the exception for {\tt null} into account ({\tt
+null} can be used anywhere a pointer type is required).
+
+\toy{
+@const FROM_ADDRESS: u32 = 0;
+@const FROM_VARIABLE: u32 = 1;
+const FROM_NULL: u32 = 2;
+const FROM_VOID: u32 = 3;
+@const FROM_OTHER: u32 = 255;
+
+struct Value,val_,value {
+  origin: u32,
+  slot: u32,
+  type: &Symbol,
+  dim: u32
+}
+
+fn value_type_check(self: &Value, type: &Symbol, dim: u32) {
+  if self.origin == FROM_NULL && dim != 0 { return; }
+  if self.type != type || self.dim != dim { panic(43); }
+}
+fn value_check(self: &Value, symbol: &Symbol) {
+  value_type_check(self, symbol.type, symbol.dim);
+}
+}%toy
+\rust{
+  context.add_error_code(43, "Expression type mismatch");
+}
+
+The following new functions are used to manage the {\tt Value} stack. The first
+one pushes a new value given explicitly. It panics if its type is a struct type
+(recall that only struct pointer types are allowed). The second one uses it to
+push a value corresponding to a symbol. It computes the value's origin from the
+symbol's kind. The third returns a pointer to the last pushed value. The last
+ones do the same but also pop this value. Their result must be used before
+pushing a new value!
+
+\toy{
+fn tc_push_value(self: &Compiler, origin: u32, slot: u32, type: &Symbol, \
+dim: u32) -> &Value {
+  let value = mem_allocate(sizeof(Value), &self.heap, self.heap_limit) as \
+&Value;
+  if dim == 0 && type != null { panic(44); }
+  value.origin = origin;
+  value.slot = slot;
+  value.type = type;
+  value.dim = dim;
+  return value;
+}
+fn tc_push_symbol_value(self: &Compiler, symbol: &Symbol) -> &Value {
+  let origin = FROM_OTHER;
+  if symbol.kind == SYM_FIELD { origin = FROM_ADDRESS; }
+  else if symbol.kind == SYM_VARIABLE { origin = FROM_VARIABLE; }
+  else if symbol.kind == SYM_VOID { origin = FROM_VOID; }
+  return tc_push_value(self, origin, symbol.value, symbol.type, symbol.dim);
+}
+fn tc_top_value(self: &Compiler) -> &Value {
+  return (self.heap - sizeof(Value)) as &Value;
+}
+fn tc_pop_value_or_void(self: &Compiler) -> &Value {
+  self.heap = self.heap - sizeof(Value);
+  return self.heap as &Value;
+}
+fn tc_pop_value(self: &Compiler) -> &Value {
+  let value = tc_pop_value_or_void(self);
+  if value.origin == FROM_VOID { panic(45); }
+  return value;
+}
+
+@fn tc_parse_expr(self: &Compiler);
+}%toy
+\rust{
+  context.add_error_code(44, "Illegal raw struct expression type");
+  context.add_error_code(45, "Illegal void expression type");
+}
+
+The next function implements the type checking rule for function call
+expressions. It checks that the number of arguments ({\tt argument\_count}) is
+equal to the number of parameters, pops their types and check them against the
+parameter types of the callee ({\tt function}). It then pushes a value
+corresponding to the function's return type. It is called in the next function,
+refactored to compute {\tt argument\_count}.
+
+\toy{
+fn tc_check_fn_arguments(self: &Compiler, function: &Symbol, \
+argument_count: u32) {
+  let parameter = function.type.next;
+  while parameter != null && argument_count != 0 {
+    value_check(tc_pop_value(self), parameter);
+    parameter = parameter.next;
+    argument_count = argument_count - 1;
+  }
+  if parameter != null || argument_count != 0 { panic(46); }
+  tc_push_symbol_value(self, function.type);
+}
+@fn tc_parse_fn_arguments(self: &Compiler, function: &Symbol) {
+@  if function.kind != SYM_FN && function.kind != SYM_FORWARD_FN {
+@    panic(34);
+@  }
+@  tc_parse_token(self, '(');
+  let argument_count = 0;
+  while self.next_token != ')' {
+    if argument_count > 0 { tc_parse_token(self, ','); }
+    tc_parse_expr(self);
+    argument_count = argument_count + 1;
+  }
+  tc_read_token(self);
+  tc_check_fn_arguments(self, function, argument_count);
+  tc_write_call_insn(self, function);
+}
+}%toy
+\rust{
+  context.add_error_code(46, "Function call argument type mismatch");
+}
+
+Parsing and compiling a {\tt sizeof} expression is very easy. The size of a
+struct is 4 times its number of fields, itself stored in the {\tt value} field
+of the struct's symbol.
+
+\toy{
+fn tc_parse_sizeof_expr(self: &Compiler) {
+  tc_parse_token(self, TC_SIZEOF);
+  tc_parse_token(self, '(');
+  let symbol = tc_parse_symbol(self, self.symbols);
+  if symbol.kind != SYM_STRUCT { panic(47); }
+  tc_push_value(self, FROM_OTHER, 0, null, 0);
+  tc_write_cst_insn(self, symbol.value << 2);
+  tc_parse_token(self, ')');
+}
+}%toy
+\rust{
+  context.add_error_code(47, "Struct name expected");
+}
+
+The next function is updated to parse the new {\tt sizeof} and {\tt null}
+expressions, and to push a value instead of returning the origin of the
+expression's value.
+
+\toy{
+@fn tc_parse_primitive_expr(self: &Compiler) {
+  let symbol: &Symbol = null;
+@  if self.next_token == TC_INTEGER {
+    tc_push_value(self, FROM_OTHER, 0, null, 0);
+@    tc_write_cst_insn(self, tc_parse_integer(self));
+@  } else if self.next_token == TC_IDENTIFIER {
+@    symbol = tc_parse_symbol(self, self.symbols);
+@    if self.next_token == '(' {
+      tc_parse_fn_arguments(self, symbol);
+    } else {
+      tc_push_symbol_value(self, symbol);
+@      if symbol.kind == SYM_VARIABLE {
+        tc_write_get_insn(self, symbol.value);
+@      } else if symbol.kind == SYM_CONST {
+@        tc_write_cst_insn(self, symbol.value);
+@      } else if symbol.kind == SYM_STATIC {
+@        tc_write_static_insn(self, symbol.value);
+@      } else {
+@        panic(35);
+@      }
+@    }
+  } else if self.next_token == TC_SIZEOF {
+    tc_parse_sizeof_expr(self);
+  } else if self.next_token == TC_NULL {
+    tc_read_token(self);
+    tc_push_value(self, FROM_NULL, 0, null, 0);
+    tc_write_cst_insn(self, 0);
+@  } else {
+@    tc_parse_token(self, '(');
+    tc_parse_expr(self);
+@    tc_parse_token(self, ')');
+@  }
+}
+}%toy
+
+Compiling a path expression {\tt $e$.f} is done by checking that $e$'s {\tt
+value} has a struct pointer type, searching for the {\tt field} symbol
+corresponding to {\tt f} in the struct's list of fields ({\tt
+value.type.type}), pushing a value corresponding to the type of {\tt f}, and
+finally writing the code to load its value.
+
+\toy{
+fn tc_parse_path_expr(self: &Compiler) {
+  let value: &Value = null;
+  let field: &Symbol = null;
+  tc_parse_primitive_expr(self);
+  while self.next_token == '.' {
+    tc_read_token(self);
+    value = tc_pop_value(self);
+    if value.type == null || value.dim != 1 { panic(48); }
+    field = tc_parse_symbol(self, value.type.type);
+    tc_push_symbol_value(self, field);
+    tc_write_load_insn(self, field.value);
+  }
+}
+}%toy
+\rust{
+  context.add_error_code(48, "Expression with struct pointer type expected");
+}
+
+The next function is updated to implement the type checking rules of
+dereference and address-of expressions, as well as the new grammar rule for
+address-of expressions (compiled by rewriting the last written instruction --
+see \cref{subsection:toyc4-backend}).
+
+\toy{
+@fn tc_parse_pointer_expr(self: &Compiler) {
+  let value: &Value = null;
+@  if self.next_token == TC_MUL {
+@    tc_read_token(self);
+@    tc_parse_pointer_expr(self);
+    value = tc_pop_value(self);
+    if value.dim == 0 { panic(49); }
+    tc_push_value(self, FROM_ADDRESS, 0, value.type, value.dim - 1);
+    tc_write_load_insn(self, 0);
+@  } else if self.next_token == TC_BIT_AND {
+@    tc_read_token(self);
+    tc_parse_path_expr(self);
+    value = tc_pop_value(self);
+    if value.origin == FROM_ADDRESS {
+      tc_erase_load_insn(self);
+      tc_write_address_of_insn(self, value.slot);
+    } else if value.origin == FROM_VARIABLE {
+      tc_erase_get_insn(self);
+      tc_write_ptr_insn(self, value.slot);
+@    } else {
+@      panic(36);
+@    }
+    tc_push_value(self, FROM_OTHER, 0, value.type, value.dim + 1);
+  } else {
+    tc_parse_path_expr(self);
+  }
+@}
+}%toy
+\rust{
+  context.add_error_code(49, "Expression with pointer type expected");
+}
+
+Compiling a cast expression only requires to pop a value and push it again with
+the parsed type. The value's origin stays the same, unless it was {\tt NULL}
+(after a cast a {\tt null} expression can no longer be used anywhere a pointer
+types is expected). No code needs to be generated.
+
+\toy{
+fn tc_parse_cast_expr(self: &Compiler) {
+  tc_parse_pointer_expr(self);
+  if self.next_token != TC_AS { return; }
+  tc_read_token(self);
+  let value = tc_pop_value(self);
+  if value.origin == FROM_NULL { value.origin = FROM_OTHER; }
+  let dim = 0;
+  let type = tc_parse_type(self, &dim);
+  tc_push_value(self, value.origin, 0, type, dim);
+}
+}%toy
+
+The next two functions implement the type checking rules for arithmetic and
+logic expressions, including the special cases for additions and subtractions.
+They are used in the next parsing functions, which are all updated in the same
+straightforward way.
+
+\toy{
+fn tc_check_integer_expr(self: &Compiler) {
+  let right_value = tc_pop_value(self);
+  let left_value = tc_pop_value(self);
+  if left_value.type != null || left_value.dim != 0 { panic(50); }
+  if right_value.type != null || right_value.dim != 0 { panic(51); }
+  tc_push_value(self, FROM_OTHER, 0, null, 0);
+}
+
+fn tc_check_add_or_sub_expr(self: &Compiler, token: u32) {
+  let right_value = tc_pop_value(self);
+  let left_value = tc_pop_value(self);
+  if right_value.dim == 0 {
+    tc_push_value(self, FROM_OTHER, 0, left_value.type, left_value.dim);
+  } else if token == TC_SUB && left_value.dim != 0 {
+    if left_value.type != right_value.type { panic(52); }
+    if left_value.dim != right_value.dim { panic(52); }
+    tc_push_value(self, FROM_OTHER, 0, null, 0);
+  } else {
+    panic(53);
+  }
+}
+
+@fn tc_parse_mult_expr(self: &Compiler) {
+  tc_parse_cast_expr(self);
+@  let next_token = self.next_token;
+@  while next_token == TC_MUL || next_token == TC_DIV {
+@    tc_read_token(self);
+    tc_parse_cast_expr(self);
+    tc_check_integer_expr(self);
+@    tc_write_binary_insn(self, next_token);
+@    next_token = self.next_token;
+@  }
+}
+@fn tc_parse_add_expr(self: &Compiler) {
+  tc_parse_mult_expr(self);
+@  let next_token = self.next_token;
+@  while next_token == TC_ADD || next_token == TC_SUB {
+@    tc_read_token(self);
+@    tc_parse_mult_expr(self);
+    tc_check_add_or_sub_expr(self, next_token);
+@    tc_write_binary_insn(self, next_token);
+@    next_token = self.next_token;
+@  }
+}
+@fn tc_parse_shift_expr(self: &Compiler) {
+  tc_parse_add_expr(self);
+@  let next_token = self.next_token;
+@  if next_token == TC_SHIFT_LEFT || next_token == TC_SHIFT_RIGHT {
+@    tc_read_token(self);
+@    tc_parse_add_expr(self);
+    tc_check_integer_expr(self);
+@    tc_write_binary_insn(self, next_token);
+@  }
+}
+@fn tc_parse_bit_and_expr(self: &Compiler) {
+  tc_parse_shift_expr(self);
+@  while self.next_token == TC_BIT_AND {
+@    tc_read_token(self);
+@    tc_parse_shift_expr(self);
+    tc_check_integer_expr(self);
+@    tc_write_binary_insn(self, TC_BIT_AND);
+@  }
+}
+@fn tc_parse_expr(self: &Compiler) {
+  tc_parse_bit_and_expr(self);
+@  while self.next_token == TC_BIT_OR {
+@    tc_read_token(self);
+@    tc_parse_bit_and_expr(self);
+    tc_check_integer_expr(self);
+@    tc_write_binary_insn(self, TC_BIT_OR);
+@  }
+}
+}%toy
+\rust{
+  context.add_error_code(50,
+      "Expression with integer type expected (left hand side)");
+  context.add_error_code(51,
+      "Expression with integer type expected (right hand side)");
+  context.add_error_code(52,
+      "Different pointer types on left and right hand sides");
+  context.add_error_code(53, "Incorrectly typed add or sub expression");
+}
+
+The following function checks that the two sides of a comparison expression
+have the same non-void type, unless the right hand side is {\tt null} (in which
+case the left hand side must have a pointer type). It is used to check
+comparison expressions and assignment statements. Most of the following
+statement parsing functions don't use expressions directly and are thus
+unchanged.
+
+\toy{
+fn tc_check_comparison_expr(self: &Compiler) {
+  let right_value = tc_pop_value(self);
+  let left_value = tc_pop_value(self);
+  if left_value.dim != 0 && right_value.origin == FROM_NULL { return; }
+  if left_value.type != right_value.type ||
+      left_value.dim != right_value.dim {
+    panic(54);
+  }
+}
+
+@fn tc_parse_comparison_expr(self: &Compiler) -> u32 {
+@  tc_parse_expr(self);
+@  let token = self.next_token;
+@  if token < TC_LT || token > TC_GE { panic(25); }
+@  tc_read_token(self);
+@  tc_parse_expr(self);
+  tc_check_comparison_expr(self);
+@  return token;
+@}
+@fn tc_parse_and_expr(self: &Compiler, else_refs_p: &&u32) -> u32 {
+@  let token = tc_parse_comparison_expr(self);
+@  while self.next_token == TC_AND {
+@    tc_read_token(self);
+@    tc_write_jump_insn(self, TC_LT + TC_GE - token, else_refs_p);
+@    token = tc_parse_comparison_expr(self);
+@  }
+@  return token;
+@}
+@fn tc_parse_boolean_expr(self: &Compiler, then_refs_p: &&u32) -> &u32 {
+@  let else_refs: &u32 = null;
+@  let token = tc_parse_and_expr(self, &else_refs);
+@  while self.next_token == TC_OR {
+@    tc_read_token(self);
+@    tc_write_jump_insn(self, token, then_refs_p);
+@    tc_fill_label_placeholders(self, else_refs);
+@    else_refs = null;
+@    token = tc_parse_and_expr(self, &else_refs);
+@  }
+@  tc_write_jump_insn(self, TC_LT + TC_GE - token, &else_refs);
+@  return else_refs;
+@}
+
+@const END_UNREACHABLE: u32 = 0;
+@const END_REACHABLE: u32 = 1;
+@fn tc_parse_stmt(self: &Compiler, break_refs_p: &&u32) -> u32;
+
+@fn tc_parse_block_stmt(self: &Compiler, break_refs_p: &&u32) -> u32 {
+@  let state = END_REACHABLE;
+@  tc_parse_token(self, '\{');
+@  while self.next_token != '\}' {
+@    if state == END_UNREACHABLE { panic(37); }
+@    state = tc_parse_stmt(self, break_refs_p);
+@  }
+@  tc_read_token(self);
+@  return state;
+@}
+fn tc_parse_assignment(self: &Compiler) -> u32 {
+  let value = tc_top_value(self);
+  let origin = value.origin;
+  let slot = value.slot;
+@  if origin == FROM_ADDRESS {
+@    tc_erase_load_insn(self);
+@  } else if origin == FROM_VARIABLE {
+    tc_erase_get_insn(self);
+@  } else {
+@    panic(38);
+@  }
+@  tc_parse_token(self, '=');
+@  tc_parse_expr(self);
+  tc_check_comparison_expr(self);
+@  if origin == FROM_ADDRESS {
+    tc_write_store_insn(self, slot);
+@  } else {
+    tc_write_set_insn(self, slot);
+@  }
+@  return END_REACHABLE;
+@}
+@fn tc_parse_expr_or_assign_stmt(self: &Compiler) -> u32 {
+  tc_parse_expr(self);
+@  if self.next_token == '=' {
+    tc_parse_assignment(self);
+  } else if tc_pop_value_or_void(self).origin != FROM_VOID {
+@    tc_write_pop_insn(self);
+@  }
+@  tc_parse_token(self, ';');
+@  return END_REACHABLE;
+@}
+@fn tc_parse_return_stmt(self: &Compiler) -> u32 {
+@  tc_parse_token(self, TC_RETURN);
+@  if self.next_token == ';' {
+    if self.fn_return_type.kind != SYM_VOID { panic(55); }
+@  } else {
+    if self.fn_return_type.kind == SYM_VOID { panic(56); }
+@    tc_parse_expr(self);
+    value_check(tc_pop_value(self), self.fn_return_type);
+@  }
+@  tc_parse_token(self, ';');
+@  tc_write_return_insn(self);
+@  return END_UNREACHABLE;
+@}
+@fn tc_parse_break_stmt(self: &Compiler, break_refs_p: &&u32) -> u32 {
+@  tc_parse_token(self, TC_BREAK);
+@  tc_parse_token(self, ';');
+@  tc_write_goto_insn(self, break_refs_p);
+@  return END_UNREACHABLE;
+@}
+@fn tc_parse_while_or_loop_stmt(self: &Compiler) -> u32 {
+@  let loop_dst = self.dst;
+@  let body_refs: &u32 = null;
+@  let end_refs: &u32 = null;
+@  let token = self.next_token;
+@  tc_read_token(self);
+@  if token == TC_WHILE {
+@    end_refs = tc_parse_boolean_expr(self, &body_refs);
+@  }
+@  tc_fill_label_placeholders(self, body_refs);
+@  tc_parse_block_stmt(self, &end_refs);
+@  tc_write_loop_insn(self, loop_dst);
+@  tc_fill_label_placeholders(self, end_refs);
+@  if token == TC_LOOP && end_refs == null { return END_UNREACHABLE; }
+@  return END_REACHABLE;
+@}
+@fn tc_parse_if_stmt(self: &Compiler, break_refs_p: &&u32) -> u32 {
+@  tc_parse_token(self, TC_IF);
+@  let then_refs: &u32 = null;
+@  let else_refs = tc_parse_boolean_expr(self, &then_refs);
+@  tc_fill_label_placeholders(self, then_refs);
+@  let state = tc_parse_block_stmt(self, break_refs_p);
+@  let end_if_refs: &u32 = null;
+@  if self.next_token == TC_ELSE {
+@    tc_read_token(self);
+@    if state == END_REACHABLE {
+@      tc_write_goto_insn(self, &end_if_refs);
+@    }
+@    tc_fill_label_placeholders(self, else_refs);
+@    if self.next_token == '\{' {
+@      state = state | tc_parse_block_stmt(self, break_refs_p);
+@    } else {
+@      state = state | tc_parse_if_stmt(self, break_refs_p);
+@    }
+@    tc_fill_label_placeholders(self, end_if_refs);
+@  } else {
+@    tc_fill_label_placeholders(self, else_refs);
+@    state = END_REACHABLE;
+@  }
+@  return state;
+@}
+@fn tc_parse_stmt(self: &Compiler, break_refs_p: &&u32) -> u32 {
+@  if self.next_token == TC_IF {
+@    return tc_parse_if_stmt(self, break_refs_p);
+  } else if self.next_token == TC_WHILE || self.next_token == TC_LOOP {
+    return tc_parse_while_or_loop_stmt(self);
+@  } else if self.next_token == TC_BREAK {
+@    if break_refs_p == null { panic(39); }
+@    return tc_parse_break_stmt(self, break_refs_p);
+@  } else if self.next_token == TC_RETURN {
+@    return tc_parse_return_stmt(self);
+@  }
+@  return tc_parse_expr_or_assign_stmt(self);
+@}
+}%toy
+\rust{
+  context.add_error_code(54, "Comparison of expression with different types");
+  context.add_error_code(55, "Unexpected return value in void function");
+  context.add_error_code(56, "Missing return value in non-void function");
+}
+
+A {\tt let} statement can have an optional type declaration. If this is the
+case, the type of the right hand side is checked with {\tt value\_type\_check}
+against this declared type (which becomes the type of the variable). Otherwise
+the variable gets the type of the right hand side, which must not be {\tt null}.
+
+\toy{
+@fn tc_parse_let_stmt(self: &Compiler, variable: u32) -> u32 {
+@  tc_parse_token(self, TC_LET);
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+  let separator = self.next_token;
+  let type: &Symbol = null;
+  let dim = 0;
+  if separator == ':' {
+    tc_read_token(self);
+    type = tc_parse_type(self, &dim);
+  }
+@  tc_parse_token(self, '=');
+@  tc_parse_expr(self);
+@  tc_parse_token(self, ';');
+  let value = tc_pop_value(self);
+  if separator == ':' {
+    value_type_check(value, type, dim);
+  } else {
+    if value.origin == FROM_NULL { panic(57); }
+    type = value.type;
+    dim = value.dim;
+  }
+  tc_add_symbol(self, name, length, SYM_VARIABLE, variable, type, dim);
+@  return variable + 1;
+@}
+
+@fn tc_parse_fn_name(self: &Compiler) -> &Symbol {
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+@  let fn_dst = self.dst;
+@  self.fn_dst = fn_dst;
+@  let value = tc_get_fn_value(self, fn_dst as u32);
+@  return tc_add_or_resolve_fn_symbol(self, name, length, value);
+@}
+}%toy
+\rust{
+  context.add_error_code(57, "Illegal use of null in let statement");
+}
+
+When a function is declared before it is implemented, such as the {\tt
+tc\_main} function, its parameter and return types are declared twice.
+These two type declarations must be identical (the parameter names can differ).
+The following function checks this:
+
+\toy{
+fn tc_check_fn_parameters(forward_parameters: &Symbol, parameters: &Symbol) {
+  if forward_parameters == null { return; }
+  while forward_parameters != null && parameters != null {
+    if forward_parameters.kind != parameters.kind ||
+        forward_parameters.type != parameters.type ||
+        forward_parameters.dim != parameters.dim {
+      panic(58);
+    }
+    forward_parameters = forward_parameters.next;
+    parameters = parameters.next;
+  }
+  if forward_parameters != null || parameters != null { panic(59); }
+}
+}%toy
+\rust{
+  context.add_error_code(58,
+      "Function parameter type does not match forward declaration");
+  context.add_error_code(59,
+      "Function parameter count does not match forward declaration");
+}
+
+It is used in the next function, which is updated to parse the function
+parameter and return types, and to build a corresponding list of symbols in
+{\tt symbols} (as shown in \cref{fig:function-symbol}). If the function was
+previously declared its {\tt function} symbol's {\tt type} already contains a
+list of parameter and return types, which are checked with the above function.
+
+\toy{
+fn tc_parse_fn_parameters(self: &Compiler, function: &Symbol) -> u32 {
+@  let i = 0;
+@  let name: &u32 = null;
+@  let length = 0;
+  let type: &Symbol = null;
+  let dim = 0;
+  let symbols: &Symbol = null;
+@  tc_parse_token(self, '(');
+@  while self.next_token != ')' {
+@    if i > 0 { tc_parse_token(self, ','); }
+@    name = tc_parse_identifier(self, &length);
+    tc_parse_token(self, ':');
+    type = tc_parse_type(self, &dim);
+    symbols = tc_new_symbol(self, name, length, SYM_VARIABLE, i, type, dim, \
+symbols);
+@    i = i + 1;
+@  }
+@  tc_read_token(self);
+  if self.next_token == TC_ARROW {
+    tc_read_token(self);
+    type = tc_parse_type(self, &dim);
+    symbols = tc_new_symbol(self, null, 0, SYM_VARIABLE, 0, type, dim, symbols);
+  } else {
+    symbols = tc_new_symbol(self, null, 0, SYM_VOID, 0, null, 0, symbols);
+  }
+  tc_check_fn_parameters(function.type, symbols);
+  function.type = symbols;
+  self.fn_return_type = symbols;
+@  return i;
+@}
+}%toy
+
+The following function is updated to parse the new syntax for imported
+functions and for local constants, and to generate a {\tt return} at the end of
+void functions if it might be reachable. Finally, since {\tt
+tc\_parse\_fn\_parameters} no longer adds symbols for the function parameters
+in the $\it{symbols}$ list (they are added to the {\tt function}'s {\tt type}
+instead), a new loop is added to add a copy of these symbols in this list.
+
+\toy{
+@fn tc_parse_fn_body(self: &Compiler, function: &Symbol, arity: u32) {
+@  if self.next_token == ';' {
+@    tc_read_token(self);
+@    function.kind = SYM_FORWARD_FN;
+@    function.value = 0;
+@    return;
+@  }
+  if self.next_token == '=' {
+    tc_read_token(self);
+    function.value = tc_parse_integer(self) + 786432;
+    tc_parse_token(self, ';');
+    return;
+  }
+  let parameter = function.type.next;
+  while parameter != null {
+    tc_add_symbol(self, parameter.name, parameter.length,
+        SYM_VARIABLE, parameter.value, parameter.type, parameter.dim);
+    parameter = parameter.next;
+  }
+@  tc_parse_token(self, '\{');
+@  tc_write_fn_insn(self, arity);
+@  let next_variable = arity + 4;
+@  let state = END_REACHABLE;
+@  while self.next_token != '\}' {
+@    if state == END_UNREACHABLE { panic(40); }
+    if self.next_token == TC_CONST {
+      tc_parse_const(self);
+    } else if self.next_token == TC_LET {
+@      next_variable = tc_parse_let_stmt(self, next_variable);
+@    } else {
+@      state = tc_parse_stmt(self, null);
+@    }
+@  }
+  if state == END_REACHABLE {
+    if self.fn_return_type.kind != SYM_VOID { panic(41); }
+    tc_write_return_insn(self);
+  }
+@  tc_read_token(self);
+@}
+
+@fn tc_check_symbols(symbol: &Symbol, end_symbol: &Symbol) {
+@  while symbol != end_symbol {
+@    if symbol.kind == SYM_FORWARD_FN { panic(32); }
+@    symbol = symbol.next;
+@  }
+@}
+}%toy
+
+The next function is updated to save the $\it{heap}$ and $\it{symbols}$
+variables {\em after} parsing the function parameters. Indeed this step now
+adds symbols for the parameter and return types, which must not be deleted
+after the function has been compiled.
+
+\toy{
+@fn tc_parse_fn(self: &Compiler) {
+@  tc_parse_token(self, TC_FN);
+@  let function = tc_parse_fn_name(self);
+  let arity = tc_parse_fn_parameters(self, function);
+@  let heap = self.heap;
+@  let symbols = self.symbols;
+  tc_parse_fn_body(self, function, arity);
+@  self.symbols = symbols;
+@  self.heap = heap;
+@}
+}%toy
+
+Finally, the last two functions are updated to take the new ``program'' rule
+into account, and to initialize the new $\it{dst\_limit}$ and
+$\it{heap\_limit}$ variables ($\it{fn\_return\_type}$ is set in {\tt
+tc\_parse\_fn\_parameters} and thus does not need to be initialized).
+
+\toy{
+@fn tc_parse_program(self: &Compiler) {
+@  loop {
+@    if self.next_token == TC_FN {
+@      tc_parse_fn(self);
+    } else if self.next_token == TC_STRUCT {
+      tc_parse_struct(self);
+@    } else if self.next_token == TC_STATIC {
+@      tc_parse_static(self);
+@    } else if self.next_token == TC_CONST {
+@      tc_parse_const(self);
+@    } else {
+@      if self.next_token != 0 { panic(23); }
+@      tc_check_symbols(self.symbols, null);
+@      return;
+@    }
+@  }
+@}
+
+@fn tc_main(src_buffer: &u32, dst_buffer: &u32, flash_buffer: &u32) -> u32 {
+@  let error = 0;
+  let compiler = (dst_buffer + 12288) as &Compiler;
+@  compiler.src = src_buffer + 3;
+@  compiler.src_end = src_buffer + 4 + *src_buffer;
+@  compiler.dst = dst_buffer + 4;
+  compiler.dst_limit = compiler as &u32;
+  compiler.heap = compiler.dst_limit + sizeof(Compiler);
+  compiler.heap_limit = compiler.heap + 18432;
+@  compiler.symbols = null;
+@  compiler.flash_offset = dst_buffer - flash_buffer;
+@  let panic3 = 0;
+@  let panic2 = 0;
+@  let panic1 = 0;
+@  let panic0 = 0;
+@  error = panic_result(&panic0);
+@  if error != 0 {
+@    *dst_buffer = compiler.src - src_buffer - 4;
+@    return error;
+@  }
+@  tc_read_char(compiler);
+@  tc_read_token(compiler);
+@  tc_parse_program(compiler);
+@  *dst_buffer = compiler.dst - dst_buffer - 4;
+@  return 0;
+@}
+}%toy
+
+\rust{
+  t.write_toy3("website/sources/types_compiler_v1.txt")?;
+  t.write_toy4("website/sources/types_compiler_v2.txt")?;
+  t.check_changes("website/sources/statements_compiler_v2.txt")?;
+}
+
+\section{Compilation and tests}
+
+\rust{
+  let boot_mode_address = context.memory_region("foundations")
+      .label_address("boot_mode_select_rom");
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  let mut context1 = context.clone();
+
+  // Launch the command editor
+  let command_editor_main =
+      context.memory_region("command_editor").label_address("command_editor");
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+}
+
+To compile the above source code proceed as follows (see also
+\cref{fig:compilation-and-test}).
+
+\medskip \paragraph*{Edit v1} In the command editor, type ``F3''+``r'' and
+``F4''+``r'' to load and edit the current compiler version. Then update it to
+the $1^{st}$ version of the types compiler. For convenience, we also provide
+this code in the {\tt types\_compiler\_v1.txt} file in \toypcurl{sources.zip}.
+When you are done, exit the text editor and type ``F5''+``r'' to save your
+work. Alternatively, you can ``cheat'' by running the following command on an
+external computer (see \cref{section:toyc1-compilation} for more details):
+
+\rust{
+  // Enter source code in RAM, as if edited with F4 command.
+  let ram_compiler_source = context.memory_region("command_editor_source")
+      .label_address("ram_compiler_source");
+  let toyc4_dot_toy3 = std::fs::read_to_string(
+      "website/sources/types_compiler_v1.txt")?;
+  context.store_text(ram_compiler_source, toyc4_dot_toy3.as_str());
+
+  // Save it in flash.
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Alternative method.
+  context1.micro_controller().borrow_mut().reset();
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  let compiler_source = context.memory_region("compiler_source").start;
+  write_lines("website/part3", "types_compiler_v1.txt",
+      &flash_helper_commands(&toyc4_dot_toy3, compiler_source))?;
+  let mut flash_helper1 = FlashHelper::from_file(context1.micro_controller(),
+      "website/", "part3/types_compiler_v1.txt")?;
+  let log = flash_helper1.read();
+
+  // Check that both methods give the same result.
+  context.check_equal_buffer(&mut context1, compiler_source);
+}
+\rs{host_log(log.lines().next().unwrap())}
+
+\medskip \paragraph{Compile v1} In the command editor, type ``F6''+``r'' to
+compile the code you typed. If all goes well, after about 4 seconds, you should
+get a result equal to 0 (meaning that no error was found). If this is not the
+case use \cref{appendix:compilercodes} to get the error code meaning, fix this
+error, save the program and compile it again. Repeat this process until the
+compilation is successful. Then type ``F7''+``r'' to save the result.
+
+\rust{
+  // Compile it with toyc3.
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Save it in flash memory.
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph{Test v1} Type ``F2''+``r'' to create a new program,
+``F4''+``r'' to edit it, and type the following small test program, which
+computes the factorial of 6:
+
+\rust{
+  let test_program = r"fn factorial(n: u32) -> u32;
+fn test() -> u32 { return factorial(6); }
+fn factorial(n: u32) -> u32 {
+  if n == 0 { return 1; }
+  return factorial(n - 1) * n;
+}";
+  // Enter source code in RAM, as if edited with F4 command.
+  context.store_text(ram_compiler_source, test_program);
+}
+\rs{code(test_program)}
+
+\noindent Then type ``F9''+``r'' to run it. If the result is not
+\rs{dec_hex(720u32)} this means that the compiler is wrong. In this case, type
+``F8''+``r'' to restore the statements compiler. Then repeat the previous
+steps and double check everything until this test passes.
+
+\rust{
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "000002D0");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph*{Edit v2} Type ``F3''+``r'' to load the $1^{st}$ version of
+the types compiler and ``F4''+``r'' to edit it. Then update it to the
+$2^{nd}$ version. For convenience, we also provide this code in the {\tt
+  types\_compiler\_v2.txt} file. Then save this new version with the F5
+command. Alternatively, run the following command on an external computer:
+
+\rust{
+  // Enter source code in RAM, as if edited with F4 command.
+  let toyc4_dot_toy4 = std::fs::read_to_string(
+      "website/sources/types_compiler_v2.txt")?;
+  context.store_text(ram_compiler_source, toyc4_dot_toy4.as_str());
+
+  // Save it in flash.
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Alternative method.
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  write_lines("website/part3", "types_compiler_v2.txt",
+      &flash_helper_commands(&toyc4_dot_toy4, compiler_source))?;
+  let mut flash_helper1 = FlashHelper::from_file(context1.micro_controller(),
+      "website/", "part3/types_compiler_v2.txt")?;
+  let log = flash_helper1.read();
+
+  // Check that both methods give the same result.
+  context.check_equal_buffer(&mut context1, compiler_source);
+}
+\rs{host_log(log.lines().next().unwrap())}
+
+\medskip \paragraph*{Compile v2} Type``F6''+``r'' to compile this new code. The
+result should be 0, meaning ``no error''. If this is not the case, repeat the
+``Edit v2'' and ``Compile v2'' steps until all errors are fixed.
+
+\rust{
+  // Compile v2.
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph*{Test v2} As in the previous chapter, the compiled
+code of the $2^{nd}$ version of the types compiler is not identical to
+that of the $1^{st}$ version. One reason, in particular, is that the code of
+the $1^{st}$ version, obtained with the statements compiler, does not use
+\insn{ret} instructions. Whereas the $2^{nd}$ version uses such instructions
+for void functions.
+
+However, the two versions should produce the same compiled code for the same
+input program, since they are supposed to be functionally equivalent. We can
+thus use this property to test the $2^{nd}$ version, as in the previous
+chapter (see \cref{section:toyc3-compilation}):
+\begin{itemize}
+  \item Type ``F7''+``r'' to store the bytecode of $2^{nd}$ version, produced
+  by the $1^{st}$ version.
+
+  \item Type ``F6''+``r'' to compile the $2^{nd}$ version with itself.
+
+  \item Type ``F10''+``r'' to compare the results of the previous commands. If
+  the result is not 0 this means that the $2^{nd}$ version is wrong\footnote{As
+  noted in the previous chapter, the $1^{st}$ version might also be wrong
+  despite the ``Test v1'' step.}. Type ``F8''+``r'' to restore the $1^{st}$
+  version and repeat the steps from ``Edit v2'' until this test passes.
+\end{itemize}
+
+\rust{
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  context.type_keys(vec!["F10"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // return in memory editor
+  context.type_ascii("\n");
+}
+

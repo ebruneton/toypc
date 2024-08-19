@@ -1,0 +1,9 @@
+[package]
+name = "scripts"
+version = "1.0.0"
+authors = ["Eric Bruneton"]
+license = "GPL-3.0-only.txt"
+edition = "2021"
+
+[dependencies]
+emulator = { path = "../emulator" }

@@ -1,0 +1,149 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+    </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="12" height="4" x="116" y="18" fill="#048966" stroke-dasharray="0.799998, 0.2"/>
+    <rect width="12" height="4" x="124" y="14" fill="#048966" stroke-dasharray="0.799998, 0.2"/>
+    <rect width="4" height="4" x="132" y="18" fill="#048966" stroke-dasharray="0.8, 0.2"/>
+    <path d="m 134,22 v -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 136,16 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 132,16 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 128,20 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 124,20 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 120,20 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 126,14 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="130" y="25.5" text-anchor="middle" fill="#9a9a9a">7</text>
+    <text x="134" y="25.5" text-anchor="middle" fill="#cca752">6</text>
+    <path d="m 132,14 v 12" stroke="#cccccc"/>
+    <rect width="8" height="4" x="88" y="18" fill="#048966" stroke-dasharray="0.799999, 0.199999"/>
+    <rect width="12" height="4" x="92" y="14" fill="#048966" stroke-dasharray="0.799998, 0.2"/>
+    <rect width="4" height="4" x="100" y="18" fill="#048966" stroke-dasharray="0.799999, 0.199999"/>
+    <path d="m 102,22 v -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 104,16 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 100,16 H 97" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 96,20 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 92,20 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 94,14 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="86" y="21.5" text-anchor="middle" fill="#9a9a9a">6</text>
+    <text x="98" y="25.5" text-anchor="middle" fill="#9a9a9a">7</text>
+    <text x="102" y="25.5" text-anchor="middle" fill="#9a9a9a">8</text>
+    <rect width="8" height="4" x="5" y="18" fill="#048966" stroke-dasharray="0.799999, 0.199999"/>
+    <rect width="12" height="4" x="9" y="14" fill="#048966" stroke-dasharray="0.799998, 0.2"/>
+    <rect width="4" height="8" x="17" y="18" fill="#048966" stroke-dasharray="0.799999, 0.199999"/>
+    <path d="M 19,22 V 19" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 21,16 H 18" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 17,16 H 14" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 19,26 V 23" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 13,20 H 10" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 9,20 H 6" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 11,14 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <rect width="8" height="4" x="37" y="18" fill="#048966" stroke-dasharray="0.799999, 0.199999"/>
+    <rect width="12" height="4" x="41" y="14" fill="#048966" stroke-dasharray="0.799998, 0.2"/>
+    <rect width="4" height="4" x="49" y="18" fill="#048966" stroke-dasharray="0.799999, 0.199999"/>
+    <path d="m 51,22 v -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 53,16 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 49,16 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 45,20 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 41,20 h -3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 43,14 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <rect width="20" height="12" x="1" y="14" fill="none" stroke="#cccccc"/>
+    <path d="M 5,14 V 26" stroke="#cccccc"/>
+    <path d="M 9,14 V 26" stroke="#cccccc"/>
+    <path d="M 13,14 V 26" stroke="#cccccc"/>
+    <path d="M 17,14 V 26" stroke="#cccccc"/>
+    <path d="M 1,18 H 21" stroke="#cccccc"/>
+    <path d="M 1,22 H 21" stroke="#cccccc"/>
+    <rect width="20" height="12" x="33" y="14" fill="none" stroke="#cccccc"/>
+    <path d="M 37,14 V 26" stroke="#cccccc"/>
+    <path d="M 41,14 V 26" stroke="#cccccc"/>
+    <path d="M 45,14 V 26" stroke="#cccccc"/>
+    <path d="M 49,14 V 26" stroke="#cccccc"/>
+    <path d="M 33,18 H 53" stroke="#cccccc"/>
+    <path d="M 33,22 H 53" stroke="#cccccc"/>
+    <rect width="20" height="12" x="84" y="14" fill="none" stroke="#cccccc"/>
+    <path d="m 88,14 v 12" stroke="#cccccc"/>
+    <path d="m 92,14 v 12" stroke="#cccccc"/>
+    <path d="m 96,14 v 12" stroke="#cccccc"/>
+    <path d="m 100,14 v 12" stroke="#cccccc"/>
+    <path d="m 84,18 h 20" stroke="#cccccc"/>
+    <path d="m 84,22 h 20" stroke="#cccccc"/>
+    <rect width="20" height="12" x="116" y="14" fill="none" stroke="#cccccc"/>
+    <path d="m 120,14 v 12" stroke="#cccccc"/>
+    <path d="m 124,14 v 12" stroke="#cccccc"/>
+    <path d="m 128,14 v 12" stroke="#cccccc"/>
+    <path d="m 132,14 v 12" stroke="#cccccc"/>
+    <path d="m 116,18 h 20" stroke="#cccccc"/>
+    <path d="m 116,22 h 20" stroke="#cccccc"/>
+    <text x="53" y="47" font-size="3.5px">$8^{th}$ item</text>
+    <text x="120" y="47" font-size="3.5px">$6^{th}$ item</text>
+    <text x="1" y="30" font-size="3.5px" fill="#bf3959">before</text>
+    <text x="33" y="30" font-size="3.5px" fill="#048966">after</text>
+    <text x="84" y="30" font-size="3.5px" fill="#bf3959">before</text>
+    <text x="116" y="30" font-size="3.5px" fill="#048966">after</text>
+    <text x="3" y="21.5" text-anchor="middle" fill="#9a9a9a">6</text>
+    <text x="15" y="25.5" text-anchor="middle" fill="#9a9a9a">7</text>
+    <text x="35" y="21.5" text-anchor="middle" fill="#9a9a9a">6</text>
+    <text x="47" y="25.5" text-anchor="middle" fill="#9a9a9a">7</text>
+    <text x="51" y="25.5" text-anchor="middle" fill="#0e6e8e">8</text>
+    <text x="55" y="41.5" text-anchor="middle" fill="#0e6e8e">4</text>
+    <path d="m 37,38 v 4" stroke="#cccccc"/>
+    <path d="m 41,38 v 4" stroke="#ebebeb"/>
+    <path d="m 45,38 v 4" stroke="#cccccc"/>
+    <path d="m 49,38 v 4" stroke="#ebebeb"/>
+    <path d="m 53,38 v 4" stroke="#cccccc"/>
+    <path d="m 57,38 v 4" stroke="#ebebeb"/>
+    <path d="m 34,40 h -1 l 1,-2 h 27 v 4 H 33 Z" fill="none" stroke="#cccccc"/>
+    <text x="39" y="41.5" text-anchor="middle" fill="#9a9a9a">0</text>
+    <text x="43" y="41.5" text-anchor="middle" fill="#9a9a9a">1</text>
+    <text x="47" y="41.5" text-anchor="middle" fill="#9a9a9a">3</text>
+    <text x="51" y="41.5" text-anchor="middle" fill="#9a9a9a">2</text>
+    <path d="m 5,38 v 4" stroke="#cccccc"/>
+    <path d="m 9,38 v 4" stroke="#ebebeb"/>
+    <path d="m 13,38 v 4" stroke="#cccccc"/>
+    <path d="m 17,38 v 4" stroke="#ebebeb"/>
+    <path d="m 2,40 -1,0 1,-2 19,0 v 4 H 1 Z" fill="none" stroke="#cccccc"/>
+    <text x="7" y="41.5" text-anchor="middle" fill="#9a9a9a">0</text>
+    <text x="11" y="41.5" text-anchor="middle" fill="#9a9a9a">1</text>
+    <text x="15" y="41.5" text-anchor="middle" fill="#9a9a9a">3</text>
+    <text x="19" y="41.5" text-anchor="middle" fill="#9a9a9a">2</text>
+    <path d="m 120,38 v 4" stroke="#cccccc"/>
+    <path d="m 124,38 v 4" stroke="#ebebeb"/>
+    <path d="m 128,38 v 4" stroke="#cccccc"/>
+    <path d="m 132,38 v 4" stroke="#ebebeb"/>
+    <path d="m 117,40 h -1 l 1,-2 19,0 v 4 l -20,0 z" fill="none" stroke="#cccccc"/>
+    <text x="122" y="41.5" text-anchor="middle" fill="#cca752">4</text>
+    <text x="126" y="41.5" text-anchor="middle" fill="#cca752">2</text>
+    <text x="130" y="41.5" text-anchor="middle" fill="#9a9a9a">3</text>
+    <text x="134" y="41.5" text-anchor="middle" fill="#9a9a9a">2</text>
+    <path d="m 88,38 v 4" stroke="#cccccc"/>
+    <path d="m 92,38 v 4" stroke="#ebebeb"/>
+    <path d="m 96,38 v 4" stroke="#cccccc"/>
+    <path d="m 100,38 v 4" stroke="#ebebeb"/>
+    <path d="m 104,38 v 4" stroke="#cccccc"/>
+    <path d="m 108,38 v 4" stroke="#ebebeb"/>
+    <path d="m 85,40 h -1 l 1,-2 H 112 v 4 H 84 Z" fill="none" stroke="#cccccc"/>
+    <text x="90" y="41.5" text-anchor="middle" fill="#9a9a9a">0</text>
+    <text x="94" y="41.5" text-anchor="middle" fill="#9a9a9a">1</text>
+    <text x="98" y="41.5" text-anchor="middle" fill="#9a9a9a">3</text>
+    <text x="102" y="41.5" text-anchor="middle" fill="#9a9a9a">2</text>
+    <path d="m 51,26 6,12" stroke="#0e6e8e" stroke-dasharray="0.8, 0.2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="m 102,26 6,12" stroke="#9a9a9a" stroke-dasharray="0.8, 0.2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="m 134,26 -10,12" stroke="#cca752" stroke-dasharray="0.8, 0.2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <text x="59" y="41.5" text-anchor="middle" fill="#0e6e8e">2</text>
+    <text x="106" y="41.5" text-anchor="middle" fill="#9a9a9a">4</text>
+    <text x="110" y="41.5" text-anchor="middle" fill="#9a9a9a">2</text>
+    <text x="138" y="41.5" text-anchor="middle" fill="#cccccc">4</text>
+    <text x="142" y="41.5" text-anchor="middle" fill="#cccccc">2</text>
+    <path d="m 137,37 6,6" stroke="#000000"/>
+    <path d="m 143,37 -6,6" stroke="#000000"/>
+    <path d="m 140,38 c -4,-4 -12,-4 -16,0" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+  </g>
+</svg>

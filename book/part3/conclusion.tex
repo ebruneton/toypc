@@ -1,0 +1,66 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter*{Conclusion}
+\addcontentsline{toc}{chapter}{Conclusion}
+
+A compiler transforms a program written in a well defined programming language
+into instructions for a real or virtual machine. For this it decomposes the
+program into a sequence of tokens, checks that these tokens follow the
+language's grammar, and finally generates instructions based on the program's
+grammatical structure. In this part we built a very basic compiler, for a very
+simple language, via successive improvements. Starting from a simple ``text to
+binary converter'' written in binary form\footnote{We used this starting point
+because the goal was to program a compiler from scratch. This is more or less
+how the very first assembler was written. Nowadays, a new compiler for a new
+language is written in an existing language, and compiled with an existing
+compiler (at least for its first version; it can then be rewritten in this new
+language and compiled with itself).}, we progressively added support for
+labels, expressions, statements, and types.
+
+The resulting language is much easier to use than machine code instructions,
+but can still be improved in many ways. For instance, we could introduce new
+{\tt u8} and {\tt u16} types to represent 8 and 16 bit numbers. Then the
+compiler could automatically use \arm{LDRB}, \arm{STRB}, \arm{LDRH}, and
+\arm{STRH} instructions to load and store values of these types in memory. This
+would be more efficient, and more practical for the user, than the current {\tt
+load8}, {\tt store8}, {\tt load16}, and {\tt store16} functions. As an another
+example, we could introduce a new type to represent a sequence of characters,
+called a {\em string}. This would be more practical than using a pointer to the
+first character, plus a variable containing the total number of characters.
+
+Even without improving the language, the compiler itself can be improved in
+many ways, to produce smaller and more efficient code. For instance, an
+expression such as {\tt (1 {<}{<} 12) - 1} is currently compiled into
+instructions to load $1$ and $12$ into registers, to shift the former with the
+latter, to load $1$ again in a register, and to subtract it from the previous
+result. Instead, the compiler could compute all this during compilation, and
+produce a single instruction to load the result ($4095$) in a register. This
+would give both smaller and more efficient code. As another example, already
+mentioned in the previous chapter, the compiler could make better use of the
+registers, to avoid many instructions copying values between registers and the
+memory.
+
+\subsubsection{Further readings}
+
+To learn how these improvements can be implemented, as well as many others, you
+can read one of the following books:
+\begin{itemize}
+  \item ``Compilers: Principles, Techniques, and Tools (2nd Edition)''
+  \cite{CompilersPrinciples}. This is a classic textbook about compilers for
+  students in computer science. It covers all parts of a compiler (scanner,
+  parser, type checking, code generation, code optimization, etc) and presents
+  for each part the relevant theory and algorithms.
+
+  \item ``Engineering a Compiler'' \cite{EngineeringCompiler}. This book is
+  similar but more recent. Some methods, such as the Static Single Assignment
+  form, are presented in more details in this book than
+  in~\cite{CompilersPrinciples}. Others, on the hand, are presented more
+  extensively in~\cite{CompilersPrinciples} (such as interprocedural analysis).
+\end{itemize}
+
+In addition to these books, it is useful to have some basic knowledge about
+some generic algorithms and data structures, and their computational complexity
+(\ie, how much time and space they need to run). For this ``Introduction to
+Algorithms, Third Edition'' \cite{IntroductionToAlgorithms} is a great book.

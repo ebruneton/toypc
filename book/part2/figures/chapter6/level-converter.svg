@@ -1,0 +1,41 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="14" height="5" x="63" y="27" fill="#062f3d" stroke-dasharray="0.8, 0.2"/>
+    <path d="M 46,26 64,26 66,33" fill="none" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 11,20 v 6 l 8,0" fill="none" stroke="#ffda85" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 7,20 h 8 l -4,-4 z" fill="none" stroke="#ffda85" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 76,20 h 8 l -4,-4 z" fill="none" stroke="#ffda85" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 70,26 2,7" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 67,26 2,7" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="M 80,20 V 28" stroke="#ffda85" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 80,31 v 5 h 61 v 3" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" fill="none"/>
+    <path d="m 73,41 h 4" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 74,43 h 2" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 73,26 2,7 v 6" fill="none" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 85,27 v 5" stroke="#062f3d" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="M 85.5,29.5 86,28 l 1,3 1,-3 1,3 0.5,-1.5" fill="none" stroke="#062f3d" stroke-width="0.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="6" y="19" font-size="3.5px" text-anchor="end">+5V</text>
+    <text x="75" y="19" font-size="3.5px" text-anchor="end">+3.3V</text>
+    <text x="104" y="35" font-size="3.5px" text-anchor="end">pin 19</text>
+    <text x="48" y="25" font-size="3.5px">DATA</text>
+    <rect width="28" height="9" x="62" y="25" fill="none" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 72,39 h 6" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 139,41 h 4" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 140,43 h 2" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <path d="m 138,39 h 6" stroke="#cca752" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    <rect width="30" height="16" x="105" y="22" fill="#ffffff" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <rect width="29" height="15" x="18" y="22" fill="#ffffff" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <text x="32" y="31" font-size="3.9px" text-anchor="middle">Keyboard</text>
+    <text x="120" y="31" font-size="3.9px" text-anchor="middle">Arduino</text>
+  </g>
+</svg>

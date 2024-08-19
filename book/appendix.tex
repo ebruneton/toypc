@@ -1,0 +1,107 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\appendix
+\addtocontents{toc}{\protect\appendixintoc}
+
+\chapter{Bill of Materials}\label{appendix:bom}
+
+The table below lists all the necessary components to assemble our toy
+computer, with their price as of July 2024. It is important to use the exact
+Arduino, display, driver board and keyboard models listed here. Otherwise they
+might not work with the programs presented in this book.
+
+Assembling these components requires some soldering tasks. The tools
+necessary for this are not included here (you can avoid buying them if you have
+access to a makerspace).
+
+\begin{Table}[ht]
+  \begin{tabular}{|l|l|}\hline
+    \makecell{\thead{Part}} & \makecell{\thead{Net price}} \\ \hline
+
+    \makecell{Arduino Due \\
+      Cortex M3 84MHz, 512~KB Flash, 96~KB RAM, 3.3V \\
+      \url{https://store-usa.arduino.cc/products/arduino-due}}
+    & \$48 \\ \hline
+
+    \makecell{7$^{\prime\prime}$ TFT Display  \\
+      800x480 pixels with Touchscreen \\
+      \url{https://www.adafruit.com/product/2354}}
+    & \$35 \\ \hline
+
+    \makecell{RA8875 Driver Board \\
+      for 40-pin TFT Touch Displays - 800x480 max \\
+      \url{https://www.adafruit.com/product/1590}}
+    & \$40 \\ \hline
+
+    \makecell{Miniature Keyboard \\
+      PS/2 and USB interface\\
+      \url{https://www.adafruit.com/product/857}}
+    & \$30 \\ \hline
+
+    \makecell{4 channel Logic Level Converter \\
+      \url{https://www.sparkfun.com/products/12009}}
+    & \$4 \\ \hline
+
+    \makecell{Half Sized Breadboard - 400 Tie Points \\
+      \url{https://www.adafruit.com/product/64}}
+    & \$5 \\ \hline
+
+    \makecell{Male/Male Jumper Wires - 20 x 3$^{\prime\prime}$ (75mm) \\
+      \url{https://www.adafruit.com/product/1956}}
+    & \$2 \\ \hline
+
+    \makecell{Female/Male Jumper Wires - 20 x 3$^{\prime\prime}$ (75mm) \\
+      \url{https://www.adafruit.com/product/1953}}
+    & \$2 \\ \hline
+
+    \makecell{\bfseries Total} & \makecell{\bfseries \$166} \\ \hline
+  \end{tabular}
+  \caption{The Bill of Materials of our toy computer.}\label{table:bom}
+\end{Table}
+
+\chapter{ASCII codes}\label{appendix:ascii}
+
+The table below lists the character codes defined by the ``American Standard
+Code for Information Interchange'' used in this book. The full list can be
+found in \cite{ASCII}.
+
+\begin{flushleft}
+  \input{generated/ascii_table.tex}
+\end{flushleft}
+
+\chapter{IBM PC Set 2 scancodes}\label{appendix:scancodes}
+
+The table below lists the scancodes which are emitted by each key of the
+MCSaite keyboard (see \cref{table:bom}) when it is pressed or released. This is
+a subset of the IBM PC Set 2 scancodes
+(\url{https://wiki.osdev.org/PS/2_Keyboard#Scan_Code_Set_2}).
+
+\begin{flushleft}
+  \input{generated/scancode_table.tex}
+\end{flushleft}
+
+\chapter{Compiler error codes}\label{appendix:compilercodes}
+
+The table below gives the meaning of the error codes which can be output by the
+compiler implemented in \cref{part:compiler}.
+
+\begin{flushleft}
+  \input{generated/error_codes_table.tex}
+\end{flushleft}
+
+\chapter{Boot Assistant scripts}\label{appendix:python-scripts}
+
+The following sections list the source code of the scripts used in
+\cref{part:computer} on the host computer.
+
+\section{boot\_helper.py}
+
+\bigskip
+\input{generated/boot_helper.tex}
+
+\section{flash\_helper.py}
+
+\bigskip
+\input{generated/flash_helper.tex}

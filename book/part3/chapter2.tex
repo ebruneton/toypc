@@ -1,0 +1,1453 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter2}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "text_editor.txt")?;
+}
+
+\chapter{Text Editor}\label{chapter:text-editor}
+
+In order to write source code, including the source code of our toy compiler,
+we need a text editor. Since we don't have a compiler yet, we need to write
+this editor directly in binary form. It should thus be as short as possible,
+and therefore as simple as possible. An editor for very short texts, a few
+lines, could be extremely simple. However, it would be completely impractical
+to use for longer texts. In theory, we could start with a tiny editor $E_0$
+written in binary form, write with $E_0$ a small compiler $C_1$ and a larger
+editor $E_1$ (in source code compiled with $C_1$), write with $E_1$ a larger
+compiler $C_2$ and a better editor $E_2$, etc. In this chapter, to save space,
+we directly implement an editor capable of editing ``large'' texts (tens of
+thousands of characters). As a result, its size is not minimal, but is still
+manageable.
+
+\section{User interface}
+
+For very short texts, an editor could simply put any character typed at the end
+of the current text. But for longer texts, one needs to insert or delete
+characters at any position. For this we need a {\em cursor}, indicating where
+the next character typed will be inserted, or which character will be deleted.
+We also need a way to move this cursor, one character, one line, or even
+several lines at a time (it would be impractical to type 10,000 times the same
+key to move the cursor by 10,000 characters).
+
+A text with more than 30 lines cannot fit on the screen of our toy computer. We
+thus need a way to {\em scroll} the text, \ie, to select which part should be
+displayed at a given time. A simple method is to use an automatic scroll,
+ensuring that the cursor stays in the middle of the screen. This avoids the
+need of some ``scroll keys'', and of the related code. Based on this, we define
+the following requirements for our text editor:
+\begin{itemize}
+\item the screen should show 15 lines before the cursor line or, if there are
+less than 15 lines before, all these lines. It should also show all the lines
+after the cursor, until the end of the text or the bottom of the screen.
+
+\item pressing the Arrow Left (resp. Right) key should move the cursor to the
+previous (resp. next) character.
+
+\item pressing the Arrow Up (resp. Down) key should move the cursor to the
+previous (resp. next) line.
+
+\item pressing the Page Up (resp. Down) key should move the cursor to the
+$30^{th}$ previous (resp. next) line.
+
+\item pressing the BackSpace key should delete the character before the cursor.
+
+\item pressing a character key should insert this character at the cursor.
+
+\item pressing the Escape key should exit the editor.
+\end{itemize}
+
+\section{Algorithms}
+
+This section explains the methods used in our text editor in order meet these
+requirements, for texts made of tens of thousands of characters. It explains
+how the text is stored and edited in memory, and how it is displayed and
+updated on the screen.
+
+\subsection{Gap buffer}
+
+The simplest way to store the edited text in memory is to store all its
+characters one after the other, using one byte per character. Then we only need
+3 addresses to know where the text begins, where it ends, and where the cursor
+is. We call them $begin$, $end$, and $cursor$, respectively (see
+\cref{fig:text-buffer}). With this method, moving the cursor is very easy: we
+just need to change the $cursor$ value. However, inserting a
+character is more complex. Indeed, we need to copy each character after the
+cursor in the next memory byte, in order to make space for the new character.
+Similarly, in order to delete a character, we need to copy each character after
+the cursor in the previous memory byte (see \cref{fig:text-buffer}).
+Unfortunately, doing this with tens of thousands of characters after the cursor
+would be too slow (recall that our virtual machine is ten times slower than the
+microprocessor).
+
+To solve this problem, a solution is to use a slightly more complex data
+structure to store the edited text, called a {\em gap buffer}. This structure
+adds some free memory after the cursor. It uses an additional $gap$ variable,
+indicating how many free bytes are after the cursor (see
+\cref{fig:gap-buffer}). With this structure, inserting a character is easy and
+fast: just store it at the cursor, increment $cursor$ by 1 and decrement $gap$
+by 1\footnote{If the gap is empty, the easiest solution is to simply drop any
+newly typed character.}. Deleting a character is also easy and fast: decrement
+$cursor$ by 1 and increment $gap$ by 1. On the other hand, moving the cursor is
+now more complex. In order to move it by $n$ characters to the left, one must
+copy the $n$ characters before the gap, to move them after the gap (and
+vice-versa to move the cursor to the right -- see \cref{fig:gap-buffer2}).
+Still, if $n$ represents at most 30 lines of text, this operation is fast
+enough, even if the text has thousands of lines. We therefore use a gap buffer
+for our text editor.
+
+\begin{Figure}
+  \input{figures/chapter2/text-buffer.tex}
+
+  \caption{Inserting or deleting a character in a text stored in a single span
+  requires copying (dashed arrows) all the characters after the cursor to move
+  them one byte after or before their current position (we show characters for
+  clarity, but cells actually contain ASCII code numbers). On the other hand,
+  moving the cursor is trivial.}\label{fig:text-buffer}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter2/gap-buffer.tex}
+
+  \caption{Inserting or deleting a character in a text stored in a gap buffer
+  is very easy and fast, whatever the text length. No memory copy is
+  needed.}\label{fig:gap-buffer}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter2/gap-buffer2.tex}
+
+  \caption{Moving the cursor by $n$ characters in a gap buffer requires copying
+  $n$ bytes (dashed arrows) to move them from one side of the gap to the other.
+  Still, if $n$ is bounded by a ``reasonable'' value, this is fast enough even
+  for long texts.}\label{fig:gap-buffer2}
+\end{Figure}
+
+Moving the cursor to a new address $cursor'$ in a gap buffer can be done as
+described in \cref{alg:move-cursor} (as can be seen from
+\cref{fig:gap-buffer2}). In order to move the cursor to the $l^{th}$ previous
+line, this new address can be computed as described in
+\cref{alg:move-cursor-n-previous-line}. The basic idea is to scan the text from
+right to left, starting from the cursor, and to count the number of ``new
+line'' characters encountered until $l$ such characters are found (or the
+beginning of the text is reached). Similarly, to move the cursor to the
+$l^{th}$ next line, the new address $cursor'$ can be computed as described in
+\cref{alg:move-cursor-n-next-line}. Note that two addresses can be defined for
+a character: its current address, depending on the position and size of the
+gap, and a ``canonical address'' defined as its current address if there was no
+gap. The two addresses are equal for characters before the cursor. For those
+after the cursor, the current address is equal to the canonical address plus
+$gap$. \cref{alg:move-cursor-n-previous-line,alg:move-cursor-n-next-line}
+compute a canonical address $a$, but use current addresses to read characters.
+
+\begin{Algorithm}
+\caption{Setting the cursor to $cursor'$, where $begin \le cursor' \le end -
+gap$.}\label{alg:move-cursor}
+\begin{algorithmic}
+\Begin if $cursor' > cursor$
+\State copy $n=cursor'-cursor$ bytes from $src=cursor+gap$ to $dst=cursor$
+\Continue otherwise
+\State copy $n=cursor-cursor'$ bytes from $src=cursor'$ to $dst=cursor'+gap$
+\End
+\State set $cursor$ to $cursor'$
+\end{algorithmic}
+\end{Algorithm}
+
+\begin{Algorithm}
+\caption{Computing the beginning address $a$ of the $l^{th}$ previous line,
+$l>0$.}\label{alg:move-cursor-n-previous-line}
+\begin{algorithmic}[1]
+\State initialize $a$ to $cursor$
+\State if $a = begin$ return $a$
+\Begin if the character at $a-1$ is a ``new line'' character
+  \State if $l=0$ return $a$, otherwise decrement $l$ by 1
+\End
+\State decrement $a$ by 1 and go back to step 2
+\end{algorithmic}
+\end{Algorithm}
+
+\begin{Algorithm}
+\caption{Computing the beginning address $a$ of the $l^{th}$ next line,
+$l>0$.}\label{alg:move-cursor-n-next-line}
+\begin{algorithmic}[1]
+\State initialize $a$ to $cursor$
+\State if $a = end-gap$ return $a$
+\Begin if the character at $a+gap$ is a ``new line'' character
+  \State if $l=1$ return $a+1$, otherwise decrement $l$ by 1
+\End
+\State increment $a$ by 1 and go back to step 2
+\end{algorithmic}
+\end{Algorithm}
+
+\subsection{Text drawing}
+
+In order to draw the text we must first compute the canonical address of the
+first character to draw, on the top left corner, so that we get 15 lines of
+text before the line containing the cursor (if possible). This could be done
+with \cref{alg:move-cursor-n-previous-line} but, with a slightly improved
+algorithm, we can compute at the same time the column and row where the cursor
+should appear on screen. Indeed, the row can be incremented from 0, each time
+we encounter a ``new line'' character while scanning the text backwards from
+the cursor. And the column can be incremented from 0 for each character found
+on the line containing the cursor (the $0^{th}$ row). Finally, by taking
+tabulation characters into account (we represent them with 2 spaces), we get
+\cref{alg:compute-scroll}.
+
+We can then draw the text one character at a time, until the end of the text or
+the bottom of the screen is reached (see \cref{alg:draw-text}). Recall that the
+graphics cursor automatically moves to the right after a character is
+drawn\footnote{The graphics card also automatically wraps lines longer than 100
+characters. To simplify our text editor we assume that lines are always shorter
+than this.}. However, it does this also for ``new line'' characters (drawn with
+some icon), instead of moving the graphics cursor to the beginning of a new
+line. Thus, ``new line'' characters must not be drawn. Instead, a ``current
+row'' variable $r$ should be incremented, and the graphics cursor should be set
+to the beginning of this row. Likewise, two spaces must be drawn for each
+tabulation character (otherwise drawn with some icon). Finally, note that this
+algorithm requires the current address $a$ of each character, in order to read
+them. This address must be incremented by $gap$ when it reaches $cursor$.
+
+\begin{Algorithm}
+\caption{Computing the beginning address $a$ of the $l^{th}$ previous line,
+  $l>0$, and the cursor's screen column and row, $col$ and
+  $row$.}\label{alg:compute-scroll}
+\begin{algorithmic}[1]
+\State initialize $a$ to $cursor$, $col$ to 0 and $row$ to 0
+\State if $a = begin$ return $\{a, col, row\}$
+\Begin if the character $c$ at $a-1$ is a ``new line'' character
+  \State if $row=l$ return $\{a, col, row\}$, otherwise increment $row$ by 1
+\Continue otherwise, and if $row=0$
+  \State increment $col$ by 1, or by 2 if $c$ is a tabulation character
+\End
+\State decrement $a$ by 1 and go back to step 2
+\end{algorithmic}
+\end{Algorithm}
+
+\begin{Algorithm}
+\caption{Drawing the text on screen.}\label{alg:draw-text}
+\begin{algorithmic}[1]
+\State clear the screen and set the graphics cursor to the top-left
+corner, $(0,0)$
+\State initialize $r$ to 0
+\State compute $\{a, col, row\}$ with \cref{alg:compute-scroll}
+\State if $a=cursor$, increment $a$ by $gap$
+\Begin while $a < end$ and $r < 30$
+  \Begin if the character $c$ at $a$ is a ``new line'' character
+    \State increment $r$ by 1 and set the graphics cursor to $(0, r)$
+  \Continue otherwise
+    \State draw $c$, or two spaces if $c$ is a tabulation character
+  \End
+  \State increment $a$ by 1
+  \State if $a=cursor$, increment $a$ by $gap$
+\End
+\State set the graphics cursor to $(col,row)$
+\end{algorithmic}
+\end{Algorithm}
+
+\subsection{Double buffering}\label{subsection:double-buffering}
+
+Most of the time, when a character is typed, only the line containing it needs
+to be updated on the screen, which could be fast. However, sometimes the whole
+screen must be redrawn (\eg, when scrolling up or down). To simplify our editor
+we always redraw the whole screen after each key press. This takes some time,
+during which partially redrawn images could be seen, causing {\em flickering}.
+To avoid this, a solution is to draw the text in a video memory region which is
+not visible on screen and, when this is done, display this image. The graphics
+card we are using provides an easy way to use this method, called {\em double
+buffering}. It can divide its 768~KB of RAM in two images, called layers 0 and
+1. By default text is drawn in layer 0, which is also displayed on the LCD. But
+it is possible to draw in layer 0 while layer 1 is displayed, or vice-versa
+(see \cref{fig:double-buffering}). This can be done with the following graphics
+card registers (we show only the bits that we use):
+
+\begin{Figure}
+  \input{figures/chapter2/double-buffering.tex}
+
+  \caption{To avoid flickering, text is drawn in one layer while the other is
+  displayed (left). When this is done the layer roles are exchanged
+  (right).}\label{fig:double-buffering}
+\end{Figure}
+
+\begin{Paragraph}
+\rs{RAIO_DPCR.definition()}\\
+\rs{RAIO_MWCR1.definition()}\\
+\rs{RAIO_LTPR0.definition()}
+\end{Paragraph}
+
+The $l$ bit of the Display Configuration register enables the double buffering
+mode when it is 1, and disables it otherwise. When it is enabled, characters
+are drawn in the layer given by the $l$ bit of the Memory Write Control 1
+register, while the screen displays the layer given by the $l$ bit of the Layer
+Transparency 0 register. When double buffering is disabled, characters are
+drawn in layer 0 and the screen displays layer 0 too. The layer used for
+drawing is called the {\em back buffer}, while the layer displayed on the
+screen is called the {\em front buffer}.
+
+\section{Implementation}\label{section:ted-implementation}
+
+\rust{
+  let driver_address = next_page_address(
+      context.memory_region("flash_driver").end());
+  let mut b = BytecodeAssembler::new(RegionKind::DataBuffer, driver_address);
+  b.import_labels(context.memory_region("graphics_card_driver"));
+  b.import_labels(context.memory_region("keyboard_driver"));
+  b.import_labels(context.memory_region("flash_driver"));
+}
+
+We can now implement our text editor, in a new data buffer starting at the next
+page after the flash memory driver, at address \rs{hex(driver_address)}. We
+start with a function implementing \cref{alg:move-cursor}, with the last step
+replaced with ``return $cursor'$'':\bigskip
+
+\rust{
+  let parameters = &["begin", "cursor", "gap", "cursor'"];
+}
+\rs{b.func("ted_set_cursor", parameters, "cursor'", &["private"])}
+\vspace{-0.9\baselineskip}
+\begin{TwoColumns}
+\bytecode{
+  b.get("cursor'");
+  b.get("cursor");
+  b.ifle("ted_set_cursor_backward");
+  b.get("cursor");
+  b.get("gap");
+  b.add();
+  b.get("cursor");
+  b.get("cursor'");
+  b.get("cursor");
+  b.sub();
+  b.call("mem_copy");
+  b.get("cursor'");
+  b.retv();
+  b.label("ted_set_cursor_backward");
+  b.get("cursor'");
+  b.get("cursor'");
+  b.get("gap");
+  b.add();
+  b.get("cursor");
+  b.get("cursor'");
+  b.sub();
+  b.call("mem_copy");
+  b.get("cursor'");
+  b.retv();
+}
+\end{TwoColumns}
+
+Then, instead of implementing \cref{alg:move-cursor-n-previous-line}, we
+implement \cref{alg:compute-scroll}, which is more general. This algorithm is
+supposed to return 3 values $a$, $col$ and $row$. Since a function can't return
+several values, the following function only returns $a$. To ``return'' $col$
+and $row$ we use two {\em pointers} $col^p$ and $row^p$ where these values can
+be stored in memory. We suppose that these values are initialized to 0 by the
+caller:
+
+\rust{
+  let parameters = &["begin", "cursor", "l", "col^p", "row^p"];
+}
+\begin{Paragraph}
+\rs{b.func("ted_move_backward", parameters, "a", &["private"])}
+\begin{paracol}{2}
+\bytecode[switchcolumn]{
+  b.new_line();
+}
+
+Step 1. Initialize $c$ to 0 and $a$ to $cursor$.
+
+\bytecode[switchcolumn]{
+  // let c = 0;
+  b.cst_0();
+  b.def("c");
+  // let a = cursor;
+  b.get("cursor");
+  b.def("a");
+}
+
+Step 2. If $a$ (in the $10^{th}$ stack frame slot) is equal to $begin$, go to
+step 8.
+
+\bytecode[switchcolumn]{
+  b.label("ted_move_backward_loop");
+  // while a != begin
+  b.get("a");
+  b.get("begin");
+  b.ifle("ted_move_backward_end");
+}
+
+Step 3. Set $c$ (in the $9^{th}$ stack frame slot) to the character at $a-1$.
+
+\bytecode[switchcolumn]{
+  // c = load_byte(a - 1);
+  b.get("a");
+  b.cst_1();
+  b.sub();
+  b.call("load_byte");
+  b.set("c");
+}
+
+If $c$ is not equal to Enter (\hexa{A}), go to step 5.
+
+\bytecode[switchcolumn]{
+  // if c == ENTER_KEY
+  b.get("c");
+  b.cst8(10);
+  b.ifne("ted_move_backward_not_enter");
+}
+
+Step 4. If the value at $row^p$ is equal to $l$, go to step 8.
+
+\bytecode[switchcolumn]{
+  // if *row == l { break; }
+  b.get("row^p");
+  b.load();
+  b.get("l");
+  b.ifeq("ted_move_backward_end");
+}
+
+Otherwise, increment the value at $row^p$ by 1, and go to step 7.
+
+\bytecode[switchcolumn]{
+  // *row = *row + 1;
+  b.get("row^p");
+  b.get("row^p");
+  b.load();
+  b.cst_1();
+  b.add();
+  b.store();
+  b.goto("ted_move_backward_end_loop");
+}
+
+Step 5. If the value at $row^p$ is not 0, go to step 7.
+
+\bytecode[switchcolumn]{
+  b.label("ted_move_backward_not_enter");
+  // else if *row == 0
+  b.get("row^p");
+  b.load();
+  b.cst_0();
+  b.ifne("ted_move_backward_end_loop");
+}
+
+Step 6. Add 1 to the value at $col^p$, one or two times, depending on whether
+$c$ is equal to Tab (\hexa{9}) or not.
+
+\bytecode[switchcolumn]{
+  // *col = *col...
+  b.get("col^p");
+  b.get("col^p");
+  b.load();
+  // if c == TAB_KEY
+  b.get("c");
+  b.cst8(9);
+  b.ifne("ted_move_backward_not_tab");
+  // + 1
+  b.cst_1();
+  b.add();
+  b.label("ted_move_backward_not_tab");
+  // + 1
+  b.cst_1();
+  b.add();
+  b.store();
+}
+
+Step 7. Decrement $a$ by 1 and go back to step 2.
+
+\bytecode[switchcolumn]{
+  b.label("ted_move_backward_end_loop");
+  // a = a - 1;
+  b.cst_1();
+  b.sub();
+  b.goto("ted_move_backward_loop");
+}
+
+Step 8. Return $a$.
+
+\bytecode[switchcolumn]{
+  b.label("ted_move_backward_end");
+  // return a;
+  b.get("a");
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+We continue with the implementation of
+\cref{alg:move-cursor-n-next-line}:
+
+\rust{
+  let parameters = &["cursor", "gap", "end", "l"];
+}
+\begin{Paragraph}
+\rs{b.func("ted_move_forward", parameters, "a", &["private"])}
+\begin{paracol}{2}
+\bytecode[switchcolumn]{
+  b.new_line();
+}
+
+Step 1. Initialize $a$ to $cursor$.
+
+\bytecode[switchcolumn]{
+  // let a = cursor;
+  b.get("cursor");
+  b.def("a");
+}
+
+Step 2. If $a$ (in the $8^{th}$ stack frame slot) is equal to $end-gap$ return
+$a$.
+
+\bytecode[switchcolumn]{
+  b.label("ted_move_forward_loop");
+  // if a == end - gap : return a;
+  b.get("a");
+  b.get("end");
+  b.get("gap");
+  b.sub();
+  b.ifne("ted_move_forward_not_equal_limit");
+  b.get("a");
+  b.retv();
+}
+
+Step 3. If the character at $a+gap$ is not Enter (\hexa{A}), go to step 5.
+
+\bytecode[switchcolumn]{
+  b.label("ted_move_forward_not_equal_limit");
+  // if load_byte(a + gap) == 0xA
+  b.get("a");
+  b.get("gap");
+  b.add();
+  b.call("load_byte");
+  b.cst8(10);
+  b.ifne("ted_move_forward_end_loop");
+}
+
+Step 4. If $l$ is equal to $1$
+
+\bytecode[switchcolumn]{
+  // if l == 1 : return cursor + 1;
+  b.get("l");
+  b.cst_1();
+  b.ifne("ted_move_forward_end_loop_not_last_line");
+}
+
+\noindent return $a+1$,
+
+\bytecode[switchcolumn]{
+  b.get("a");
+  b.cst_1();
+  b.add();
+  b.retv();
+}
+
+\noindent otherwise decrement $l$ by 1.
+
+\bytecode[switchcolumn]{
+  b.label("ted_move_forward_end_loop_not_last_line");
+  // l = l - 1;
+  b.get("l");
+  b.cst_1();
+  b.sub();
+  b.set("l");
+}
+
+Step 5. Increment $a$ by 1 and go back to step 2.
+
+\bytecode[switchcolumn]{
+  b.label("ted_move_forward_end_loop");
+  // a = a + 1;
+  b.cst_1();
+  b.add();
+  b.goto("ted_move_forward_loop");
+}
+\end{paracol}
+\end{Paragraph}
+
+With this we can compute the new cursor position after an ArrowLeft, Right, Up
+or Down key, or a PageUp or Down key $c$ has been pressed, as follows:
+
+\rust{
+  let parameters = &["begin", "cursor", "gap", "end", "c"];
+}
+\begin{Paragraph}
+\rs{b.func("ted_handle_key", parameters, "cursor'", &["private"])}
+\begin{paracol}{2}
+\bytecode[switchcolumn]{
+  b.new_line();
+}
+
+Step 1. Initialize $col$ and $row$ to 0.
+
+\bytecode[switchcolumn]{
+  // let col = 0;
+  b.cst_0();
+  b.def("col");
+  // let row = 0;
+  b.cst_0();
+  b.def("row");
+}
+
+Step 2. If $c$ is not the ArrowLeft key, or if $cursor=begin$ (no way to go
+left), go to step 3.
+
+\bytecode[switchcolumn]{
+  // if c == ARROW_LEFT_KEY && cursor > begin
+  b.get("c");
+  b.cst8(235);
+  b.ifne("ted_handle_key_not_arrow_left");
+  b.get("cursor");
+  b.get("begin");
+  b.ifeq("ted_handle_key_not_arrow_left");
+}
+
+Otherwise, return $cursor-1$.
+
+\bytecode[switchcolumn]{
+  // return cursor - 1;
+  b.get("cursor");
+  b.cst_1();
+  b.sub();
+  b.retv();
+}
+
+Step 3. If $c$ is not the ArrowRight key, or if $cursor=end-gap$ (no way to go
+right), go to step 4.
+
+\bytecode[switchcolumn]{
+  b.label("ted_handle_key_not_arrow_left");
+  // if c == ARROW_RIGHT_KEY && cursor < end - gap
+  b.get("c");
+  b.cst8(244);
+  b.ifne("ted_handle_key_not_arrow_right");
+  b.get("cursor");
+  b.get("end");
+  b.get("gap");
+  b.sub();
+  b.ifge("ted_handle_key_not_arrow_right");
+}
+
+Otherwise, return $cursor+1$.
+
+\bytecode[switchcolumn]{
+  // return cursor + 1;
+  b.get("cursor");
+  b.cst_1();
+  b.add();
+  b.retv();
+}
+
+Step 4. If $c$ is not the ArrowUp key, go to step 5.
+
+\bytecode[switchcolumn]{
+  b.label("ted_handle_key_not_arrow_right");
+  // if c == ARROW_UP_KEY
+  b.get("c");
+  b.cst8(245);
+  b.ifne("ted_handle_key_not_arrow_up");
+}
+
+Otherwise, return the beginning address of the previous line by calling the
+\verb!ted_move_backward! function with $l=1$, and with pointers to $col$ and
+$row$, in the $9^{th}$ and $10^{th}$ stack frame slots, for $col^p$ and $row^p$.
+
+\bytecode[switchcolumn]{
+  // return ted_move_backward(begin, cursor, 1, &col, &row);
+  b.get("begin");
+  b.get("cursor");
+  b.cst_1();
+  b.ptr("col");
+  b.ptr("row");
+  b.call("ted_move_backward");
+  b.retv();
+}
+
+Step 5. If $c$ is not the ArrowDown key, go to step 6.
+
+\bytecode[switchcolumn]{
+  b.label("ted_handle_key_not_arrow_up");
+  // if c == ARROW_DOWN_KEY
+  b.get("c");
+  b.cst8(242);
+  b.ifne("ted_handle_key_not_arrow_down");
+}
+
+Otherwise, return the beginning address of the next line.
+
+\bytecode[switchcolumn]{
+  // return ted_move_forward(cursor, gap, end, 1);
+  b.get("cursor");
+  b.get("gap");
+  b.get("end");
+  b.cst_1();
+  b.call("ted_move_forward");
+  b.retv();
+}
+
+Step 6. If $c$ is not the PageUp key, go to step 7.
+
+\bytecode[switchcolumn]{
+  b.label("ted_handle_key_not_arrow_down");
+  // if c == PAGE_UP_KEY
+  b.get("c");
+  b.cst8(253);
+  b.ifne("ted_handle_key_not_page_up");
+}
+
+Otherwise, return the beginning address of the $30^{th}$ previous line
+(\rs{dec_hex(30u32)}).
+
+\bytecode[switchcolumn]{
+  // return ted_move_backward(begin, cursor, 30, &col, &row);
+  b.get("begin");
+  b.get("cursor");
+  b.cst8(30);
+  b.ptr("col");
+  b.ptr("row");
+  b.call("ted_move_backward");
+  b.retv();
+}
+
+Step 7. If $c$ is not the PageDown key, go to step 8.
+
+\bytecode[switchcolumn]{
+  b.label("ted_handle_key_not_page_up");
+  // if c == PAGE_DOWN_KEY
+  b.get("c");
+  b.cst8(250);
+  b.ifne("ted_handle_key_not_page_down");
+}
+
+Otherwise, return the beginning address of the $30^{th}$ next line.
+
+\bytecode[switchcolumn]{
+  // return ted_move_forward(cursor, gap, end, 30);
+  b.get("cursor");
+  b.get("gap");
+  b.get("end");
+  b.cst8(30);
+  b.call("ted_move_forward");
+  b.retv();
+}
+
+Step 8. Return $cursor$.
+
+\bytecode[switchcolumn]{
+  b.label("ted_handle_key_not_page_down");
+  // return cursor;
+  b.get("cursor");
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+In order to implement a function to draw the edited text, we first provide 3
+simple functions to use double buffering. The first one enables this mode and
+sets the back buffer to layer 1:
+
+\begin{TwoColumns}
+\rs{b.func("gpu_set_double_buffer", &[], "", &["private"])}\\
+\bytecode{
+  b.cst8(0x20);
+  b.cst8(0x80);
+  b.call("gpu_set_register");
+  b.cst8(0x41);
+  b.cst_1();
+  b.call("gpu_set_register");
+  b.ret();
+}
+\end{TwoColumns}
+
+The second one disables double buffering and sets the front and back buffers to
+layer 0:
+
+\begin{TwoColumns}
+\rs{b.func("gpu_set_single_buffer", &[], "", &["private"])}\\
+\bytecode{
+  b.cst8(0x41);
+  b.cst_0();
+  b.call("gpu_set_register");
+  b.cst8(0x52);
+  b.cst_0();
+  b.call("gpu_set_register");
+  b.cst8(0x20);
+  b.cst_0();
+  b.call("gpu_set_register");
+  b.ret();
+}
+\end{TwoColumns}
+
+The third one swaps the layers used for the front and back buffers. For
+this, it reads the $l$ bit of the Memory Write Control (``back buffer'')
+register (in the $4^{th}$ stack frame slot), sets this register to $1-l$, and
+sets the Layer Transparency 0 (``front buffer'') register to $l$. The first
+step is done by selecting the register with a Select Register command, followed
+by a Read Data command (both sent with \verb!spi_transfer! -- see
+\cref{subsection:gpu-protocol}):
+
+\begin{TwoColumns}
+\rs{b.func("gpu_swap_buffer", &[], "", &["private"])}\\
+\bytecode{
+  // spi_transfer(0x8041);
+  b.cst(0x8041);
+  b.call("spi_transfer");
+  b.pop();
+  // let layer = spi_transfer(0x4000)
+  b.cst(0x4000);
+  b.call("spi_transfer");
+  b.def("layer");
+  // spi_transfer(1 - layer);
+  b.cst_1();
+  b.get("layer");
+  b.sub();
+  b.call("spi_transfer");
+  b.pop();
+  // gpu_set_register(0x52, layer);
+  b.cst8(0x52);
+  b.get("layer");
+  b.call("gpu_set_register");
+  b.ret();
+}
+\end{TwoColumns}
+
+We can now implement a function to draw the edited text, with
+\cref{alg:draw-text}:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("ted_draw", &["begin", "cursor", "gap", "end"], "", &[])}
+
+Step 1. Clear the screen (actually the back buffer) and set the graphics cursor
+to $(0,0)$.
+
+\bytecode[switchcolumn]{
+  // gpu_clear_screen();
+  b.call("gpu_clear_screen");
+  // gpu_set_cursor(0, 0);
+  b.cst_0();
+  b.cst_0();
+  b.call("gpu_set_cursor");
+}
+
+Step 2. Initialize $r$ to 0 and $c$ to 0.
+
+\bytecode[switchcolumn]{
+  // let r = 0;
+  b.cst_0();
+  b.def("r");
+  // let c = 0;
+  b.cst_0();
+  b.def("c");
+}
+
+Step 3. Initialize $col$ and $row$ to 0, and compute $a$, $col$ and $row$ -- in
+the $12^{th}$, $10^{th}$ and $11^{th}$ stack frame slots, respectively -- by
+calling \verb!ted_move_backward! with $l=15$ and with pointers to $col$ and
+$row$ for $col^p$ and $row^p$.
+
+\bytecode[switchcolumn]{
+  // let col = 0;
+  b.cst_0();
+  b.def("col");
+  // let row = 0;
+  b.cst_0();
+  b.def("row");
+  // let a = ted_move_backward(begin, cursor, 15, &col, &row);
+  b.get("begin");
+  b.get("cursor");
+  b.cst8(15);
+  b.ptr("col");
+  b.ptr("row");
+  b.call("ted_move_backward");
+  b.def("a");
+}
+
+Step 4. If $a=cursor$, increment $a$ by $gap$.
+
+\bytecode[switchcolumn]{
+  // if a == cursor { a = a + gap; }
+  b.get("a");
+  b.get("cursor");
+  b.ifne("ted_draw_loop");
+  b.get("gap");
+  b.add();
+}
+
+Step 5. If $a \ge end$, go to step 12.
+
+\bytecode[switchcolumn]{
+  b.label("ted_draw_loop");
+  // while a < end && r < 30 :
+  b.get("a");
+  b.get("end");
+  b.ifge("ted_draw_end");
+}
+
+If $r$ (in the $8^{th}$ stack frame slot) is $\ge 30$, go to step 12
+(\rs{dec_hex(30u32)}).
+
+\bytecode[switchcolumn]{
+  b.get("r");
+  b.cst8(30);
+  b.ifge("ted_draw_end");
+}
+
+Step 6. Set $c$ (in the $9^{th}$ stack frame slot) to the character at $a$.
+
+\bytecode[switchcolumn]{
+  // c = load_byte(a);
+  b.get("a");
+  b.call("load_byte");
+  b.set("c");
+}
+
+If $c$ is not equal to Enter (\hexa{A}), go to step 9.
+
+\bytecode[switchcolumn]{
+  // if c == ENTER_KEY :
+  b.get("c");
+  b.cst8(10);
+  b.ifne("ted_draw_not_enter");
+}
+
+Step 7. Increment $r$ by 1,
+
+\bytecode[switchcolumn]{
+  // r = r + 1;
+  b.get("r");
+  b.cst_1();
+  b.add();
+  b.set("r");
+}
+
+\noindent set the graphics cursor to $(0,r)$, and go to step 10.
+
+\bytecode[switchcolumn]{
+  // gpu_set_cursor(0, r);
+  b.cst_0();
+  b.get("r");
+  b.call("gpu_set_cursor");
+  b.goto("ted_draw_loop_end");
+}
+
+Step 9. If $c$ is equal to Tab (\hexa{9}), draw two spaces (\hexa{20}) and go
+to step 10.
+
+\bytecode[switchcolumn]{
+  b.label("ted_draw_not_enter");
+  // else if c == TAB_KEY :
+  b.get("c");
+  b.cst8(9);
+  b.ifne("ted_draw_not_tab");
+  // gpu_draw_char(' ');
+  b.cst8(32);
+  b.call("gpu_draw_char");
+  // gpu_draw_char(' ');
+  b.cst8(32);
+  b.call("gpu_draw_char");
+  b.goto("ted_draw_loop_end");
+}
+
+Otherwise draw $c$.
+
+\bytecode[switchcolumn]{
+  b.label("ted_draw_not_tab");
+  // gpu_draw_char(c);
+  b.get("c");
+  b.call("gpu_draw_char");
+}
+
+Step 10. Increment $a$ by 1.
+
+\bytecode[switchcolumn]{
+  b.label("ted_draw_loop_end");
+  // ptr = ptr + 1;
+  b.cst_1();
+  b.add();
+}
+Step 11. If $a$ is not equal $cursor$, go back to step 5.
+
+\bytecode[switchcolumn]{
+  // if a == cursor { a = a + gap; }
+  b.get("a");
+  b.get("cursor");
+  b.ifne("ted_draw_loop");
+}
+
+Otherwise increment $a$ by $gap$ and go back to step 5.
+
+\bytecode[switchcolumn]{
+  b.get("gap");
+  b.add();
+  b.goto("ted_draw_loop");
+}
+
+Step 12. Switch the back and front buffers, set the graphics cursor to
+$(col,row)$ and return.
+
+\bytecode[switchcolumn]{
+  b.label("ted_draw_end");
+  // gpu_swap_buffer();
+  b.call("gpu_swap_buffer");
+  // gpu_set_cursor(col, row);
+  b.get("col");
+  b.get("row");
+  b.call("gpu_set_cursor");
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+We can finally implement the main function of our text editor. The following
+function takes as parameter the address of a {\em text buffer}, \ie, a data
+buffer containing the text to edit (see \cref{subsection:data-buffer}). It also
+takes as parameter an initial cursor $\it{offset}$ from the beginning of
+the text, and a maximum text length. It starts by storing in the $7^{th}$ stack
+frame slot the current text $length$ (contained the text buffer header), and
+returns immediately if it is larger than $max\_length$:\bigskip
+
+\rs{b.func("text_editor", &["buffer", "offset", "max_length"], "", &[])}
+\vspace{-0.9\baselineskip}
+\begin{TwoColumns}
+\bytecode{
+  // let length = *buffer;
+  b.get("buffer");
+  b.load();
+  b.def("length");
+  // if length > max_length { return; }
+  b.get("length");
+  b.get("max_length");
+  b.ifle("text_editor_ok");
+  b.ret();
+  b.label("text_editor_ok");
+}
+\end{TwoColumns}
+
+It continues by initializing $begin$ to $\it{buffer+4}$, $cursor$ to
+$begin+length$, $end$ to $begin+max\_length$, $gap$ to $end-cursor$, and $c$ to
+0, in the $8^{th}$, $9^{th}$, $10^{th}$, $11^{th}$, and $12^{th}$ stack frame
+slots, respectively:
+
+\begin{TwoColumns}
+\bytecode{
+  // let begin = buffer + 4;
+  b.get("buffer");
+  b.cst8(4);
+  b.add();
+  b.def("begin");
+  // let cursor = begin + length;
+  b.get("begin");
+  b.get("length");
+  b.add();
+  b.def("cursor");
+  // let end = begin + max_length;
+  b.get("begin");
+  b.get("max_length");
+  b.add();
+  b.def("end");
+  // let gap = end - cursor;
+  b.get("end");
+  b.get("cursor");
+  b.sub();
+  b.def("gap");
+  // let c = 0;
+  b.cst_0();
+  b.def("c");
+}
+\end{TwoColumns}
+
+The cursor is then changed to $begin+\it{offset}$ with a call to
+\verb!ted_set_cursor!, after setting $\it{offset}$ to $length$ if it is larger
+than that. The initialization phase ends by enabling the double buffering mode,
+setting the color to green $(0,7,0)$, and drawing the text:
+
+\begin{TwoColumns}
+\bytecode{
+  // if offset > length { offset = length; }
+  b.get("offset");
+  b.get("length");
+  b.ifle("text_editor_offset_ok");
+  b.get("length");
+  b.set("offset");
+  b.label("text_editor_offset_ok");
+  // cursor = ted_set_cursor(begin, cursor, gap, begin + offset);
+  b.get("begin");
+  b.get("cursor");
+  b.get("gap");
+  b.get("begin");
+  b.get("offset");
+  b.add();
+  b.call("ted_set_cursor");
+  b.set("cursor");
+  // gpu_set_double_buffer();
+  b.call("gpu_set_double_buffer");
+  // gpu_set_color(0, 7, 0);
+  b.cst_0();
+  b.cst8(7);
+  b.cst_0();
+  b.call("gpu_set_color");
+  // ted_draw(begin, cursor, gap, end);
+  b.get("begin");
+  b.get("cursor");
+  b.get("gap");
+  b.get("end");
+  b.call("ted_draw");
+}
+\end{TwoColumns}
+
+The rest of the function is a loop which handles keys typed on the keyboard,
+until Escape is pressed.
+
+\begin{Paragraph}
+\begin{paracol}{2}
+Step 1. Read a character from the keyboard and store it in $c$.
+
+\bytecode[switchcolumn]{
+  b.label("text_editor_loop");
+  // c = keyboard_wait_char();
+  b.call("keyboard_wait_char");
+  b.set("c");
+}
+
+Step 2. If $c$ is not the Escape key, go to step 3.
+
+\bytecode[switchcolumn]{
+  // if c == ESCAPE_KEY :
+  b.get("c");
+  b.cst8(27);
+  b.ifne("text_editor_not_esc");
+}
+
+Otherwise, set the cursor to the end of the text, \ie, to $end-gap$, to remove
+any gap in the text itself. Then store the final text length in the buffer
+header, \ie, store this new cursor value minus $begin$ at address
+$\it{buffer}$.
+
+\bytecode[switchcolumn]{
+  // *buffer = ted_set_cursor(begin, cursor, gap, end - gap) - begin;
+  b.get("buffer");
+  b.get("begin");
+  b.get("cursor");
+  b.get("gap");
+  b.get("end");
+  b.get("gap");
+  b.sub();
+  b.call("ted_set_cursor");
+  b.get("begin");
+  b.sub();
+  b.store();
+}
+
+Then disable the double buffering mode and return.
+
+\bytecode[switchcolumn]{
+  // gpu_set_single_buffer();
+  b.call("gpu_set_single_buffer");
+  // return;
+  b.ret();
+}
+
+Step 3. If $c$ is not the BackSpace key, go to Step 4.
+
+\bytecode[switchcolumn]{
+  b.label("text_editor_not_esc");
+  // if c == BACKSPACE_KEY :
+  b.get("c");
+  b.cst8(8);
+  b.ifne("text_editor_not_backspace");
+}
+
+Otherwise, if $cursor=begin$ (no previous character to delete), go back to step
+1.
+
+\bytecode[switchcolumn]{
+  // if cursor == begin { continue; }
+  b.get("cursor");
+  b.get("begin");
+  b.ifeq("text_editor_loop");
+}
+
+Otherwise, delete the previous character by decrementing $cursor$ by 1,
+
+\bytecode[switchcolumn]{
+  // cursor = cursor - 1;
+  b.get("cursor");
+  b.cst_1();
+  b.sub();
+  b.set("cursor");
+}
+
+\noindent and by incrementing $gap$ by 1. Then go to step 6 to redraw the text.
+
+\bytecode[switchcolumn]{
+  // gap = gap + 1;
+  b.get("gap");
+  b.cst_1();
+  b.add();
+  b.set("gap");
+  b.goto("text_editor_end_loop");
+}
+
+Step 4. If $c$ is not an ASCII character other than Delete (\hexa{7F}), go to
+step 5.
+
+\bytecode[switchcolumn]{
+  b.label("text_editor_not_backspace");
+  // if c < DELETE_KEY :
+  b.get("c");
+  b.cst8(127);
+  b.ifge("text_editor_not_delete");
+}
+
+Otherwise, if $gap=0$ (no way to insert a new character), go back to step 1.
+
+\bytecode[switchcolumn]{
+  // if gap == 0 { continue; }
+  b.get("gap");
+  b.cst_0();
+  b.ifeq("text_editor_loop");
+}
+
+Otherwise, store $c$ at $cursor$,
+
+\bytecode[switchcolumn]{
+  // store_byte(cursor, c);
+  b.get("cursor");
+  b.get("c");
+  b.call("store_byte");
+}
+
+\noindent increment $cursor$ by 1,
+
+\bytecode[switchcolumn]{
+  // cursor = cursor + 1;
+  b.get("cursor");
+  b.cst_1();
+  b.add();
+  b.set("cursor");
+}
+
+\noindent and decrement $gap$ by 1. Then go to step 6 to redraw the text.
+
+\bytecode[switchcolumn]{
+  // gap = gap - 1;
+  b.get("gap");
+  b.cst_1();
+  b.sub();
+  b.set("gap");
+  b.goto("text_editor_end_loop");
+}
+
+Step 5. If $c$ is any character not handled above, set the cursor to the new
+cursor value computed by \verb!ted_handle_key!.
+
+\bytecode[switchcolumn]{
+  b.label("text_editor_not_delete");
+  // cursor = ted_set_cursor(begin, cursor, gap,
+  //    ted_handle_key(begin, cursor, gap, end, c));
+  b.get("begin");
+  b.get("cursor");
+  b.get("gap");
+  b.get("begin");
+  b.get("cursor");
+  b.get("gap");
+  b.get("end");
+  b.get("c");
+  b.call("ted_handle_key");
+  b.call("ted_set_cursor");
+  b.set("cursor");
+}
+
+Step 6. Redraw the edited text and go back to step 1.
+
+\bytecode[switchcolumn]{
+  b.label("text_editor_end_loop");
+  // ted_draw(begin, cursor, gap, end);
+  b.get("begin");
+  b.get("cursor");
+  b.get("gap");
+  b.get("end");
+  b.call("ted_draw");
+  b.goto("text_editor_loop");
+}
+\end{paracol}
+\end{Paragraph}
+
+In summary, the main functions of our text editor are those listed in
+\cref{table:text_editor_functions}, and its full code is the following:
+
+\rs{b.get_bytecode_listing(0..b.get_instruction_count() as usize, false)}
+
+\begin{Table}
+  \begin{tabular}{|l|l|} \hline
+    \makecell{\thead{Function}} & \thead{Address} \\ \hline
+    \rs{MemoryRegion::labels_table_rows(vec![&b.memory_region()])} \\ \hline
+  \end{tabular}
+
+  \caption{The most important functions of the text
+  editor.}\label{table:text_editor_functions}
+\end{Table}
+
+\rust{
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  let mut context1 = context.clone();
+
+  const COMMAND_ADDRESS: u32 = 0x20080000;
+  const BUFFER_RAM_ADDRESS: u32 = 0x20070000;
+}
+
+To store it in flash memory we must enter it in RAM first, lets say at address
+\rs{hex(BUFFER_RAM_ADDRESS)}, and then save it in flash. In the memory editor,
+type ``w\rs{hex_word_low(BUFFER_RAM_ADDRESS)}''+Enter, and then store the text
+editor size in bytes at this address by typing
+``w\rs{hex_word_low(b.bytecode_size())}''+Enter. Continue by entering each word
+of the text editor code, listed above, by typing its value followed by Enter.
+Finally, save this code in flash memory (starting at
+$page=\rs{dec(page_number(driver_address))}$) by running the following function:
+
+\rust{
+  context.type_ascii(&b.memory_editor_commands(BUFFER_RAM_ADDRESS));
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+}
+\begin{TwoColumns}
+\rs{c.func("save", &[], "", &["nolink"])}\\
+\bytecode{
+  c.cst(BUFFER_RAM_ADDRESS);
+  c.cst8(page_number(driver_address).try_into().unwrap());
+  c.call("buffer_flash");
+  c.ret();
+}
+\end{TwoColumns}
+
+For this, type ``w\rs{hex_word_low(COMMAND_ADDRESS)}''+Enter, followed by the
+full code of this function:
+
+\rs{c.get_bytecode_listing(0..c.get_instruction_count() as usize, false)}
+
+\rust{
+  context.type_ascii(&c.memory_editor_commands(COMMAND_ADDRESS));
+  context.type_ascii(&format!("W{:08X}\n", COMMAND_ADDRESS));
+  context.type_ascii("R");
+  let boot_mode_address = context.memory_region("foundations")
+      .label_address("boot_mode_select_rom");
+}
+
+Then type ``w\rs{hex_word_low(COMMAND_ADDRESS)}'' followed by ``r'' to run it.
+Alternatively, if you don't want to enter the full text editor code manually
+with the memory editor, which is a bit tedious, you can ``cheat'' by saving it
+via an external computer, as follows. First run the \verb!boot_mode_select_rom!
+function by typing ``w\rs{hex_word_low(boot_mode_address)}''+Enter, followed by
+``r''. Then reset the Arduino and, on the host computer, run the following
+commands to flash the text editor code and reset the Arduino again:
+
+\rust{
+  context.add_memory_region("text_editor", b.memory_region());
+
+  let mut commands = Vec::new();
+  commands.extend(b.boot_assistant_commands());
+  commands.push(String::from("flash#"));
+  commands.push(String::from("reset#"));
+  write_lines("website/part3", "text_editor.txt", &commands)?;
+
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  let mut flash_helper1 = FlashHelper::from_file(
+      context1.micro_controller(), "website/", "part3/text_editor.txt")?;
+}
+\rs{host_log(&flash_helper1.read())}
+
+\section{Experiments}\label{section:text-editor-experiments}
+
+\rust{
+  const BUFFER_ADDRESS: u32 = 0x20070000;
+  const MAX_LENGTH: u32 = 0x1000;
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("text_editor"));
+}
+
+Lets test our text editor. The following function edits a text buffer stored at
+address \rs{hex(BUFFER_ADDRESS)}, with an initial cursor at the beginning of
+the text, and a maximum text length of \rs{hex(MAX_LENGTH)} bytes:
+
+\begin{TwoColumns}
+\rs{c.func("test", &[], "", &["nolink"])}\\
+\bytecode{
+  // temp program to run text editor on "buffer address"
+  c.cst(BUFFER_ADDRESS);
+  c.cst_0();
+  c.cst(MAX_LENGTH);
+  c.call("text_editor");
+  c.ret();
+}
+\end{TwoColumns}
+
+Enter it in RAM at address \rs{hex(COMMAND_ADDRESS)} by typing
+``w\rs{hex_word_low(COMMAND_ADDRESS)}''+Enter, followed by the full code of
+this function:
+
+\rs{c.get_bytecode_listing(0..c.get_instruction_count() as usize, false)}
+
+Then initialize an empty text buffer by typing
+``w\rs{hex_word_low(BUFFER_ADDRESS)}''+Enter, followed by ``00000000''+Enter.
+Finally, run the text editor on this empty buffer by typing
+``\rs{hex_word_low(COMMAND_ADDRESS)}''+Enter, followed by ``r''. If all goes
+well you should be able to type some text. Try typing some characters, test the
+Tab and Enter keys, type several lines and then test the arrow keys, and the
+Page Up and Down keys. You can also exit the text editor with Escape, and then
+run it again by typing ``r'' (you should see the text you typed before, with
+the cursor reinitialized to the beginning of the text). When you are back in
+the memory editor, you should also see the length of your text, at address
+\rs{hex(BUFFER_ADDRESS)}, followed by the ASCII codes of each character.
+
+\rust{
+  context.type_ascii(&c.memory_editor_commands(COMMAND_ADDRESS));
+  // initialize empty buffer
+  context.type_ascii(&format!("W{:08X}\n", BUFFER_ADDRESS));
+  context.type_ascii("00000000\n");
+  // run text editor
+  context.type_ascii(&format!("W{:08X}\n", COMMAND_ADDRESS));
+  context.type_ascii("R");
+  context.type_ascii("WORLD");
+  context.type_keys(vec!["PageUp"]);
+  context.type_ascii("HELLO\n\t");
+  assert_eq!(display.borrow().get_text(), "hello\n  world");
+  context.type_keys(vec!["Escape"]);
+  context.type_ascii(&format!("W{:08X}\n", BUFFER_ADDRESS));
+  assert_eq!(display.borrow().get_text().lines().next().unwrap(),
+      "646C726F 77090A6F 6C6C6568 0000000C 20070000");
+}
+
+% do the same test with the program flashed with the boot assistant,
+% to check that instructions for doing so are correct.
+\rust{
+  context1.run_until_get_char();
+  context1.type_ascii(&c.memory_editor_commands(COMMAND_ADDRESS));
+  // initialize empty buffer
+  context1.type_ascii(&format!("W{:08X}\n", BUFFER_ADDRESS));
+  context1.type_ascii("00000000\n");
+  // run text editor
+  context1.type_ascii(&format!("W{:08X}\n", COMMAND_ADDRESS));
+  context1.type_ascii("R");
+  context1.type_ascii("WORLD");
+  context1.type_keys(vec!["PageUp"]);
+  context1.type_ascii("HELLO\n\t");
+  assert_eq!(context1.get_display().borrow().get_text(), "hello\n  world");
+  context1.type_keys(vec!["Escape"]);
+  context1.type_ascii(&format!("W{:08X}\n", BUFFER_ADDRESS));
+  assert_eq!(context1.get_display().borrow().get_text().lines().next().unwrap(),
+      "646C726F 77090A6F 6C6C6568 0000000C 20070000");
+}
+
+If something goes wrong, this is probably due to a typo when you entered the
+text editor code. In this case, with the memory editor, double check the code
+in flash memory by comparing it with the code shown at then end of the previous
+section. If you find an error, copy this code in RAM (with a small function
+using {\tt buffer\_copy}), fix the error with the memory editor, and save the
+code back in flash memory (with the {\tt save} function from the previous
+section).

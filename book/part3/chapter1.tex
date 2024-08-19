@@ -1,0 +1,786 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter1}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "flash_memory_driver.txt")?;
+}
+
+\chapter{Flash Memory Driver}\label{chapter:flash-driver}
+
+Before writing our toy compiler, as described in introduction, we need a way to
+save it in flash memory. In theory, our memory editor provides everything we
+need to do this. Indeed, as we have seen in the previous part, we can save a 64
+words page in flash memory by writing these words at their final address, and
+then by writing an appropriate value in the Enhanced Embedded Flash Controller
+(EEFC) Command Register (which has a well defined address in memory). All these
+steps can be done manually with the memory editor, but doing so would not be
+very practical. To make this is easier we provide in this chapter a few helper
+functions, called the flash memory driver. We use them at the end to store
+themselves in flash memory.
+
+\section{Overview}
+
+Due to the flash memory usage constraints, it is not practical to directly edit
+data here. Instead, what we can do is edit data in RAM, and then save it in
+flash memory. The latter step can be done automatically (see
+\cref{fig:flash-driver-overview}):
+\begin{itemize}
+\item copy the first 64 words of data from RAM to flash memory (we assume in
+this chapter that data is always saved at the beginning of a flash memory page),
+\item save them by writing the appropriate command in the EEFC Command Register,
+\item ...
+\item copy the last $n$ words of data from RAM to flash memory, and the $64-n$
+remaining words from flash memory to itself (recall that we cannot save a page
+without writing all its 64 words first),
+\item save them by writing the appropriate command in the EEFC Command Register.
+\end{itemize}
+
+Conversely, to edit data which is already in flash memory, we can copy it in
+RAM, edit it here, and then save it back. Note that these algorithms use two
+kinds of steps: copying memory from one address to another, and saving a page
+of flash memory. The rest of this section presents them in more detail.
+
+\begin{Figure}
+  \input{figures/chapter1/overview.tex}
+
+  \caption{Saving data (in dark blue) from RAM into flash memory must be done
+  page by page. Each 64 words page must be copied (dashed arrows) and then
+  saved. The unused words of the last page (light blue) must be copied in place
+  so that all the page words are written before it is saved (as required by the
+  EEFC component).}\label{fig:flash-driver-overview}
+\end{Figure}
+
+\subsection{Memory copy}
+
+As explained above, our flash memory driver needs a function to copy some data
+from one address to another. Our text editor, presented in the next chapter,
+also needs such a function. The former only needs to copy words, between two
+distinct memory regions. But the latter needs to copy bytes, between two
+regions which can overlap. To support both use cases, we present here a general
+memory copy algorithm.
+
+The basic algorithm to copy $n$ bytes starting at address $src$ to address
+$dst$ is very simple. We just need to store the byte loaded from address $src +
+i$ to address $dst + i$, for all $i \in [0,n[$. However, the order in which
+these operations are done is important if the source and destination regions
+overlap. Consider for instance the task of copying $n=10$ bytes from $src=4$ to
+$dst=7$ (see \cref{fig:mem-copy}). Starting by copying the byte at $src+0$ to
+$dst+0$ would override the byte at $src+3$, leading to an incorrect result. The
+solution is to copy the bytes in decreasing order, from $i=n-1$ to $i=0$.
+Conversely, copying $n=10$ bytes from $src=7$ to $dst=4$ must be done in
+increasing order (starting by copying the byte at $src+9$ to $dst+9$ would
+override the byte $src+6$). In summary, bytes must be copied in decreasing
+order if $dst \ge src$, and in increasing order otherwise. Note also that we
+can start by copying words, and use byte copies only for the last 1 to 3
+remaining bytes, leading to \cref{alg:mem-copy}.
+
+\begin{Algorithm}
+\caption{Copying $n$ bytes from $src$ to $dst$.}\label{alg:mem-copy}
+\begin{algorithmic}[1]
+\Begin if $dst < src$
+  \State initialize $i$ to 0
+  \State while $i+4 \le n$, copy the word at $src+i$ to $dst+i$ and then
+  increment $i$ by 4
+  \State while $i < n$, copy the byte at $src+i$ to $dst+i$ and then increment
+  $i$ by 1
+\Continue otherwise
+  \State initialize $i$ to n
+  \State while $i \ge 4$, decrement $i$ by 4 and then copy the word at $src+i$
+  to $dst+i$
+  \State while $i > 0$, decrement $i$ by 1 and then copy the byte at $src+i$ to
+  $dst+i$
+\End
+\end{algorithmic}
+\end{Algorithm}
+
+\begin{Figure}
+  \input{figures/chapter1/mem-copy.tex}
+
+  \caption{Copying 10 bytes (dark blue) from address 4 to address 7 in
+  increasing order (\ie, from byte 4 to byte 13) leads to incorrect results (in
+  red). Copying them in decreasing order, from byte 13 to byte 4, solves the
+  problem.}\label{fig:mem-copy}
+\end{Figure}
+
+\subsection{Page flash}\label{subsection:flash-subroutine}
+
+Once the 64 words of a page have been copied from RAM to flash memory, they can
+be saved by writing the appropriate value in the EEFC Command Register. One
+must then wait until the EEFC Status Register value is 1, indicating that the
+operation is done. During this time, the flash memory bank must not be used
+(see \cref{section:flash-controller}). Unfortunately, our virtual machine {\em
+is} in flash memory. Therefore, we can't use a bytecode function to read the
+EEFC Status Register (running it would require the microprocessor to read the
+ARM instructions of the virtual machine, \ie, would use the flash memory). A
+solution is to use a small subroutine made of ARM instructions, stored in RAM,
+to save a page in flash memory without using it. This subroutine can be
+implemented as follows:
+
+\rust{
+  const R0 : u32 = 0;
+  const R1 : u32 = 1;
+  let mut a = Assembler::new(0);
+  a.push_list(&[R0, R1], true);
+  a.ldr_rt_pc_imm8(R0, "command_register");
+  a.ldr_rt_pc_imm8(R1, "command_value");
+  a.str_rt_rn_imm5(R1, R0, 0); // stores R1 in mem[R0 + 0]
+  a.label("wait_ready");
+  a.ldr_rt_rn_imm5(R1, R0, 4); // loads mem[R0 + 4] into R1
+  a.cmp_rn_imm8(R1, 1);
+  a.if_then(Condition::NE, &[]);
+  a.b_imm11("wait_ready");
+  a.pop_list(&[R0, R1], true);
+  a.u16_data(0, "padding, unused");
+  a.label("command_register");
+  a.u32_data(EEFC1_FCR.address, "EEFC1 Command Register");
+  a.label("command_value");
+  a.u32_data(0x5A000003, "EEFC1 Command"); // Command value (must add page << 8)
+}
+\rs{a.get_listing(0..a.get_instruction_count() as usize)}
+
+It starts with a \arm{PUSH} to save the $\mathrm{R0}$ and $\mathrm{R1}$
+registers, as well as the Link Register (LR). It then loads the address of the
+EEFC Command Register in $\mathrm{R0}$, and the value to write into it in
+$\mathrm{R1}$, with two \arm{LDR} instructions (this data is stored just after
+the function itself). The next instruction actually stores this value in the
+Command Register, thereby starting the flashing process. The next \arm{LDR}
+instruction loads the value of the EEFC Status Register (whose address is 4
+bytes after the Command Register address, \ie, $\mathrm{R0}+4$). The following
+\arm{CMP} instruction compares this value with 1. If it is not equal to 1, the
+\arm{B} instruction jumps back to the \arm{LDR} instruction to read the Status
+Register again. Otherwise this instruction is skipped and the final \arm{POP}
+restores the $\mathrm{R0}$ and $\mathrm{R1}$ registers, and returns to the
+caller by moving the saved LR into the Program Counter (PC). The first data
+word after that contains the address of the EEFC1 Command Register (we want to
+store our compiler in the same flash memory bank as our basic input output
+system). The final word is the command to write at this address in order to
+flash the 0$^{th}$ page. To flash the $p^{th}$ page instead, $p$ should be put
+in bytes 1 and 2 of this word (\eg, to flash the $4^{th}$ page, use
+\hexa{5A000403} -- see \cref{section:flash-controller}). In summary, the
+complete code of this subroutine is:
+
+\rs{a.get_machine_code_listing(0..a.get_instruction_count() as usize)}
+
+\subsection{Data buffers}\label{subsection:data-buffer}
+
+In order to copy or save data we must know their address, but we must also know
+their size in bytes. To avoid having to manually keep track of this size, we
+can store it in memory too. One way to do this is to store it in a word located
+just before the data themselves (see \cref{fig:data-buffer}). This word is
+called a {\em header} or a {\em metadata} (because it is some data about other
+data). In the following we call this header and its associated data a {\em data
+buffer}. And we provide functions to copy and save data buffers.
+
+\begin{Figure}
+  \input{figures/chapter1/data-buffer.tex}
+
+  \caption{A data buffer containing 6 bytes of data (light blue), starting at
+  address 10, begins with a 4 bytes header (dark blue) containing the size of
+  the following data.}\label{fig:data-buffer}
+\end{Figure}
+
+\section{Implementation}\label{section:flash-memory-driver-impl}
+
+\rust{
+  let driver_address = next_page_address(
+      context.memory_region("memory_editor").end());
+}
+
+We can now implement the above algorithms. We do this in a data buffer, so that
+our flash memory driver can save itself. This buffer must be saved at the start
+of a page, as we assumed at the beginning. Lets use the next page after our
+memory editor, page \rs{dec(page_number(driver_address))}, starting at
+\rs{hex(driver_address)}. The code will thus start at
+\rs{hex(driver_address + 4)}, after the header.
+
+For \cref{alg:mem-copy} we need functions to load and store a single byte. We
+already have a \verb!load_byte! function (see \cref{table:bios_functions}), but
+we don't have a \verb!store_byte! one. We thus provide one, as follows:
+
+\rust{
+  let mut b = BytecodeAssembler::new(RegionKind::DataBuffer, driver_address);
+  b.import_labels(context.memory_region("graphics_card_driver"));
+}
+
+\begin{TwoColumns}
+\rs{b.func("store_byte", &["ptr", "value"], "", &[])}\\
+\bytecode{
+  // *ptr = (*ptr) & 0xFFFFFF00 | value
+  b.get("ptr");
+  b.get("ptr");
+  b.load();
+  b.cst(0xFFFFFF00);
+  b.and();
+  b.get("value");
+  b.or();
+  b.store();
+  b.ret();
+}
+\end{TwoColumns}
+
+This function loads the word at $ptr$, discards its 8 least significant bits
+(while keeping the others unchanged) by computing the bitwise AND of this word
+with \hexa{FFFFFF00}, replaces them with $value$ (supposed to be strictly less
+than 256) with a bitwise OR, and finally stores the result back at $ptr$. We
+then implement \cref{alg:mem-copy} in the following \verb!mem_copy!
+function:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("mem_copy", &["src", "dst", "n"], "dst+n", &[])}
+
+Step 1. If $dst \ge src$, go the second half of this function (see below).
+
+\bytecode[switchcolumn]{
+  // if dst < src
+  b.get("dst");
+  b.get("src");
+  b.ifge("mem_copy_forward");
+}
+
+Step 2. Initialize $i$ to 0.
+
+\bytecode[switchcolumn]{
+  b.cst_0();
+  b.def("i");
+}
+
+Step 3. If $i+4>n$, go to step 4 ($i$ is stored in the $7^{th}$ stack frame
+slot).
+
+\bytecode[switchcolumn]{
+  b.label("mem_copy_while1");
+  // while i + 4 <= n
+  b.get("i");
+  b.cst8(4);
+  b.add();
+  b.get("n");
+  b.ifgt("mem_copy_while2");
+}
+
+Otherwise, load the word at $src+i$ and store it at $dst+i$, $\ldots$
+
+\bytecode[switchcolumn]{
+  // *(dst + i) = *(src + i);
+  b.get("dst");
+  b.get("i");
+  b.add();
+  b.get("src");
+  b.get("i");
+  b.add();
+  b.load();
+  b.store();
+}
+
+$\ldots$ increment $i$ by 4, and go back above to check again if $i+4<n$.
+
+\bytecode[switchcolumn]{
+  // i = i + 4;
+  b.cst8(4);
+  b.add();
+  // end while
+  b.goto("mem_copy_while1");
+}
+
+Step 4. If $i \ge n$, go the end of the function (see below).
+
+\bytecode[switchcolumn]{
+  b.label("mem_copy_while2");
+  // while i < n
+  b.get("i");
+  b.get("n");
+  b.ifge("mem_copy_end");
+}
+
+Otherwise, load the byte at $src+i$ and store it at $dst+i$, $\ldots$
+
+\bytecode[switchcolumn]{
+  // store_byte(dst + i, load_byte(src + i));
+  b.get("dst");
+  b.get("i");
+  b.add();
+  b.get("src");
+  b.get("i");
+  b.add();
+  b.call("load_byte");
+  b.call("store_byte");
+}
+
+$\ldots$ increment $i$ by 1, and go back above to check again if $i<n$.
+
+\bytecode[switchcolumn]{
+  // i = i + 1;
+  b.cst_1();
+  b.add();
+  b.goto("mem_copy_while2");
+}
+\end{paracol}
+\end{Paragraph}
+
+The second half of the function is similar, and handles the case $dst \ge src$
+by copying data in decreasing order, as described in \cref{alg:mem-copy}:
+
+\begin{TwoColumns}
+\bytecode{
+  b.label("mem_copy_forward");
+  // let i = n;
+  b.get("n");
+  b.label("mem_copy_while3");
+  // while i >= 4
+  b.get("i");
+  b.cst8(4);
+  b.iflt("mem_copy_while4");
+  // i = i - 4;
+  b.cst8(4);
+  b.sub();
+  // *(dst + i) = *(src + i);
+  b.get("dst");
+  b.get("i");
+  b.add();
+  b.get("src");
+  b.get("i");
+  b.add();
+  b.load();
+  b.store();
+  // end while
+  b.goto("mem_copy_while3");
+  b.label("mem_copy_while4");
+  // while i > 0
+  b.get("i");
+  b.cst_0();
+  b.ifle("mem_copy_end");
+  // i = i - 1;
+  b.cst_1();
+  b.sub();
+  // store_byte(dst + i, load_byte(src + i));
+  b.get("dst");
+  b.get("i");
+  b.add();
+  b.get("src");
+  b.get("i");
+  b.add();
+  b.call("load_byte");
+  b.call("store_byte");
+  // end while
+  b.goto("mem_copy_while4");
+  b.label("mem_copy_end");
+}
+\end{TwoColumns}
+
+Both parts jump to the following final instructions when the copy is done.
+These instructions simply return $dst+n$:
+
+\begin{TwoColumns}
+\bytecode{
+  // return dst + n;
+  b.get("dst");
+  b.get("n");
+  b.add();
+  b.retv();
+}
+\end{TwoColumns}
+
+Using this memory copy function, it is easy to write a function to copy a data
+buffer from $src$ to $dst$. Indeed, we simply need to call \verb!mem_copy! with
+$src$, $dst$, and $n=\mathrm{mem32}[src]+4$, the total size of the data buffer
+(recall that $\mathrm{mem32}[x]$ means ``the 32 bit value at address $x$''):
+
+\begin{TwoColumns}
+\rs{b.func("buffer_copy", &["src", "dst"], "", &[])}\\
+\bytecode{
+  // mem_copy(src, dst, *src + 4);
+  b.get("src");
+  b.get("dst");
+  b.get("src");
+  b.load();
+  b.cst8(4);
+  b.add();
+  b.call("mem_copy");
+  b.ret();
+}
+\end{TwoColumns}
+
+We can now implement a function to copy and save a single page in flash memory.
+As described above, to save $n \le 256$ bytes, we must first copy them, then
+copy the remaining $256-n$ bytes of the page in place, and finally save the
+page by calling the subroutine defined in \cref{subsection:flash-subroutine}.
+For this, the subroutine must be stored somewhere in RAM first. The easiest
+solution is to store it on the stack. The following function uses this method
+to save $n$ bytes starting from $src$ in a page of the Flash1 memory bank
+specified by its $page$ index:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("page_flash", &["src", "page", "n"], "", &[])}
+
+If $n=0$ there is nothing to do, return right away. Otherwise execute the
+following instructions.
+
+\bytecode[switchcolumn]{
+  // if n == 0  return;
+  b.get("n");
+  b.cst_0();
+  b.ifne("page_flash_non_empty");
+  b.ret();
+  b.label("page_flash_non_empty");
+}
+
+Copy $n$ bytes from $src$ to $\hexa{C0000}+256.page$, the address of the
+$page^{th}$ page of the Flash1 memory bank. The \verb!mem_copy! call returns
+$dst=\hexa{C0000}+256.page+n$, in the $7^{th}$ stack frame slot.
+
+\bytecode[switchcolumn]{
+  // let dst = mem_copy(src, (0xC0000 as *u32) + (page << 8), n);
+  b.get("src");
+  b.cst(0xC0000);
+  b.get("page");
+  b.cst8(8);
+  b.lsl();
+  b.add();
+  b.get("n");
+  b.callr("mem_copy");
+  b.def("dst");
+}
+
+Copy the remaining $256-n$ bytes of the page in place, from $dst$ to $dst$, and
+discard the result returned by \verb!mem_copy!.
+
+\bytecode[switchcolumn]{
+  // mem_copy(dst, dst, 256 - n);
+  b.get("dst");
+  b.get("dst");
+  b.cst(0x100);
+  b.get("n");
+  b.sub();
+  b.callr("mem_copy");
+  b.pop();
+}
+
+Disable the USART interrupts with the Nested Vector Interrupt Controller (see
+\cref{section:nvic} and below).
+
+\bytecode[switchcolumn]{
+  // *(NVIC_ICER0 as *u32) = 0x20000;
+  b.cst(NVIC_ICER0);
+  b.cst(0x20000);
+  b.store();
+}
+
+Push the value to store in the EEFC1 Command Register in order to save the
+$page^{th}$ page: $\hexa{5A000003}\ |\ (page \ll 8)$.
+
+\bytecode[switchcolumn]{
+  // let command = 0x5A000003 | page << 8;
+  let asm_words = a.machine_code();
+  b.cst(asm_words[asm_words.len() - 1]);
+  b.get("page");
+  b.cst8(8);
+  b.lsl();
+  b.or();
+  b.def("command");
+  b.comment("");
+}
+
+Push the remaining words of the subroutine to save this page. These words must
+be pushed in reverse order, because each word is pushed 4 bytes {\em before}
+the previous one.
+
+\bytecode[switchcolumn]{
+  for i in (0..asm_words.len() - 1).rev() {
+    b.cst(asm_words[i]);
+    b.def(&if i == 0 { String::new() } else { format!("word{i}") });
+    b.comment("");
+  }
+}
+
+Call the subroutine, which starts in the
+\rs{dec(7 + asm_words.len() as u32)}$^{th}$ stack frame slot. Its {\em
+interworking address} is the address of this slot (given by the \insn{ptr}
+instruction), plus 1.
+
+\bytecode[switchcolumn]{
+  b.ptr("");
+  b.cst_1();
+  b.add(); // add one for interworking address
+  b.blx();
+}
+
+Re-enable the USART interrupts and return.
+
+\bytecode[switchcolumn]{
+  // *(NVIC_ISER0 as *u32) = 0x20000;
+  b.cst(NVIC_ISER0);
+  b.cst(0x20000);
+  b.store();
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+\noindent A few things should be noted:
+\begin{itemize}
+\item USART interrupts are temporarily disabled while the page is being saved.
+Without this, a key press or release during this time would run the
+\verb!keyboard_handler!, which would make use of the flash memory. In turn,
+this would cause a Hard Fault because flash memory must not be used while a
+page is being saved. Unfortunately, flashing a page takes a few milliseconds,
+during which several interrupts could occur. In this case they are lost, except
+the last one, which can confuse the keyboard driver. For instance, releasing
+the ``r'' key causes two interrupts, for the \hexa{F0} and \hexa{2D} scancodes.
+If the first is lost, this appears as a key press (see
+\cref{appendix:scancodes}). This problem disappears in the next part.
+
+\item we use \insn{callr} instead of \insn{call} instructions to call
+\verb!mem_copy!. The next section explains why (these instructions use an
+offset from their own address, instead of an offset from \hexa{C0000} -- see
+\cref{subsection:fn-instructions}).
+
+\item $n$ must be a multiple of 4, so that \verb!mem_copy! does not call
+\verb!store_byte!. Indeed, \verb!store_byte! does not work in flash memory,
+because loads do not ``see'' the effect of stores until the page is saved (see
+\cref{subsection:page-write}). If it was called several times to store the
+bytes of a word, only the last call would have any effect.
+\end{itemize}
+
+We can finally implement the last function of our flash memory driver, which
+copies a data buffer starting at $src$ and saves it in the Flash1 memory bank,
+starting at the $page^{th}$ page. This function simply calls \verb!page_flash!
+for each page.
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("buffer_flash", &["src", "page"], "", &[])}
+
+Compute the number of bytes $n$ to copy. This is $\mathrm{mem32}[src]+4$,
+rounded upwards to a multiple of 4 (as required by \verb!page_flash!), \ie,
+$(\mathrm{mem32}[src]+7)\ \wedge$ \hexa{FFFFFFFC}.
+
+\bytecode[switchcolumn]{
+  // let n = (*src + 7) & 0xFFFFFFFC;
+  b.get("src");
+  b.load();
+  b.cst8(7);
+  b.add();
+  b.cst(0xFFFFFFFC);
+  b.and();
+  b.def("n");
+}
+
+If $n$, in the $6^{th}$ stack frame slot, is greater than 255, jump to the next
+instructions. Otherwise, call \verb!page_flash! to copy and save $n$ bytes from
+$src$ into $page$, and return.
+
+\bytecode[switchcolumn]{
+  b.label("buffer_flash_loop");
+  // if n <= 255
+  b.get("n");
+  b.cst8(255);
+  b.ifgt("buffer_flash_full_page");
+  // page_flash(src, page, n); return;
+  b.get("src");
+  b.get("page");
+  b.get("n");
+  b.callr("page_flash");
+  b.ret();
+  b.label("buffer_flash_full_page");
+}
+
+Call \verb!page_flash! to copy and save $256$ bytes from $src$ into $page$.
+
+\bytecode[switchcolumn]{
+  // page_flash(src, page, 256);
+  b.get("src");
+  b.get("page");
+  b.cst(0x100);
+  b.callr("page_flash");
+}
+
+Increment $src$ by 256.
+
+\bytecode[switchcolumn]{
+  // src = src + 256;
+  b.get("src");
+  b.cst(0x100);
+  b.add();
+  b.set("src");
+}
+
+Increment $page$ by 1.
+
+\bytecode[switchcolumn]{
+  // page = page + 1;
+  b.get("page");
+  b.cst_1();
+  b.add();
+  b.set("page");
+}
+
+Decrement $n$ by 256 and go back above to copy the rest of the data buffer.
+
+\bytecode[switchcolumn,bigskip]{
+  // n = n - 256;
+  b.cst(0x100); // 55
+  b.sub();
+  // end loop
+  b.goto("buffer_flash_loop");
+}
+\end{paracol}
+\end{Paragraph}
+
+In summary, the main functions of our flash memory driver are those listed in
+\cref{table:flash_driver_functions}, and its full code is the following:
+
+\rs{b.get_bytecode_listing(0..b.get_instruction_count() as usize, false)}
+
+\rust{
+  let mut commands = Vec::new();
+  commands.extend(b.boot_assistant_commands());
+  commands.push(String::from("flash#"));
+  commands.push(String::from("reset#"));
+  write_lines("website/part3", "flash_memory_driver.txt", &commands)?;
+}
+
+\begin{Table}
+  \begin{tabular}{|l|l|} \hline
+    \makecell{\thead{Function}} & \thead{Address} \\ \hline
+    \rs{MemoryRegion::labels_table_rows(vec![&b.memory_region()])} \\ \hline
+  \end{tabular}
+
+  \caption{The most important functions of the flash memory
+    driver.}\label{table:flash_driver_functions}
+\end{Table}
+
+\section{Storage}\label{section:flash-driver-storage}
+
+\rust{
+  const RAM_ADDRESS: u32 = 0x20070000;
+  let mut context1 = context.clone();
+}
+
+Lets store our driver in flash memory. For this we must first enter it in RAM,
+say at address \rs{hex(RAM_ADDRESS)}, and then save it by calling the
+\verb!buffer_flash! function. In the memory editor, type
+``w\rs{hex_word_low(RAM_ADDRESS)}''+Enter, and then store the size of our
+driver at this address by typing
+``\rs{hex_word_low(b.bytecode_size())}''+Enter. Continue by entering each word
+of the driver code, listed above, by typing its value followed by Enter.
+
+\rust{
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+
+  context.add_memory_region("flash_driver", b.memory_region());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  context.type_ascii(&b.memory_editor_commands(RAM_ADDRESS));
+}
+
+Our driver is now in RAM. To save it in flash memory we must
+call \verb!buffer_flash!, at address
+$\rs{hex(b.label_address("buffer_flash"))} - \rs{hex(driver_address)} +
+\rs{hex(RAM_ADDRESS)}$, with $src=\rs{hex(RAM_ADDRESS)}$ and
+$page=\rs{dec(page_number(driver_address))}$. This can be done with the
+following function:
+
+\rust{
+  let mut c = BytecodeAssembler::default();
+}
+\begin{TwoColumns}
+\rs{c.func("save_driver", &[], "", &["nolink"])}\\
+\bytecode{
+  c.cst(RAM_ADDRESS);
+  c.cst8(page_number(driver_address).try_into().unwrap());
+  c.cst(b.label_address("buffer_flash") - driver_address + RAM_ADDRESS);
+  c.calld();
+  c.ret();
+}
+\end{TwoColumns}
+
+Note that the call to \verb!buffer_flash! causes indirect calls to
+\verb!page_flash! and \verb!mem_copy! which, for now, are in RAM. Hence, the
+instructions calling these functions cannot use their final address in flash
+memory, since they are not stored there yet! This is why we used \insn{callr}
+instructions instead of \insn{call} instructions in the above code. Indeed, by
+specifying the callee with an offset from the caller, the code works wherever
+it is stored, in RAM or in flash memory. Such code is called {\em position
+independent code}. The full code of the above function is the following:
+
+\rs{c.get_bytecode_listing(0..c.get_instruction_count() as usize, false)}
+
+\rust{
+  const COMMAND_ADDRESS: u32 = 0x20080000;
+}
+
+\noindent With the memory editor, enter these values in an unused RAM region,
+for instance starting at address \rs{hex(COMMAND_ADDRESS)}. Then type
+``w\rs{hex_word_low(COMMAND_ADDRESS)}''+Enter, followed by ``r'', to run this
+function. The driver should now be saved in flash memory. To check this, type
+``w\rs{hex_word_low(driver_address)}''+Enter. You should see the following
+screen, displaying the same words as those listed above, after the data buffer
+header:
+
+\rust{
+  context.type_ascii(&c.memory_editor_commands(COMMAND_ADDRESS));
+  context.type_ascii(&format!("W{:08X}\n", COMMAND_ADDRESS));
+  context.type_ascii("R");
+  context.type_ascii(&format!("W{:08X}\n", driver_address));
+}
+
+\rust{
+  let driver_display = display.borrow().get_text();
+  let first_line = driver_display.lines().next().unwrap();
+  let second_line = driver_display.lines().nth(1).unwrap();
+  assert!(first_line.ends_with(&format!("{:08X} {:08X} {:08X}",
+      context.memory_region("flash_driver").words[0],
+      context.memory_region("flash_driver").len - 4,
+      driver_address)));
+}
+
+\begin{Paragraph}
+\rs{med_page_row(first_line)}\\
+\rs{med_page_row(second_line)}\\
+{\tt ...}
+\end{Paragraph}
+
+\rust{
+  let display1 = Rc::new(RefCell::new(TextDisplay::new()));
+  context1.set_display(display1.clone());
+  context1.micro_controller().borrow_mut().reset();
+  context1.run_until_get_char();
+
+  let boot_mode_address = context.memory_region("foundations")
+      .label_address("boot_mode_select_rom");
+}
+
+Alternatively, if something went wrong or if you don't want to enter all the
+driver code with the keyboard, you can ``cheat'' by saving it via an external
+computer, as follows. First run the \verb!boot_mode_select_rom! function by
+typing ``w\rs{hex_word_low(boot_mode_address)}''+Enter, followed by ``r''. Then
+reset the Arduino and, on the host computer, run the following commands to
+flash the driver code and reset the Arduino again:
+
+\rust{
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+  let mut flash_helper = FlashHelper::from_file(
+    context1.micro_controller(), "website/", "part3/flash_memory_driver.txt")?;
+}
+\rs{host_log(&flash_helper.read())}
+
+Finally, on the Arduino, type ``w\rs{hex_word_low(driver_address)}''+Enter to
+check that the driver is indeed in flash memory: you should see the same screen
+as above.
+
+\rust{
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", driver_address));
+  let driver_display1 = display1.borrow().get_text();
+  let first_line1 = driver_display1.lines().next().unwrap();
+  assert_eq!(first_line1, first_line);
+}

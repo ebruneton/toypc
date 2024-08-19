@@ -1,0 +1,361 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter[Register and Memory Circuits]{Register and\\ Memory
+Circuits}\label{chapter:memory-circuits}
+
+The very basic Arithmetic Unit presented in the previous chapter can perform
+several operations, but only one at a time. To do a sequence of operations one
+has to memorize intermediate results, or to note them somewhere. For instance,
+to add $a$, $b$, and $c$, one has to set the inputs to $a$ and $b$, memorize
+the output $a+b$, and replace the inputs with $a+b$ and $c$ (changing the
+inputs immediately changes the output, hence one cannot directly ``copy'' it to
+an input). To avoid this mental or manual work, a solution is to use additional
+circuits to memorize intermediate results. This chapter explains how this can
+be done with logic gates.
+
+\section{Memory cells}
+
+\subsection{SR latch}
+
+A circuit which can memorize a single bit must have some inputs to set the
+value to memorize, and an output equal to the last memorized value, noted $Q$.
+One possibility is to use one input to {\em set} the memorized value to 1,
+noted $S$, and another to {\em reset} it to 0, noted $R$. Connecting $S$ to the
+power source should change $Q$ to 1, but connecting it to the ground should
+{\em not} change $Q$ to 0 (otherwise this circuit would have no ``memory'').
+Likewise, setting $R$ to 1 should reset $Q$ to 0, but setting it to 0 should
+not change $Q$. In particular, when both $S$ and $R$ are 0, $Q$ should keep its
+memorized value, which can be 0 or 1.
+
+The above requirements lead to a circuit whose output is not completely
+determined by its current inputs, unlike all the circuits presented so far
+(since $Q$ can be 0 or 1 when $S=R=0$). To achieve this a solution is to use a
+``hidden'' input equal to the last value of $Q$, noted $Q_\mathrm{last}$. Then
+$Q$ can be defined as a function of its inputs again ($Q=Q_\mathrm{last}$ if
+$S=R=0$). By definition $Q_\mathrm{last}$ is the last output of the circuit,
+which leads to a loop:
+
+\begin{center}
+  \input{figures/chapter3/sr-interface.tex}
+\end{center}
+
+When $S=R=0$, $Q$ should be equal to the $Q_\mathrm{last}$ input. For this the
+circuit in the above box cannot simply connect $Q$ to $Q_\mathrm{last}$, since
+an electric current cannot flow in a loop. A solution is to use two NOT gates
+in series instead. Indeed, this leads to a loop which has two stable states,
+$Q=0$ and $Q=1$:
+
+\begin{center}
+  \input{figures/chapter3/not-not-loop.tex}
+\end{center}
+
+To set $Q$ to 1 we need to force the output of the right NOT gate to 1 or,
+equivalently, to force the output of the left NOT gate to 0. The latter can be
+done by replacing the left NOT gate with a NOR gate connected to $S$:
+
+\begin{center}
+  \input{figures/chapter3/nor-not-loop.tex}
+\end{center}
+
+Indeed, this NOR gate behaves like a NOT gate when $S=0$ (since $\neg (x \vee
+0) = \neg x$), but forces its output to 0 when $S=1$ (because $\neg (x \vee 1)
+= 0$). Similarly, we can set $Q$ to 0 when $R=1$ by replacing the remaining NOT
+gate with a NOR gate connected to $R$. This yields the following circuit,
+called an {\em SR latch}:
+
+\begin{center}
+  \input{figures/chapter3/nor-nor-loop.tex}
+\end{center}
+
+If $S=R=1$ the two NOR gates force their output to 0. Switching from this state
+to $S=R=0$ make them behave as NOT gates again, but starting with their input
+and output equal to 0. This state is unstable: depending on which gate updates
+its output to 1 first, the end result can be $Q=0$ or $Q=1$ (or, in theory, an
+infinite oscillation between 0 and 1). For this reason $S$ and $R$ must not be
+set to 1 at the same time. Note that the above unstable state also occurs when
+the circuit is powered on. In the following we assume that the $R$ input of
+each SR latch is briefly set to 1 when circuits are powered on, so that their
+initial state is always 0.
+
+\subsection{D latch}
+
+Using set and reset inputs is only one possibility to change the memorized
+value $Q$. Another is to set $Q$ to the current value of some ``data'' input,
+noted $D$, when a ``copy'' input, noted $C$, is 1 (and to keep it unchanged
+when $C=0$). In other words, $Q$ should be set to 1 when $D=1$ and $C=1$,
+should be reset to 0 when $D=0$ and $C=1$, and should keep its value when
+$C=0$. This is easy to do with an SR latch and 3 more gates to convert $D$ and
+$C$ to appropriate values of $S$ and $R$:
+
+\begin{center}
+  \input{figures/chapter3/d-latch.tex}
+\end{center}
+
+This circuit is called a {\em D latch}. One advantage, compared to the SR
+latch, is that it does not have forbidden inputs such as $S=R=1$. Indeed,
+thanks to the gates in front of the SR latch, this case can never happen.
+
+\subsection{D flip-flop}
+
+As long as $C=1$, the output $Q$ of a D latch changes each time $D$ changes.
+This is not practical to memorize the value of $D$ at a precise moment, unless
+$C$ remains equal to 1 only for a very brief time (but long enough to allow the
+SR latch to stabilize to a potentially new state). To solve this issue, a
+possibility is to make sure that $D$ does not change while $C=1$. This can be
+done with two D latches in series, using opposite values for $C$, as shown
+below:
+
+\begin{center}
+  \input{figures/chapter3/d-flip-flop.tex}
+\end{center}
+
+\noindent Indeed:
+\begin{itemize}
+  \item when $C=1$ the output $D_1$ of the first D latch does not change when
+  $D$ changes, because $C_0=0$. Hence the output of the second D latch does not
+  change either, although its $C_1$ input is 1. In other words, the first D
+  latch makes sure that $D_1$ does not change while $C_1=1$, as required.
+
+  \item when $C=0$ the output $D_1$ of the first D latch changes each time $D$
+  changes, because $C_0=1$. But then $C_1=0$ and thus the output $Q$ of the
+  second D latch does not change.
+
+  \item when $C$ changes from 1 to 0, the first D latch memorizes the value of D
+  and its output $D_1$ changes to this potentially new value. But this takes
+  some time, whereas $C_1$ changes immediately when $C$ changes. Hence, when
+  $D_1$ changes, $C_1$ is already 0, and thus $Q$ does not change.
+
+  \item when $C$ changes from 0 to 1, the first D latch keeps its state, \ie,
+  $D_1$ remains equal to the current value of $D$ (this was the case since $C$
+  was last set to 0). But $C_1$ also changes from 0 to 1. The second D latch
+  thus memorizes $D$, and $Q$ changes to $D$.
+\end{itemize}
+
+In summary, this circuit\footnote{Other circuits can achieve the same effect,
+with less gates and transistors (especially with relays \cite{MerciaRelay}).},
+called a {\em D flip-flop}, memorizes the value of $D$ at the precise moment
+when $C$ changes from 0 to 1, and keeps its state otherwise. In the following,
+to simplify figures and to make it easier to distinguish memory cells, we
+represent SR latches and D flip-flops as shown in
+\cref{fig:memory-cells-symbols}.
+
+\begin{Figure}
+  \input{figures/chapter3/memory-cells-symbols.tex}
+
+  \caption{SR latches and D flip-flops are represented with their currently
+  memorized value inside a large black square. The D flip-flop symbol differs
+  from the SR latch symbol with a small black triangle on its $C$
+  input.}\label{fig:memory-cells-symbols}
+\end{Figure}
+
+\section{Memory circuits}
+
+To memorize an intermediate result of the Arithmetic Unit we need to memorize
+$n$ bits simultaneously. This is easy to do with $n$ flip-flops connected to
+the same $C$ input:
+
+\begin{center}
+  \input{figures/chapter3/register.tex}
+\end{center}
+
+This circuit is called a {\em register}. It memorizes its input when $C$
+changes from 0 to 1. Its output is the last memorized value.
+
+To memorize several intermediate results we can connect the $n$ outputs of the
+Arithmetic Unit to several $n$ bit registers. We can then choose in which
+register to store this output by activating the $C$ input of only one of these
+registers. For instance, the following circuit can store a 4-bit number in one
+of 3 registers:
+
+\begin{center}
+  \input{figures/chapter3/registers.tex}
+\end{center}
+
+However, getting the value from one these registers is not very easy because
+this circuit has too many output wires. To make it easier to use we can add one
+more input per register, to optionally connect its outputs to $n$ shared
+output wires. For this we can connect the $i^{th}$ flip flop of each register
+to a shared output wire $o_i$ via a normally open relay:
+
+\begin{center}
+  \input{figures/chapter3/registers2.tex}
+\end{center}
+
+Together with additional inputs $G_j$, connected to the control inputs of all
+the relays of the $j^{th}$ register, this allows connecting or disconnecting a
+whole register to the shared output wires. Normally open relays used in this
+way are called {\em tristate buffers} and are represented as shown in
+\cref{fig:tristate}. Their name comes from the fact that their output can have 3
+states: 0, 1, or ``disconnected''.
+
+\begin{Figure}
+  \input{figures/chapter3/tristate.tex}
+
+  \caption{The four possible input combinations of a tristate buffer and the
+  corresponding outputs (left). A tristate buffer is like a normally open relay
+  (right).}\label{fig:tristate}
+\end{Figure}
+
+In the above circuit $G_0$ and $G_1$ must not be simultaneously set to 1.
+Indeed, doing so could connect together the outputs of two flip flops with
+different states, resulting in a short circuit. More generally, with more than
+2 registers, at most one $G_j$ input must be set to 1 at a time. This can be
+done with a {\em binary decoder}. A binary decoder with $k$ inputs $a_0$,
+$a_1$, $\ldots$ $a_{k-1}$ has $2^k$ outputs $o_0$, $o_1$, $\ldots$ $o_{2^k-1}$.
+It sets its output $o_j$ to its $i$ input, and all the others to $0$, where $j$
+is the binary number $a_{k-1}\ldots a_1 a_0$. This circuit can be implemented
+with several demultiplexers, as illustrated in \cref{fig:binary-decoder}.
+
+\begin{Figure}
+  \input{figures/chapter3/binary-decoder.tex}
+
+  \caption{A binary decoder with 3 inputs. Here $a_2 a_1 a_0 = 110_2 = 6$,
+  hence $o_6=i$.}\label{fig:binary-decoder}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter3/ram-8-4.tex}
+
+  \caption{A Random Access Memory (RAM) storing eight 4-bit values. This
+    circuit currently reads the value at address $a_2a_1a_0=011_2=3$, namely
+    $1110_2$. Setting $w$ to 1 would write the input value $i_3i_2i_1i_0=1011_2$
+    at address $3$.}\label{fig:ram-8-4}
+\end{Figure}
+
+We can connect it to $2^k$ registers as shown in \cref{fig:ram-8-4}. This new
+circuit connects the outputs of the binary decoder to the $G_j$ inputs of the
+registers and, via AND gates connected to a new $w$ input, to their $C_j$
+inputs. This forms a {\em Random Access Memory} (RAM), called this way because
+it allows {\em reading} and {\em writing} (\ie, to get and set) values in any
+order. For instance, with the circuit in \cref{fig:ram-8-4}:
+\begin{itemize}
+  \item reading the value of the $j^{th}$ register can be done  by setting the
+  $a_2 a_1 a_0$ inputs to the bits of $j$ in binary. The value is then obtained
+  on the $o_3 o_2 o_1 o_0$ outputs. $j = a_2 a_1 a_0$ is called the {\em
+  address} of this register.
+
+  \item writing a value $v$ in the $j^{th}$ register can be done by setting
+  $i_3 i_2 i_1 i_0$ to the bits of $v$ in binary, by setting the $a_2 a_1 a_0$
+  inputs to the bits of $j$ in binary, and finally by changing $w$ from $0$ to
+  $1$. The last step changes the $C$ inputs of all the flip flops of the
+  $j^{th}$ register, making it memorize the shared inputs $i_3 i_2 i_1 i_0$.
+\end{itemize}
+
+This basic circuit uses one address per group of 4 bits. In practice, most
+computers use one address per group of 8 bits, called a {\em byte}. They also
+use much more than 3 bits per address. A 10-bit address can refer to
+$2^{10}=1024$ bytes, called a {\em kilobyte} (KB). A 20-bit address can refer
+to $1024$ kilobytes, called a {\em megabyte} (MB). And a 30-bit address can
+refer to one {\em gigabyte} (GB -- $1024$ megabytes).
+
+\section{Bus}
+
+The above RAM circuit can store several intermediate results, but it has only
+one input address and one output value. Hence it is not sufficient, for
+instance, to directly add or subtract two intermediate results with the
+Arithmetic Unit. To solve this we can use two separate registers as input of
+the Arithmetic Unit, provided we have a way to copy values from the RAM to one
+or the other of these registers.
+
+A circuit which can copy values from one register to another, or from a
+register to RAM or vice-versa, is called a {\em bus}. A 1-bit bus connecting
+$n$ flip-flops is easy to build. We just need to connect the $D$ input of each
+flip flop to a common wire, and to connect their $Q$ output to this same wire
+via a tristate buffer, as in the RAM circuit:
+
+\begin{center}
+  \input{figures/chapter3/bus-1.tex}
+\end{center}
+
+The above circuit can copy the value from A to B by setting readA to 1 and then
+by changing writeB from 0 to 1. The first step connects A's output to the bus
+and thus to the D input of B. The second step memorizes this value in B.
+Conversely, this circuit can copy the value from B to A by setting readB to 1
+and then by changing writeA from 0 to 1. It easy to generalize to 3 or more
+flip-flops. It can also be generalized to an $n$-bit bus, to copy values
+between 2 or more $n$-bit registers, or the RAM. For instance, the circuit in
+\cref{fig:bus-3} can copy values between two 3-bit registers. It is made of
+three copies of the 1-bit bus, with shared ``read'' and ``write'' inputs.
+Copying 3-bit values from A to B or vice versa can be done as with the 1-bit
+bus.
+
+To maintain a register connected in ``read mode'' to the bus we can memorize
+the ``read'' inputs in SR latches. And, to make it easier to read another
+register, we can connect the S input of each latch to the R input of all the
+others (so that setting one resets the others -- as in the RAM, at most one
+register must be connected to the bus at a time). For instance, the circuit in
+\cref{fig:bus-controller} sets readA to 1, readB to 0, and readC to 0 when
+selectA is 1, and keeps them in this state even if selectA is reset to 0.
+Similarly, it sets readB (resp. readC) to 1, and resets the others to 0, when
+selectB (resp. selectC) is 1. At most one ``select'' input must be set to 1 at
+a time.
+
+\begin{Figure}
+  \input{figures/chapter3/bus-3.tex}
+
+  \caption{A 3-bit bus (right) connected to two 3-bit registers
+    (left).}\label{fig:bus-3}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter3/bus-controller.tex}
+
+  \caption{A possible ``controller'' for a 3-bit bus, to maintain one of the 3
+  registers connected to the bus.}\label{fig:bus-controller}
+\end{Figure}
+
+\section{Example}\label{subsection:alu-and-ram-example}
+
+\begin{Figure}
+  \input{figures/chapter3/alu-and-ram.tex}
+
+  \caption{A 3-bit Arithmetic Unit (bottom) connected to 3 input bits (top
+  right), a 4 values RAM (top left), and 2 registers R0 and R1 (middle), via a
+  bus (right).}\label{fig:alu-and-ram}
+\end{Figure}
+
+We can now use the circuits presented in this chapter to memorize the
+intermediate results of an Arithmetic and Logic Unit (ALU). The circuit in
+\cref{fig:alu-and-ram} connects the ALU from \cref{fig:alu} (with 3 bits only
+to simplify) to 3 input bits, a RAM, and two registers named R0 and R1, via a
+bus, as schematized in \cref{fig:alu-and-ram-schema}.
+
+Thanks to the bus, this circuit can copy values from any source (Input, RAM,
+R0, or the ALU's output) to any sink (RAM, R0, or R1), which gives $4*3=12$
+possibilities. For example, computing $a+b-c$ can be done as follows:
+\begin{itemize}
+  \item set the input to $a$ and copy it in R0. For this, first send a {\em
+  pulse} on selectINPUT (\ie, set it to 1 for a short time and then reset it to
+  0). Then send a pulse on writeR0 (this memorizes $a$ when writeR0 changes
+  from 0 to 1).
+
+  \item set the input to $b$ and copy it in R1 by sending a pulse on writeR1
+  (there is no need to send a pulse on selectINPUT first since the bus
+  controller keeps the last selected source connected).
+
+  \item set and maintain ``subtract'' to 0, send a pulse on selectALU, and wait
+  a short time until the ALU has computed $a+b$. Then store the result in R0 by
+  sending a pulse on writeR0.
+
+  \item set the input to $c$ and copy it in R1 by sending a pulse on
+  selectINPUT, followed by a pulse on writeR1.
+
+  \item set and maintain ``subtract'' to 1, send a pulse on selectALU, and wait
+  a short time until the ALU has computed $a+b$ (in R0) minus $c$ (in R1). Then
+  store the result in R0 by sending a pulse on writeR0.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter3/alu-and-ram-schema.tex}
+
+  \caption{The block diagram corresponding to
+  \cref{fig:alu-and-ram}.}\label{fig:alu-and-ram-schema}
+\end{Figure}
+
+At this stage we can use the is\_not\_zero and carry outputs, for instance, to
+test if $a+b-c$ is equal to 0, or to compare $a+b$ and $c$. We can also store
+$a+b-c$ in RAM for later use. For this it suffice to send a pulse on selectR0,
+followed by a pulse on $w$, after having set $a_1a_0$ to the desired
+destination address.

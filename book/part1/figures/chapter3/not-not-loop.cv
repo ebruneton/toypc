@@ -1,0 +1,660 @@
+{
+"name": "not-not-loop",
+"timePeriod": 500,
+"clockEnabled": true,
+"projectId": "eM8t9vZwtph4B7QOp6PS",
+"focussedCircuit": 75333945284,
+"orderedTabs": [
+"75333945284"
+],
+"scopes": [
+{
+"layout": {
+"width": 100,
+"height": 100,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": 590,
+"y": 310,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+2,
+14
+]
+},
+{
+"x": 600,
+"y": 330,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+9
+]
+},
+{
+"x": 590,
+"y": 280,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0,
+4
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+5
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+2
+]
+},
+{
+"x": 740,
+"y": 290,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+3,
+6,
+13
+]
+},
+{
+"x": 740,
+"y": 270,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+5,
+7
+]
+},
+{
+"x": 600,
+"y": 270,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+6,
+8
+]
+},
+{
+"x": 600,
+"y": 290,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+7,
+10
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1
+]
+},
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+8
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+12
+]
+},
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+11
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+5
+]
+},
+{
+"x": 600,
+"y": 310,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0
+]
+},
+{
+"x": 950,
+"y": 310,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+17,
+29
+]
+},
+{
+"x": 960,
+"y": 330,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+24
+]
+},
+{
+"x": 950,
+"y": 280,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+15,
+19
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+20
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+17
+]
+},
+{
+"x": 1100,
+"y": 290,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+18,
+21,
+28
+]
+},
+{
+"x": 1100,
+"y": 270,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+20,
+22
+]
+},
+{
+"x": 960,
+"y": 270,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+21,
+23
+]
+},
+{
+"x": 960,
+"y": 290,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+22,
+25
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+16
+]
+},
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+23
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+27
+]
+},
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+26
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+20
+]
+},
+{
+"x": 960,
+"y": 310,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+15
+]
+}
+],
+"id": 75333945284,
+"name": "Main",
+"Input": [
+{
+"x": 560,
+"y": 280,
+"objectType": "Input",
+"label": "S",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 4
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 20,
+"id": "xMNeSbz6XDEzlfItokIM"
+}
+]
+}
+},
+{
+"x": 560,
+"y": 330,
+"objectType": "Input",
+"label": "R",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 9
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 40,
+"id": "FCrqqkyEwALcyFcP9vGV"
+}
+]
+}
+},
+{
+"x": 920,
+"y": 280,
+"objectType": "Input",
+"label": "S",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 19
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 60,
+"id": "cHx48ak7ikYh4FXLpTYD"
+}
+]
+}
+},
+{
+"x": 920,
+"y": 330,
+"objectType": "Input",
+"label": "R",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 24
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1,
+{
+"x": 0,
+"y": 80,
+"id": "5s4OWjFnb0JO4QDDAjfD"
+}
+]
+}
+}
+],
+"Output": [
+{
+"x": 770,
+"y": 290,
+"objectType": "Output",
+"label": "Q",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 3
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 20,
+"id": "sTlrlYRPGHO445W6vJhg"
+}
+]
+}
+},
+{
+"x": 1130,
+"y": 290,
+"objectType": "Output",
+"label": "Q",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"inp1": 18
+},
+"constructorParamaters": [
+"LEFT",
+1,
+{
+"x": 100,
+"y": 40,
+"id": "iDXPrvWcd97FrPPY217f"
+}
+]
+}
+}
+],
+"NotGate": [
+{
+"x": 630,
+"y": 290,
+"objectType": "NotGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "UP",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 11,
+"inp1": 10
+}
+}
+},
+{
+"x": 690,
+"y": 290,
+"objectType": "NotGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "DOWN",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 13,
+"inp1": 12
+}
+}
+},
+{
+"x": 990,
+"y": 290,
+"objectType": "NotGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "DOWN",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 26,
+"inp1": 25
+}
+}
+},
+{
+"x": 1050,
+"y": 290,
+"objectType": "NotGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "UP",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 28,
+"inp1": 27
+}
+}
+}
+],
+"Text": [
+{
+"x": 620,
+"y": 330,
+"objectType": "Text",
+"label": "???",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"???",
+14
+]
+}
+},
+{
+"x": 980,
+"y": 330,
+"objectType": "Text",
+"label": "???",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"???",
+14
+]
+}
+}
+],
+"Rectangle": [
+{
+"x": 580,
+"y": 260,
+"objectType": "Rectangle",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+9,
+17
+]
+}
+},
+{
+"x": 940,
+"y": 260,
+"objectType": "Rectangle",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+9,
+17
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": [
+0,
+1,
+2,
+5,
+6,
+7,
+8,
+14,
+15,
+16,
+17,
+20,
+21,
+22,
+23,
+29
+]
+}
+]
+}

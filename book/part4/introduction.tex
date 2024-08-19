@@ -1,0 +1,90 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter*{Introduction}
+\addcontentsline{toc}{chapter}{Introduction}
+
+We now have a toy programming language, hereafter called Toy, which makes it
+much easier to program our computer (compared to what it was at the end of
+\cref{part:computer}). In particular, we no longer need to manually keep track
+of function addresses, instruction offsets, local variable indices, etc.
+However, we still need to manually keep track of the flash memory content with
+maps such as the one in \cref{fig:final-toyc-memory-map}. This is necessary to
+find unused memory regions where new programs can be stored, without overriding
+existing programs or data. Likewise, we need to manually keep track of the RAM
+content with maps such as the one in \cref{fig:command-editor-memory-map}. This
+is necessary to find unused RAM regions where programs can store their data,
+without overriding the data of other programs. This manual work is quite
+tedious and error prone. The main goal of this part is thus to implement a
+program which can do it for us. Such a program is called an {\em operating
+system}.
+
+In the previous part we removed the need of function addresses and local
+variable indices by using symbolic names for functions and local variables, and
+by letting the compiler maintain a map between the two. We can do the same for
+programs or other data stored in flash memory. More precisely, we can use {\em
+file names} to refer to pieces of data stored in flash memory, hereafter called
+{\em files}, and let the operating system maintain a map between file names and
+flash memory addresses. This map must obviously be stored in flash memory too,
+otherwise it would be lost after a reset. The precise way of storing it, as
+well as the files themselves, is called a {\em file system}.
+
+In summary, the main goal of this part is to implement a toy operating system,
+based on a file system. Another goal is to eventually get rid of our bytecode
+interpreter, since we can now compile programs into native code, which is much
+faster than bytecode. This implies rewriting the drivers and programs from the
+previous parts, written directly in binary bytecode form, into Toy source code.
+We achieve these goals in seven steps, presented in as many chapters:
+
+\begin{itemize}
+\item \cref{chapter:file-system} defines of a toy file system and provides
+corresponding functions to create, read, write, and delete files. We use
+them at the end to initialize a new, empty file system in the Flash0 memory
+bank (so far we only used the Flash1 bank -- see
+\cref{fig:sam3x8e,fig:boot-memory-map}).
+
+\item \cref{chapter:boot-loader-and-drivers} provides a new implementation, in
+Toy, of the clock, graphics card, and keyboard drivers from
+\cref{part:computer}. We test them at the end with a small program which simply
+displays on the screen each key typed on the keyboard, as in
+\cref{chapter:keyboard}. This time, however, we compile it in native code, and
+we store it in our file system. We also implement a {\em boot loader} to start
+it directly after reset, without going through the memory editor.
+
+\item \cref{chapter:processes} provides functions to start and stop programs
+stored in the file system, while keeping track of the RAM used by each running
+program, called {\em processes}. Together with the file system and driver
+functions, they constitute the first version of a program called the operating
+system {\em kernel}. This chapter also provides a way for processes to use
+services provided by the kernel.
+
+\item \cref{chapter:streams} extends the kernel with new services providing a
+simple, unified, and safe way to use the computer resources. These include the
+keyboard, the graphics card, and the files. All these resources are
+used via byte sequences called {\em streams}.
+
+\item \cref{chapter:shell} provides a better and easier to use version of the
+command editor, called a {\em command-line interpreter}, or {\em shell}. This
+program is automatically started by the kernel after a reset. Its role is to
+start other programs, with commands typed by the user. This chapter also
+provides a new implementation of the text editor from
+\cref{chapter:text-editor}, in Toy. Together with the Toy compiler and the
+shell, stored in the file system, this gives an autonomous, {\em self-hosted}
+operating system. This means that we can edit and recompile its entire source
+code with itself, without needing the bytecode interpreter, the memory editor,
+or any other program written in the previous parts.
+
+\item \cref{chapter:memory-protection} illustrates this self-hosting property by
+using the shell, the text editor, and the compiler, running with the operating
+system, to replace its kernel with a new version. This new version uses the
+Memory Protection Unit from the microcontroller to protect the kernel and each
+program from bugs in other programs.
+
+\item \cref{chapter:utilities} completes our operating system with a few small
+utility programs, in particular to list, copy, and delete files. It also
+provides a better shell version.
+\end{itemize}
+
+Finally, just for fun, we conclude this book with a small game implemented with
+our toy computer, in \cref{chapter:snake-game}.

@@ -1,0 +1,79 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="60mm" viewBox="0 0 145 60" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="16" height="10" x="86" y="18" fill="#ebebeb"/>
+    <rect width="16" height="10" x="1" y="28" fill="#cccccc"/>
+    <rect width="16" height="5" x="1" y="38" fill="#9a9a9a"/>
+    <rect width="16" height="15" x="1" y="13" fill="#ebebeb"/>
+    <text x="76" y="8" text-anchor="middle">call C</text>
+    <text x="2" y="4" font-size="3.5px">stack</text>
+    <text x="9" y="22" text-anchor="middle">arg1</text>
+    <text x="9" y="27" text-anchor="middle">arg0</text>
+    <text x="18" y="37">B</text>
+    <text x="18" y="27">C</text>
+    <text x="18" y="42">A</text>
+    <text x="67" y="37">B</text>
+    <text x="67" y="42">A</text>
+    <text x="103" y="37">B</text>
+    <text x="103" y="27">C</text>
+    <text x="103" y="42">A</text>
+    <text x="139" y="37">B</text>
+    <text x="139" y="42">A</text>
+    <text x="9" y="17" text-anchor="middle">v0</text>
+    <text x="9" y="42" text-anchor="middle">...</text>
+    <path d="M 1,6 1,43" stroke="#000000"/>
+    <path d="m 17,6 0,37" stroke="#000000"/>
+    <path d="M 1,23 H 17" stroke="#000000"/>
+    <path d="M 1,38 H 17" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 1,28 H 17" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 1,18 H 17" stroke="#000000"/>
+    <path d="M 1,13 H 17" stroke="#000000"/>
+    <rect width="16" height="20" x="50" y="18" fill="#cccccc"/>
+    <rect width="16" height="5" x="50" y="38" fill="#9a9a9a"/>
+    <text x="58" y="22" text-anchor="middle">arg1</text>
+    <text x="58" y="27" text-anchor="middle">arg0</text>
+    <text x="58" y="42" text-anchor="middle">...</text>
+    <path d="M 50,23 H 66" stroke="#000000"/>
+    <path d="M 50,38 H 66" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 50,18 H 66" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 50,28 H 66" stroke="#000000"/>
+    <rect width="16" height="10" x="86" y="28" fill="#cccccc"/>
+    <rect width="16" height="5" x="86" y="38" fill="#9a9a9a"/>
+    <text x="94" y="22" text-anchor="middle">arg1</text>
+    <text x="94" y="27" text-anchor="middle">arg0</text>
+    <text x="94" y="42" text-anchor="middle">...</text>
+    <path d="m 86,23 h 16" stroke="#000000"/>
+    <path d="m 86,38 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 86,28 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 86,18 h 16" stroke="#000000"/>
+    <rect width="16" height="15" x="122" y="23" fill="#cccccc"/>
+    <rect width="16" height="5" x="122" y="38" fill="#9a9a9a"/>
+    <text x="130" y="27" text-anchor="middle">result</text>
+    <text x="130" y="42" text-anchor="middle">...</text>
+    <text x="9" y="36" text-anchor="middle">...</text>
+    <text x="58" y="36" text-anchor="middle">...</text>
+    <text x="94" y="36" text-anchor="middle">...</text>
+    <text x="130" y="36" text-anchor="middle">...</text>
+    <path d="m 122,28 h 16" stroke="#000000"/>
+    <path d="m 122,38 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 122,23 h 16" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 103,10 h 18" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 50,6 V 43" stroke="#000000"/>
+    <path d="M 66,6 V 43" stroke="#000000"/>
+    <path d="M 86,6 V 43" stroke="#000000"/>
+    <path d="M 102,6 V 43" stroke="#000000"/>
+    <path d="M 122,6 V 43" stroke="#000000"/>
+    <path d="M 138,6 V 43" stroke="#000000"/>
+    <path d="M 67,10 H 85" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="112" y="8" text-anchor="middle">return</text>
+  </g>
+</svg>

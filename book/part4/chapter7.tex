@@ -1,0 +1,1473 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter7}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "utilities.txt")?;
+}
+
+\chapter{Utilities}\label{chapter:utilities}
+
+As illustrated in the previous chapter, our operating system provides
+everything we need to edit, compile, and run programs, including its kernel.
+However, it is not very practical to use. For instance, to delete a file, one
+has to write a program doing this, compile it, and run it. This is a lot of
+work for a simple task. Fortunately, once this is done, this program can be
+reused to delete any file (provided it takes the name of the file to delete as
+command line argument). For instance, with such a program named ``{\tt
+delete}'' we can simply type ``{\tt delete foo.txt}'' in the shell to delete
+``{\tt foo.txt}''. This chapter provides this program, as well as a few others
+performing other simple tasks such as copying a file or listing all the files.
+It also provides a few small compiler and shell improvements.
+
+\section{Split}
+
+The above utility programs need to parse their command line arguments and to
+make system calls. We improved the compiler in \cref{chapter:shell} so that
+the functions doing this could be stored in a separate source file, shared by
+several programs. It now remains to create this shared file, before
+implementing the programs using it.
+
+The shell already contains the code we want to put in this file, namely the
+{\tt entry} function, the {\tt sh\_read\_token} function, and the system call
+functions. It also contains other functions which could be shared, such as
+those drawing text on the screen, or allocating and copying memory.
+Unfortunately we have no way to copy paste text, to avoid rewriting this code
+from scratch in new files. We could implement such a functionality, but a much
+simpler method is to write a program to split a file in several parts. This is
+what we do in this section.
+
+\subsection{Requirements}
+
+The ``{\tt split}'' program must take as argument the name of the file to
+split. This file must contain the name and content of each part, separated by
+``\verb!~!''. For instance
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+\toy{
+file1.txt~lorem ipsum
+dolor sit amet
+~file2.txt~consectetur
+adipiscing elit
+}%toy
+
+\noindent should be split in a ``{\tt file1.txt}'' file containing
+
+\toy{
+lorem ipsum
+dolor sit amet
+}%toy
+
+\noindent and a ``{\tt file2.txt}'' file containing
+
+\toy{
+consectetur
+adipiscing elit
+}%toy
+
+\noindent Furthermore, the original file should remain unchanged.
+
+\subsection{Implementation}
+
+In order to implement this program we need to rewrite one last time some of the
+functions we want to share (but not all of them, making this program still
+worth the effort -- see their description in the previous chapters):
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+\toy{
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32;
+fn exit(result: u32) -> u32;
+
+fn entry(heap: &u32, heap_limit: &u32) {
+  let args = heap + 4;
+  let args_end = args + *heap;
+  heap = (((args_end as u32 + 3) >> 2) << 2) as &u32;
+  exit(main(args, args_end, heap, heap_limit));
+}
+
+fn load8(ptr: &u32) -> u32 [ /*LDRB_R0_R0_0*/30720; /*MOV_PC_LR*/18167; ]
+
+fn sh_read_token(src_p: &&u32, src_end: &u32, length: &u32) -> &u32 {
+  let src = *src_p;
+  while src < src_end && load8(src) == ' ' { src = src + 1; }
+  if src >= src_end { return null; }
+  let token = src;
+  while src < src_end && load8(src) != ' ' { src = src + 1; }
+  *length = src - token;
+  *src_p = src;
+  return token;
+}
+
+const OK: u32 = 0;
+const INVALID_ARGUMENT: u32 = 1;
+const OUT_OF_MEMORY: u32 = 5;
+fn status(result: u32) -> u32 { return result >> 24; }
+
+fn system_call(id: u32, args: &u32) -> u32 [
+  /*SVC*/ 57088;
+  /*MOV_PC_LR*/ 18167;
+]
+fn exit(result: u32) -> u32 {
+  return system_call(1, &result);
+}
+fn open(name: &u32, length: u32, mode: u32) -> u32 {
+  return system_call(4, &name as &u32);
+}
+fn read(stream_id: u32, buffer: &u32, size: u32) -> u32 {
+  return system_call(5, &stream_id);
+}
+fn write(stream_id: u32, buffer: &u32, size: u32) -> u32 {
+  return system_call(6, &stream_id);
+}
+fn close(stream_id: u32) -> u32 {
+  return system_call(7, &stream_id);
+}
+}%toy
+
+We can then implement the actual functionality of this program. It is simple
+enough to be entirely included in the {\tt main} function. We start by getting
+the name of the file to split from the command line arguments, and by reading
+as many bytes as possible from this file. We return an error if the file name
+argument is missing, if the file cannot be opened or read, or cannot be read
+entirely (supporting the case of files which do not fit in RAM is more complex
+and not needed):
+
+\toy{
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 \{
+  let length = 0;
+  let name = sh_read_token(&args, args_end, &length);
+  if name == null { return INVALID_ARGUMENT; }
+
+  let stream = open(name, length, 'r');
+  if status(stream) != OK { return status(stream); }
+  length = read(stream, heap, heap_limit - heap);
+  close(stream);
+  if status(length) != OK { return status(length); }
+  if length == heap_limit - heap { return OUT_OF_MEMORY; }
+}%toy
+
+We then use a loop to split each part. At the beginning of each iteration, {\tt
+src} and {\tt ptr} point to the first character of the name of the next file to
+create. Then {\tt ptr} is advanced to the next ``\verb!~!''. The file name is
+thus between {\tt src} and {\tt ptr} (excluded), and a stream is opened to
+write into this file. Finally, {\tt src} and {\tt ptr} are advanced to the
+character after the ``\verb!~!'', {\tt ptr} is advanced to the next
+``\verb!~!'' again, and the content, between {\tt src} and {\tt ptr}
+(excluded), is written to the stream:
+
+\toy{
+  let src = heap;
+  let src_end = src + length;
+  let ptr = src;
+  while src < src_end {
+    while ptr < src_end && load8(ptr) != '~' { ptr = ptr + 1; }
+    if ptr == src_end { return INVALID_ARGUMENT; }
+    stream = open(src, ptr - src, 'w');
+    if status(stream) != OK { return status(stream); }
+    src = ptr + 1;
+    ptr = src;
+    while ptr < src_end && load8(ptr) != '~' { ptr = ptr + 1; }
+    length = write(stream, src, ptr - src);
+    close(stream);
+    if status(length) != OK { return status(length); }
+    src = ptr + 1;
+    ptr = src;
+  }
+  return OK;
+\}
+}%toy
+
+\subsection{Compilation and tests}
+
+Type ``{\tt edit split.toy}'' and enter the above source code. Then save it and
+compile it with ``{\tt toyc split split.toy}''. If necessary, repeat these
+steps until the compilation is successful. To split the shell source code,
+first type ``{\tt edit shell.toy}'' and edit it as follows:
+
+\rust{
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  assert_eq!(display.borrow().get_text(), ">");
+
+  // Create small program to split large files
+  context.type_ascii("EDIT SPLIT.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  // Step 2: compile it
+  context.type_ascii("TOYC SPLIT SPLIT.TOY\n");
+  assert_eq!(display.borrow().get_text(), ">toyc split split.toy\n>");
+
+  let mut shell_src = context.get_file_content("shell.toy");
+  shell_src = String::from("src/base.toy~") + &shell_src;
+  shell_src = shell_src.replace( //{
+    "}\n\nfn gpu_set_register(id: u32, value: u32) {",
+    "}\n~src/gpu.toy~fn gpu_set_register(id: u32, value: u32) {",
+  );
+  shell_src = shell_src.replace(
+   "}\n\nfn mem_allocate(size: u32, heap_p: &&u32, heap_limit: &u32) -> &u32 {",
+    "}\n~src/memory.toy~fn mem_allocate(size: u32, heap_p: &&u32, \
+     heap_limit: &u32) -> &u32 {",
+  );
+  shell_src = shell_src.replace(
+    "}\n\nconst NUM_COMMANDS: u32 = 4;", //{
+    "}\n~src/shell/shell.toy~const NUM_COMMANDS: u32 = 4;",
+  );
+
+  // Edit shell.toy to prepare for split
+  context.type_ascii("EDIT SHELL.TOY\n");
+  context.enter_text_editor_text(&shell_src);
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+}
+\rs{code_raw(&Transpiler5::split_changes(&shell_src))}
+
+Then type ``{\tt split shell.toy}'' to actually split it. This should create
+three files ``{\tt src/base.toy}'', ``{\tt src/gpu.toy}'', and ``{\tt
+src/memory.toy}'', intended to be shared, plus a ``{\tt src/shell/shell.toy}''
+file for the shell itself.
+
+To check that this worked, type ``{\tt toyc shell2
+src/base.toy src/gpu.toy src/memory.toy src/shell/shell.toy}'' to compile a new
+shell program from these parts. There should be no error, and typing ``{\tt
+shell2 test}'' should launch a new shell, printing ``{\tt test}''.
+
+\rust{
+  context.type_ascii("SPLIT SHELL.TOY\n");
+  context.type_ascii("TOYC SHELL2 SRC/BASE.TOY SRC/GPU.TOY SRC/MEMORY.TOY \
+      SRC/SHELL/SHELL.TOY\n");
+  assert_eq!(display.borrow().get_text(),
+      ">toyc shell2 src/base.toy src/gpu.toy \
+      src/memory.toy src/shell/shell.toy\n>");
+  context.type_ascii("SHELL2 TEST\n");
+  assert_eq!(display.borrow().get_text(), ">shell2 test\n test\n>");
+}
+
+The beginning of the text editor contains the same code as in the ``{\tt
+src/base.toy}'' and ``{\tt src/gpu.toy}'' files above. We can thus delete it
+and use these files instead, to reduce the total amount of code. For this the
+fastest way is to split the text editor source code in two parts and simply
+discard the first part. To this end, type ``{\tt edit edit.toy}'' and edit this
+code as follows:
+
+\rust{
+  let mut ted_src = context.get_file_content("edit.toy");
+  ted_src = String::from("trash.txt~") + &ted_src;
+  ted_src = ted_src.replace( //{
+    "}\n\nfn mem_copy(src: &u32, dst: &u32, n: u32) {",
+    "}\n~src/edit/edit.toy~fn mem_copy(src: &u32, dst: &u32, n: u32) {",
+  ); //}
+
+  // Edit edit.toy to prepare for split
+  context.type_ascii("EDIT EDIT.TOY\n");
+  context.enter_text_editor_text(&ted_src);
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+}
+\rs{code_raw(&Transpiler5::split_changes(&ted_src))}
+
+Then type ``{\tt split edit.toy}'' to actually split it. To check that this
+worked, type ``{\tt toyc edit2 src/base.toy src/gpu.toy src/edit/edit.toy}'' to
+compile a new text editor program from these parts. There should be no error,
+and typing ``{\tt edit2 src/edit/edit.toy}'' should open the new text editor
+code.
+
+\rust{
+  context.type_ascii("SPLIT EDIT.TOY\n");
+  context.type_ascii("TOYC EDIT2 SRC/BASE.TOY SRC/GPU.TOY SRC/EDIT/EDIT.TOY\n");
+  assert_eq!(
+      display.borrow().get_text(),
+      ">toyc edit2 src/base.toy src/gpu.toy src/edit/edit.toy\n>");
+  context.type_ascii("EDIT2 SRC/EDIT/EDIT.TOY\n");
+  assert!(display.borrow().get_text().starts_with("fn mem_copy("));
+  context.type_keys(vec!["Escape", "N"]);
+}
+
+\section{Reboot}
+
+We can now implement some utility programs to make our operating system easier
+to use. We start here with a program to reboot the computer. We don't really
+need one to reboot the operating system -- we can simply use the RESET button
+instead -- but rebooting with the Boot Assistant is useful. For instance, this
+can be used to make a copy of the Flash memory on an external computer, to save
+work done on the Arduino. The following program uses the {\tt reboot} system
+call to reboot with the operating system or with the Boot Assistant (if run
+with the ``{\tt -rom}'' command line argument). Thanks to the shared files
+created above we only need to implement the {\tt main} function, which should
+be self-explanatory:
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+static USAGE = ['U','s','a','g','e',':',' ',
+  'r','e','b','o','o','t',' ','[','-','r','o','m',']'];
+
+static ROM = ['-','r','o','m'];
+
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 {
+  let length = 0;
+  let argument = sh_read_token(&args, args_end, &length);
+  let mode = 0; /*Flash*/
+  if argument != null {
+    if length != 4 || *argument != *ROM {
+      write(STANDARD_OUTPUT, USAGE, 20);
+      return INVALID_ARGUMENT;
+    }
+    mode = 1; /*ROM*/
+  }
+  return status(reboot(mode));
+}
+}%toy
+
+Type ``{\tt edit src/reboot/reboot.toy}'', enter this code, save it, and
+compile it with ``{\tt toyc reboot src/base.toy src/reboot/reboot.toy}''. To
+test it, type ``{\tt reboot}'', and then ``{\tt reboot -rom}''. The system
+should become unresponsive, because the Boot Assistant should now be running
+instead of the operating system. To reboot again with the operating system, run
+the following command on an external computer (see
+\cref{section:clock-driver-experiments}):
+
+\rust{
+  t.write_toy5("website/sources/reboot.txt")?;
+  // Create new utility program
+  context.type_ascii("EDIT SRC/REBOOT/REBOOT.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  // Compile it
+  context.type_ascii("TOYC REBOOT SRC/BASE.TOY SRC/REBOOT/REBOOT.TOY\n");
+  assert_eq!(
+      display.borrow().get_text(),
+      ">toyc reboot src/base.toy src/reboot/reboot.toy\n>"
+  );
+  context.type_ascii("REBOOT -ROM");
+  context.send_scancode(0x5A /* 'Enter' scancode */);
+  context.micro_controller().borrow_mut().run_until_reset_or(|_, _, _| false);
+  let mut flash_helper = FlashHelper::new(context.micro_controller());
+  flash_helper.write("reset#");
+}
+\rs{host_log(&flash_helper.read())}
+
+\rust{
+  context.run_until_get_char();
+  assert_eq!(display.borrow().get_text(), ">");
+}
+
+\section{Delete}
+
+The ``{\tt delete}'' utility deletes the file whose name is given as command
+line argument. It is as simple as the previous one:
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+static USAGE = ['U','s','a','g','e',':',' ',
+  'd','e','l','e','t','e',' ','f','i','l','e'];
+
+static CANT_DELETE = ['C','a','n',''','t',' ','d','e','l','e','t','e',' '];
+
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 {
+  let length = 0;
+  let name = sh_read_token(&args, args_end, &length);
+  if name == null {
+    write(STANDARD_OUTPUT, USAGE, 18);
+    return INVALID_ARGUMENT;
+  }
+  let result = status(delete(name, length));
+  if result != OK {
+    write(STANDARD_OUTPUT, CANT_DELETE, 13);
+    write(STANDARD_OUTPUT, name, length);
+  }
+  return result;
+}
+}%toy
+
+Type ``{\tt edit src/delete/delete.toy}'', enter this code, save it, and
+compile it with ``{\tt toyc delete src/base.toy src/delete/delete.toy}''. To
+test it, type ``{\tt delete trash.txt}'' to delete the ``{\tt trash.txt}'' file
+produced above while splitting the text editor. Typing this command again
+should give an error because the file no longer exists.
+
+\rust{
+  t.write_toy5("website/sources/delete.txt")?;
+  // Create new utility program
+  context.type_ascii("EDIT SRC/DELETE/DELETE.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  // Compile it
+  context.type_ascii("TOYC DELETE SRC/BASE.TOY SRC/DELETE/DELETE.TOY\n");
+  assert_eq!(
+      display.borrow().get_text(),
+      ">toyc delete src/base.toy src/delete/delete.toy\n>");
+
+  // Test it to delete 'trash.txt'
+  context.type_ascii("DELETE TRASH.TXT\n");
+  context.type_ascii("DELETE TRASH.TXT\n");
+  assert_eq!(
+      display.borrow().get_text(),
+      ">delete trash.txt\nCan't delete trash.txt\n>");
+}
+
+\section{Copy}
+
+The ``{\tt copy}'' utility copies a file into another. It takes as command line
+arguments the names of these files, starting with the source one. It reads as
+many bytes as possible from the source file, writes them to the destination
+file, and repeats this until all bytes of the source file are read. It thus
+supports files which do not fit in RAM. Its source code is longer than that of
+the previous utility programs, but should still be easy to understand:
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+fn write_error(src1: &u32, length1: u32, src2: &u32, length2: u32, \
+result: u32) -> u32 {
+  write(STANDARD_OUTPUT, src1, length1);
+  write(STANDARD_OUTPUT, src2, length2);
+  return status(result);
+}
+
+static USAGE = ['U','s','a','g','e',':',' ',
+  'c','o','p','y',' ','s','r','c',' ','d','s','t'];
+
+static CANT_OPEN = ['C','a','n',''','t',' ','o','p','e','n',' '];
+static CANT_READ = ['C','a','n',''','t',' ','r','e','a','d',' '];
+static CANT_WRITE = ['C','a','n',''','t',' ','w','r','i','t','e',' '];
+
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 {
+  let src_length = 0;
+  let dst_length = 0;
+  let src_name = sh_read_token(&args, args_end, &src_length);
+  let dst_name = sh_read_token(&args, args_end, &dst_length);
+  if src_name == null || dst_name == null {
+    write(STANDARD_OUTPUT, USAGE, 19);
+    return INVALID_ARGUMENT;
+  }
+  let buffer = heap;
+  let buffer_size = heap_limit - heap;
+  if buffer_size < 64 { return OUT_OF_MEMORY; }
+
+  let src_stream = open(src_name, src_length, 'r');
+  if status(src_stream) != OK {
+    return write_error(CANT_OPEN, 11, src_name, src_length, src_stream);
+  }
+  let dst_stream = open(dst_name, dst_length, 'w');
+  if status(dst_stream) != OK {
+    return write_error(CANT_OPEN, 11, dst_name, dst_length, dst_stream);
+  }
+  let n = 0;
+  let result = 0;
+  loop {
+    n = read(src_stream, buffer, buffer_size);
+    if status(n) != OK {
+      return write_error(CANT_READ, 11, src_name, src_length, n);
+    }
+    result = write(dst_stream, buffer, n);
+    if status(result) != OK {
+      return write_error(CANT_WRITE, 12, dst_name, dst_length, result);
+    }
+    if n < buffer_size { return OK; }
+  }
+}
+}%toy
+
+Type ``{\tt edit src/copy/copy.toy}'', enter this code, save it, and
+compile it with ``{\tt toyc copy src/base.toy src/copy/copy.toy}''. To
+test it, type ``{\tt copy src/copy/copy.toy test.txt}'' to copy its own source
+code to a new file. Check that this worked with ``{\tt edit test.txt}''.
+
+\rust{
+  t.write_toy5("website/sources/copy.txt")?;
+  // Create new utility program
+  context.type_ascii("EDIT SRC/COPY/COPY.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  // Compile it
+  context.type_ascii("TOYC COPY SRC/BASE.TOY SRC/COPY/COPY.TOY\n");
+  assert_eq!(
+      display.borrow().get_text(),
+      ">toyc copy src/base.toy src/copy/copy.toy\n>"
+  );
+
+  // Test it to copy 'src/copy/copy.toy'
+  context.type_ascii("COPY SRC/COPY/COPY.TOY TEST.TXT\n");
+  context.type_ascii("EDIT TEST.TXT\n");
+  assert!(display.borrow().get_text().contains(
+      "'c','o','p','y',' ','s','r','c',' ','d','s','t'"));
+  context.type_keys(vec!["Escape", "N"]);
+}
+
+\section{List}
+
+The ``{\tt list}'' utility prints the name of each file and directory in a
+given ``directory''. Here we call ``directory'' a component of a file name
+before a slash. For instance, the file ``{\tt src/copy/copy.toy}'' is
+considered as a ``{\tt copy.toy}'' file inside the ``{\tt copy}'' directory,
+itself inside the ``{\tt src}'' directory, itself inside the {\em root}
+directory (whose name is empty). Thus, for instance, listing the files and
+directories in the root directory should give ``{\tt src}'', but not ``{\tt
+src/copy}'' or ``{\tt src/copy/copy.toy}'' (since ``{\tt copy}'' and ``{\tt
+copy.toy}'' are not inside the root directory). Similarly, listing the files
+and directories in ``{\tt src}'' should give ``{\tt copy}'', but not ``{\tt
+src}'' or ``{\tt copy/copy.toy}''.
+
+We start this utility with the ``{\tt mem\_compare}'' function, already used in
+the compiler, and needed later on (an alternative is to add it in ``{\tt
+src/memory.toy}''):
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+fn mem_compare(ptr1: &u32, ptr2: &u32, size: u32) -> u32 {
+  let i = 0;
+  while i < size && load8(ptr1 + i) == load8(ptr2 + i) {
+    i = i + 1;
+  }
+  return size - i;
+}
+}%toy
+
+The next function computes the length of the first component of a file name,
+\ie, until the first slash (included), if there is one. For instance, it
+returns 4 for ``{\tt src/copy/copy.toy}'', whose first component is ``{\tt
+src/}'' (we include the slash to distinguish directory names from file names).
+It returns 8 for ``{\tt copy.toy}'', which has only one component.
+
+\toy{
+fn get_first_component_length(name: &u32, length: u32) -> u32 {
+  let i = 0;
+  while i < length && load8(name + i) != '/' { i = i + 1; }
+  if i < length { i = i + 1; }
+  return i;
+}
+}%toy
+
+The {\tt main} function starts by checking that the command line argument, if
+any, is a directory {\em path}. That is, a list of directory names separated by
+slashes and ending with a slash (such as ``{\tt src/copy/}''):
+
+\toy{
+static USAGE = ['U','s','a','g','e',':',' ',
+  'l','i','s','t',' ','[','p','a','t','h','/',']'];
+
+static SEPARATOR = [' ',' '];
+
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 \{
+  let path_length = 0;
+  let path = sh_read_token(&args, args_end, &path_length);
+  if path_length > 0 && load8(path + path_length - 1) != '/' {
+    write(STANDARD_OUTPUT, USAGE, 19);
+    return INVALID_ARGUMENT;
+  }
+}%toy
+
+It then uses a loop to get the (full) name of each file in the file system, one
+by one (by reading the root directory -- see \cref{subsection:file-streams}).
+If this full name starts with the path given as argument, it then gets the
+length of the first component of the rest of this name. Finally, if this
+component has not already been written during the last iteration, it writes it
+to standard output.
+
+As an example, let's assume that the input path is ``{\tt src/}'' and that
+there are 4 files ``{\tt copy}'', ``{\tt src/base.toy}'', ``{\tt
+src/copy/copy.toy}'', and ``{\tt src/copy/help.txt}''. The above loop skips the
+first because it does not start with the input path. It writes ``{\tt
+base.toy}'' for the second one (the first component after the input path), and
+``{\tt copy/}'' for the third. And it does nothing for the fourth one because
+``{\tt copy/}'' has already been written at the previous iteration.
+
+\toy{
+  const MAX_NAME_LENGTH: u32 = 256;
+  let name = mem_allocate(MAX_NAME_LENGTH, &heap, heap_limit);
+  let last_item = mem_allocate(MAX_NAME_LENGTH, &heap, heap_limit);
+  if name == null || last_item == null { return OUT_OF_MEMORY; }
+
+  let stream = open(name, 0, 'r');
+  let length = read(stream, name, MAX_NAME_LENGTH);
+  let last_length = 0;
+  let item: &u32 = null;
+  while length != 0 {
+    if length > path_length && mem_compare(name, path, path_length) == 0 {
+      item = name + path_length;
+      length = get_first_component_length(item, length - path_length);
+      if length != last_length || mem_compare(item, last_item, length) != 0 {
+        write(STANDARD_OUTPUT, item, length);
+        write(STANDARD_OUTPUT, SEPARATOR, 2);
+        mem_copy_non_overlapping(item, last_item, length);
+        last_length = length;
+      }
+    }
+    length = read(stream, name, MAX_NAME_LENGTH);
+  }
+  return OK;
+\}
+}%toy
+
+Type ``{\tt edit src/list/list.toy}'', enter the above code, save it, and
+compile it with ``{\tt toyc list src/base.toy src/memory.toy
+src/list/list.toy}''. To test it, type ``{\tt list}'', ``{\tt list src/}'', or
+``{\tt list dst/}'', for example.
+
+\rust{
+  t.write_toy5("website/sources/list.txt")?;
+  // Create new utility program
+  context.type_ascii("EDIT SRC/LIST/LIST.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  // Compile it
+  context.type_ascii(
+      "TOYC LIST SRC/BASE.TOY SRC/MEMORY.TOY SRC/LIST/LIST.TOY\n");
+  assert_eq!(
+      display.borrow().get_text(),
+      ">toyc list src/base.toy src/memory.toy src/list/list.toy\n>");
+
+  // Test it
+  context.type_ascii("LIST\n");
+  assert_eq!(display.borrow().get_text(),
+      ">list\nboot.toy  copy  delete  edit  edit.toy  edit2  hello  hello.toy  \
+      list  reboot  shell  shell.toy  she\nll2  split  split.toy  src/  \
+      test.txt  toyc  toyc.toy  toys  toys.toy\n>");
+
+  context.type_ascii("LIST SRC/\n");
+  assert!(display.borrow().get_text().contains("base.toy  "));
+  assert!(display.borrow().get_text().contains("edit/  "));
+
+  context.type_ascii("LIST DST/\n");
+  assert_eq!(display.borrow().get_text(), ">list dst/\n>");
+
+  context.type_ascii("LIST SRC\n");
+  assert_eq!(display.borrow().get_text(), ">list src\nUsage: list [path/]\n>");
+}
+
+\section{Stat}
+
+Our last utility program, ``{\tt stat}'', gives some statistics about the file
+whose name is given as command line argument. More precisely, it prints the
+number of bytes and the number of lines of this file. It supports files which
+do not fit in RAM by reading them in several steps if necessary.
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+
+We start with a function counting the number of lines between {\tt src} and
+{\tt src\_end} (excluded). This function counts the number of ``new line''
+characters. More precisely, to avoid counting a ``new line'' at the very end of
+a file as one line, it counts the number of characters which are immediately
+preceded by a ``new line''. This requires knowing the character just before
+{\tt src}, for files read in several steps. This is the purpose of {\tt
+*last\_char} which, on return, contains the last character before {\tt
+src\_end}:
+
+\toy{
+const NEW_LINE: u32 = 10;
+
+fn line_count(src: &u32, src_end: &u32, last_char: &u32) -> u32 {
+  let count = 0;
+  while src < src_end {
+    if *last_char == NEW_LINE { count = count + 1; }
+    *last_char = load8(src);
+    src = src + 1;
+  }
+  return count;
+}
+}%toy
+
+The next functions, copied from our compiler (see
+\cref{subsection:toyc-process}), are needed to write the file statistics as
+decimal numbers, or an error message if an error occurs:
+
+\toy{
+fn write_integer(x: u32) {
+  let quotient = x / 10;
+  x = x - 10 * quotient + '0';
+  if quotient > 0 { write_integer(quotient); }
+  write(STANDARD_OUTPUT, &x, 1);
+}
+fn write_error(src1: &u32, length1: u32, src2: &u32, length2: u32, \
+result: u32) -> u32 {
+  write(STANDARD_OUTPUT, src1, length1);
+  write(STANDARD_OUTPUT, src2, length2);
+  return status(result);
+}
+}%toy
+
+The {\tt main} function reads as many bytes as possible from the source file,
+adds the number of bytes (resp. lines) in this chunk to the total number of
+bytes (resp. lines), and repeat these steps until the whole file is read:
+
+\toy{
+static USAGE = ['U','s','a','g','e',':',' ',
+  's','t','a','t',' ','f','i','l','e'];
+
+static CANT_OPEN = ['C','a','n',''','t',' ','o','p','e','n',' '];
+static CANT_READ = ['C','a','n',''','t',' ','r','e','a','d',' '];
+static BYTES = [' ','b','y','t','e','s',' '];
+static LINES = [' ','l','i','n','e','s'];
+
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 {
+  let length = 0;
+  let name = sh_read_token(&args, args_end, &length);
+  if name == null {
+    write(STANDARD_OUTPUT, USAGE, 16);
+    return INVALID_ARGUMENT;
+  }
+  let buffer = heap;
+  let buffer_size = heap_limit - heap;
+  if buffer_size < 64 { return OUT_OF_MEMORY; }
+
+  let stream = open(name, length, 'r');
+  if status(stream) != OK {
+    return write_error(CANT_OPEN, 11, name, length, stream);
+  }
+  let n = 0;
+  let bytes = 0;
+  let lines = 0;
+  let last_char = NEW_LINE;
+  loop {
+    n = read(stream, buffer, buffer_size);
+    if status(n) != OK {
+      return write_error(CANT_READ, 11, name, length, n);
+    }
+    bytes = bytes + n;
+    lines = lines + line_count(buffer, buffer + n, &last_char);
+    if n < buffer_size { break; }
+  }
+  write_integer(bytes);
+  write(STANDARD_OUTPUT, BYTES, 7);
+  write_integer(lines);
+  write(STANDARD_OUTPUT, LINES, 6);
+  return OK;
+}
+}%toy
+
+Type ``{\tt edit src/stat/stat.toy}'', enter the above code, save it, and
+compile it with ``{\tt toyc stat src/base.toy src/stat/stat.toy}''. To test it,
+type ``{\tt stat src/stat/stat.toy}'', for example.
+
+\rust{
+  t.write_toy5("website/sources/stat.txt")?;
+  // Create new utility program
+  context.type_ascii("EDIT SRC/STAT/STAT.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  // Compile it
+  context.type_ascii("TOYC STAT SRC/BASE.TOY SRC/STAT/STAT.TOY\n");
+  assert_eq!(
+      display.borrow().get_text(),
+      ">toyc stat src/base.toy src/stat/stat.toy\n>");
+
+  context.type_ascii("STAT SRC/STAT/STAT.TOY\n");
+  assert!(display.borrow().get_text().contains(" bytes "));
+  assert!(display.borrow().get_text().contains(" lines"));
+}
+
+\section{Compiler improvements}
+
+Our compiler starts with the same functions as in the shared ``{\tt
+src/base.toy}'' file (we added them in \cref{subsection:toyc-process}). To
+avoid this duplicated code we can remove them and use the shared file instead.
+For this the easiest way is to split the compiler source code and to discard
+the first part, as we did for the text editor. To do this, and to split the
+second part in smaller, more manageable files, type edit ``{\tt edit
+toyc.toy}'' and edit this code as follows:
+
+\rust{
+  let mut toyc_src = context.get_file_content("toyc.toy");
+  toyc_src = String::from("trash.txt~") + &toyc_src;
+  toyc_src = toyc_src.replace( //{
+    "}\n\nfn panic_result() -> u32 [", //{
+    "}\n~src/toyc/base.toy~fn panic_result() -> u32 [",
+  );
+  toyc_src = toyc_src.replace( //{
+    "}\n\nstatic TC_CHAR_TYPES = [", //{
+    "}\n~src/toyc/scanner.toy~static TC_CHAR_TYPES = [",
+  );
+  toyc_src = toyc_src.replace( //{
+    "}\n\nfn mem_allocate(size: u32, ptr_p: &&u32, ptr_limit: &u32) -> &u32 {",
+    "}\n~src/toyc/backend.toy~fn mem_allocate(size: u32, ptr_p: &&u32, \
+     ptr_limit: &u32) -> &u32 {", //}
+  );
+  toyc_src = toyc_src.replace( //{
+    "}\n\nfn sym_lookup(symbol: &Symbol, name: &u32, length: u32) -> &Symbol {",
+    "}\n~src/toyc/parser.toy~fn sym_lookup(symbol: &Symbol, name: &u32, \
+     length: u32) -> &Symbol {", //}
+  );
+  toyc_src = toyc_src.replace( //{
+    "}\n\nfn write_integer(x: u32) {",
+    "}\n~src/toyc/toyc.toy~fn write_integer(x: u32) {", //}
+  );
+  context.type_ascii("EDIT TOYC.TOY\n");
+  context.enter_text_editor_text(&toyc_src);
+  context.type_keys(vec!["Escape", "Y"]);
+}
+\rs{code_raw(&Transpiler5::split_changes(&toyc_src))}
+
+Finally, type ``{\tt split toyc.toy}'' to actually split it. We can now take
+advantage of this to reduce the amount of RAM required by the compiler. Indeed,
+the compiler currently loads all its input files in RAM, next to each other
+(\cref{fig:toyc6-memory-map}). However, after a source file has been compiled
+it is no longer needed, and we could delete it from RAM before loading the next
+one. This would reduce the memory need to the size of the largest source file,
+instead of their total size. But there is a catch: the symbol names are
+pointers to the source code (see \cref{fig:toyc1-symbols-list}). And they are
+still needed after a file has been compiled (so that its symbols can be used in
+the next files). To solve this issue we need to copy the symbol names somewhere
+else before discarding the source code.
+
+For this, type ``{\tt edit src/toyc/parser.toy}'' and add the following
+function at the end of this file. This function copies the names of each symbol
+in the list starting with {\tt symbol}, up to {\tt end\_symbol} (excluded). It
+copies each name in the compiler's heap. It also copies the names of the
+``nested'' symbols, such as the field names in a {\tt struct} symbol (see
+\cref{fig:struct-symbol}). Note that the parameter names in a {\tt fn} symbol
+(see \cref{fig:function-symbol}) are no longer needed after the corresponding
+function has been compiled.
+
+\rust{
+  context.type_ascii("SPLIT TOYC.TOY\n");
+
+  let mut t =
+  Transpiler5::new_str(&context.get_file_content("src/toyc/parser.toy"));
+  t.add_unchanged("fn sym_lookup(", "EOF");
+}
+
+\toy{
+fn tc_copy_symbol_names(self: &Compiler, symbol: &Symbol, end_symbol: &Symbol) {
+  let name_copy: &u32 = null;
+  let i = 0;
+  while symbol != end_symbol {
+    name_copy = mem_allocate(symbol.length, &self.heap, self.heap_limit);
+    i = 0;
+    while i < symbol.length {
+      store8(name_copy + i, load8(symbol.name + i));
+      i = i + 1;
+    }
+    symbol.name = name_copy;
+    if symbol.kind == SYM_STRUCT {
+      tc_copy_symbol_names(self, symbol.type, null);
+    }
+    symbol = symbol.next;
+  }
+}
+}%toy
+
+\rust{
+  context.type_ascii("EDIT SRC/TOYC/PARSER.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+
+  let mut t =
+      Transpiler5::new_str(&context.get_file_content("src/toyc/toyc.toy"));
+  t.add_unchanged("fn write_integer(", "fn main(");
+}
+
+Then type ``{\tt edit src/toyc/toyc.toy}'' and implement the above idea by
+updating the {\tt main} function as follows:
+
+\toy{
+@fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 {
+...@  let out_length = 0;
+...@  let in_length = 0;
+...@  let out = sh_read_token(&args, args_end, &out_length);
+...@  let in = sh_read_token(&args, args_end, &in_length);
+...@  if out == null || in == null {
+...@    write(STANDARD_OUTPUT, USAGE, 36);
+...@    return INVALID_ARGUMENT;
+...@  }
+@  const MAX_CODE_SIZE: u32 = 12288;
+  const MAX_HEAP_SIZE: u32 = 24576;
+@  const MIN_SRC_SIZE: u32 = 256;
+...@  heap_limit = heap_limit - 512;
+...@  if heap_limit < heap + MAX_CODE_SIZE + sizeof(Compiler) \
++ MAX_HEAP_SIZE + MIN_SRC_SIZE {
+...@    return OUT_OF_MEMORY;
+...@  }
+...@  let error = 0;
+...@  let dst = heap;
+...@  let compiler = (dst + MAX_CODE_SIZE) as &Compiler;
+...@  compiler.dst = dst;
+...@  compiler.dst_limit = compiler as &u32;
+...@  compiler.heap = compiler.dst_limit + sizeof(Compiler);
+...@  compiler.heap_limit = compiler.heap + MAX_HEAP_SIZE;
+...@  compiler.symbols = null;
+...@  let src = compiler.heap_limit;
+...@  error = panic_result();
+...@  if error != 0 {
+...@    write(STANDARD_OUTPUT, ERROR, 6);
+...@    write_integer(error);
+...@    if in == null { return error; }
+...@    write(STANDARD_OUTPUT, AT, 4);
+...@    write_integer(compiler.src - src);
+...@    return write_error(IN, 4, in, in_length, error);
+...@  }
+@  let stream = 0;
+@  let src_size = 0;
+  let last_copied_symbol = compiler.symbols;
+@  while in != null {
+...@    stream = open(in, in_length, 'r');
+...@    if status(stream) != OK {
+...@      return write_error(CANT_OPEN, 11, in, in_length, status(stream));
+...@    }
+...@    src_size = read(stream, src, heap_limit - src);
+...@    close(stream);
+...@    if status(src_size) != OK || src_size == heap_limit - src {
+...@      return write_error(CANT_READ, 11, in, in_length, status(src_size));
+...@    }
+...@    compiler.src = src - 1;
+...@    compiler.src_end = src + src_size;
+...@    tc_read_char(compiler);
+...@    tc_read_token(compiler);
+...@    tc_parse_program(compiler);
+@    in = sh_read_token(&args, args_end, &in_length);
+    tc_copy_symbol_names(compiler, compiler.symbols, last_copied_symbol);
+    last_copied_symbol = compiler.symbols;
+@  }
+...@  tc_check_symbols(compiler.symbols, null);
+...@  stream = open(out, out_length, 'w');
+...@  if status(stream) != OK {
+...@    return write_error(CANT_OPEN, 11, out, out_length, status(stream));
+...@  }
+...@  let n = write(stream, dst, compiler.dst - dst);
+...@  if status(n) != OK {
+...@    return write_error(CANT_WRITE, 12, out, out_length, status(n));
+...@  }
+...@  return OK;
+@}
+}%toy
+
+That is, remove the ``{\tt src = src + src\_size;}'' statement so that each new
+source file is loaded ``on top'' of the previous one. And replace it with a
+call to the above function to copy the symbol names not already copied in
+previous iterations. Also, to make space for the copied names in the {\tt
+Compiler}'s heap, increase its size from 18 to 24~KB.
+
+\rust{
+  context.type_ascii("EDIT SRC/TOYC/TOYC.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+}
+
+To test these changes, type ``{\tt toyc toyc2 src/base.toy src/toyc/base.toy
+src/toyc/scanner.toy src/toyc/backend.toy src/toyc/parser.toy src/to yc
+/toyc.toy}'' to recompile the compiler from these new source files, into a new
+program. There should be no error. Finally, to check that ``{\tt toyc2}'' works
+correctly, use it to recompile itself with ``{\tt toyc2 toyc src/base.toy
+src/toyc/base.toy src/toyc/scanner.toy src/toyc/backend.toy src/toyc/parser.toy
+src/to yc/toyc.toy}''. You can then use ``{\tt delete}'' to delete the ``{\tt
+toyc.toy}'', ``{\tt trash.txt}'', and ``{\tt toyc2}'' files, no longer needed.
+
+\rust{
+  context.type_ascii("TOYC TOYC2 SRC/BASE.TOY SRC/TOYC/BASE.TOY \
+      SRC/TOYC/SCANNER.TOY SRC/TOYC/BACKEND.TOY SRC/TOYC/PARSER.TOY \
+      SRC/TOYC/TOYC.TOY\n");
+  assert_eq!(display.borrow().get_text(), ">toyc toyc2 src/base.toy \
+      src/toyc/base.toy src/toyc/scanner.toy src/toyc/backend.toy \
+      src/toyc/parser\n.toy src/toyc/toyc.toy\n>");
+
+  context.type_ascii("TOYC2 TOYC SRC/BASE.TOY SRC/TOYC/BASE.TOY \
+      SRC/TOYC/SCANNER.TOY SRC/TOYC/BACKEND.TOY SRC/TOYC/PARSER.TOY \
+      SRC/TOYC/TOYC.TOY\n");
+  assert_eq!(display.borrow().get_text(), ">toyc2 toyc src/base.toy \
+      src/toyc/base.toy src/toyc/scanner.toy src/toyc/backend.toy \
+      src/toyc/parser\n.toy src/toyc/toyc.toy\n>");
+
+  // Cleanup unused files.
+  context.type_ascii("DELETE TOYC.TOY\n");
+  context.type_ascii("DELETE TRASH.TXT\n");
+  context.type_ascii("DELETE TOYC2\n");
+}
+
+\section{Shell improvements}
+
+The command line used at the end of the previous section is quite long to type
+and can be hard to remember. Saving it in a file can solve the latter issue,
+but not the former (since we cannot copy paste text). To solve this we improve
+the shell so that it can run commands stored in a file, called a {\em script}.
+
+More precisely, we add an optional command line argument to the shell. If
+present, this argument should be the name of a file containing some commands,
+one per line. To support commands longer than 100 characters, which is the
+maximum line length in the text editor, these lines can be wrapped with
+backslash characters. For instance,
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+\toy{
+copy edit edit.old
+toyc edit src/base.toy\\
+ src/edit/edit.toy
+}%toy
+
+\noindent corresponds to two commands, namely ``{\tt copy edit edit.old}'' and
+``{\tt toyc edit src/base.toy src/edit/edit.toy}''.
+
+To implement this new feature, type ``{\tt edit src/shell/shell.toy}'' and edit
+this code as follows. First add new messages for errors related to the script
+file:
+
+\rust{
+  let mut t =
+  Transpiler5::new_str(&context.get_file_content("src/shell/shell.toy"));
+  t.add_unchanged("const NUM_COMMANDS", "static CANT_FIND");
+}
+
+\toy{
+@static CANT_FIND = ['C','a','n',''','t',' ','f','i','n','d',' '];
+static CANT_OPEN = ['C','a','n',''','t',' ','o','p','e','n',' '];
+static CANT_READ = ['C','a','n',''','t',' ','r','e','a','d',' '];
+}%toy
+
+\rust{
+  t.add_unchanged("static CANT_LAUNCH", "fn sh_draw_string(");
+}
+
+Then add the following function, after ``{\tt sh\_run}''. This function reads
+the script file whose name is given as argument and runs its commands with {\tt
+sh\_run}. It reads the file one character at a time, and unwraps each command
+into the same {\tt src} buffer (from one of the shell's {\tt Command} struct --
+see \cref{fig:shell-data-structures}). When the end of the file is reached, or
+a ``new line'' not preceded by a backslash, it runs the command between {\tt
+src} and {\tt src\_end} (excluded) and then clears the buffer. Otherwise, it
+appends each new character to the buffer, unless it is a ``new line'' preceded
+by a backslash (in which case the backslash is deleted). It ends by writing to
+standard output the text written in the shell's output buffer by all the
+executed commands.
+
+\toy{
+fn sh_run_script(self: &Shell, name: &u32, length: u32) -> u32 {
+  let stream = open(name, length, 'r');
+  if status(stream) != OK {
+    write(STANDARD_OUTPUT, CANT_OPEN, 11);
+    write(STANDARD_OUTPUT, name, length);
+    return status(stream);
+  }
+  let src = &self.commands.data;
+  let src_end = src;
+  let c = 0;
+  let n = 0;
+  loop {
+    n = read(stream, &c, 1);
+    if status(n) != OK {
+      sh_print(self, CANT_READ, 11);
+      sh_print(self, name, length);
+      break;
+    } else if n == 0 {
+      sh_run(self, src, src_end);
+      break;
+    } else if c == NEW_LINE {
+      if src_end > src && load8(src_end - 1) == '\\' {
+        src_end = src_end - 1;
+      } else {
+        sh_run(self, src, src_end);
+        src_end = src;
+      }
+    } else if src_end - src < MAX_COMMAND_LENGTH {
+      store8(src_end, c);
+      src_end = src_end + 1;
+    }
+  }
+  write(STANDARD_OUTPUT, self.output_begin, \
+self.output_end - self.output_begin);
+  return status(n);
+}
+}%toy
+
+\rust{
+  t.add_unchanged("fn sh_draw_string(", "fn main(");
+}
+
+Finally, update the {\tt main} function to call ``{\tt sh\_run\_script}'' if
+the shell is launched with a command line argument, or the interactive command
+editor otherwise. Also add some code to initialize the shell's output buffer
+with the content of a ``banner'' file, if it exists, in order to display a
+welcome message in interactive mode:
+
+\toy{
+static BANNER = ['s','r','c','/','s','h','e','l','l','/',
+  'b','a','n','n','e','r','.','t','x','t'];
+
+@fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 {
+@  let shell = sh_new(&heap, heap_limit);
+@  if shell == null { return OUT_OF_MEMORY; }
+  let length = 0;
+  let name = sh_read_token(&args, args_end, &length);
+  if name != null {
+    return sh_run_script(shell, name, length);
+  }
+  let stream = open(BANNER, 20, 'r');
+  let n = 0;
+  if status(stream) == OK {
+    n = read(stream, shell.output_begin, MAX_OUTPUT_SIZE);
+    if status(n) == OK { shell.output_end = shell.output_begin + n; }
+    close(stream);
+  }
+@  return sh_run_editor(shell);
+@}
+}%toy
+
+Once this is done compile this new shell version with ``{\tt toyc shell
+src/base.toy src/memory.toy src/gpu.toy src/shell/shell.toy}''. Then create a
+banner file by typing ``{\tt edit src/shell/banner.txt}'' and enter the
+following text (we name our operating system ``Toys'', as its kernel file):
+
+\rust{
+  t.write_toy5("website/sources/shell_v1.txt")?;
+  context.type_ascii("EDIT SRC/SHELL/SHELL.TOY\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+
+  context.type_ascii("TOYC SHELL SRC/BASE.TOY SRC/MEMORY.TOY SRC/GPU.TOY \
+      SRC/SHELL/SHELL.TOY\n");
+  assert_eq!(display.borrow().get_text(), ">toyc shell src/base.toy \
+      src/memory.toy src/gpu.toy src/shell/shell.toy\n>");
+
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+Welcome to
+  _____
+ |_   _|__  _   _ ___
+   | |/ _ \\| | | / __|
+   | | (_) | |_| \\__ \\
+   |_|\\___/ \\__, |___/
+            |___/
+
+Type 'list' for a list of available commands.
+
+}%toy
+
+\rust{
+  let raw = t.get_raw().replace('\t', "  ");
+  std::fs::write("website/sources/banner.txt", &raw.as_bytes())?;
+  context.type_ascii("EDIT SRC/SHELL/BANNER.TXT\n");
+  context.enter_text_editor_text(&raw);
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+}
+
+To test these changes, type ``{\tt shell}'' to start a new shell. This should
+display the above banner before the prompt. Type Escape to return in the
+initial shell, and then create the following test script with ``{\tt edit
+script.sh}'':
+
+\rust{
+  context.type_ascii("SHELL\n");
+  assert!(display.borrow().get_text().starts_with("Welcome to"));
+  context.type_keys(vec!["Escape"]);
+
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+list src/
+list\\
+ src/toyc/
+}%toy
+
+Finally, run this script with ``{\tt shell script.sh}''. This should list the
+content of the ``{\tt src}'' and ``{\tt src/toyc}'' directories.
+
+\rust{
+  context.type_ascii("EDIT SCRIPT.SH\n");
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape", "Y"]);
+
+  context.type_ascii("SHELL SCRIPT.SH\n");
+  assert_eq!(display.borrow().get_text(), ">shell script.sh\nbase.toy  copy/  \
+      delete/  edit/  gpu.toy  list/  memory.toy  reboot/  shell/  stat/  \
+      toyc/\nbackend.toy  base.toy  parser.toy  scanner.toy  toyc.toy\n>");
+}
+
+\section{Final steps}
+
+To finalize our operating system we can split the kernel source code (to take
+advantage of our compiler improvements) and delete the files which are no
+longer needed. For this type ``{\tt edit toys.toy}'', edit this file as
+follows:
+
+\rust{
+  let mut toys_src = context.get_file_content("toys.toy");
+  toys_src = String::from("src/toys/drivers.toy~") + &toys_src;
+  toys_src = toys_src.replace( //{
+    "}\n\nstruct DiskBlock {",
+    "}\n~src/toys/filesystem.toy~struct DiskBlock {",
+  );
+  toys_src = toys_src.replace(
+    "}\n\nstruct Context {",
+    "}\n~src/toys/processes.toy~struct Context {",
+  );
+  toys_src = toys_src.replace(
+    "}\n\nfn os_sleep(millis: u32) -> u32 {",
+    "}\n~src/toys/systemcalls.toy~fn os_sleep(millis: u32) -> u32 {",
+  );
+  toys_src = toys_src.replace(
+    "}\n\nfn hard_fault_handler() {",
+    "}\n~src/toys/toys.toy~fn hard_fault_handler() {", //}
+  );
+}
+\rs{code_raw(&Transpiler5::split_changes(&toys_src))}
+
+\noindent and type ``{\tt split toys.toy}'' to split it. To check that
+everything is correct, type ``{\tt edit src/toys/BUILD}'', enter the
+following script:
+
+\rust{
+  context.type_ascii("EDIT TOYS.TOY\n");
+  context.enter_text_editor_text(&toys_src);
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+
+  context.type_ascii("SPLIT TOYS.TOY\n");
+
+  let add_build_script = |context: &mut Context, name: &str, value: &str| {
+    context.type_ascii(&format!("EDIT SRC/{name}/"));
+    context.type_keys(vec!["Shift"]);
+    context.type_ascii("BUILD");
+    context.type_keys(vec!["~Shift", "Enter"]);
+    context.enter_text_editor_text(value);
+    context.type_keys(vec!["Escape"]);
+    assert_eq!(context.get_display().borrow().get_text(), "Save (y/n)?");
+    context.type_ascii("Y");
+  };
+  let run_script = |context: &mut Context, name: &str| {
+    context.type_ascii(&format!("SHELL SRC/{name}/"));
+    context.type_keys(vec!["Shift"]);
+    context.type_ascii("BUILD");
+    context.type_keys(vec!["~Shift", "Enter"]);
+    assert_eq!(context.get_display().borrow().get_text(),
+        format!(">shell src/{}/BUILD\n>", name.to_lowercase()));
+  };
+
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+toyc toys src/toys/drivers.toy src/toys/filesystem.toy\\
+ src/toys/processes.toy src/toys/systemcalls.toy src/toys/toys.toy
+}%toy
+
+\noindent and type ``{\tt shell src/toys/BUILD}'' to run it, \ie, to recompile
+the kernel from the split files. There should be no error. We can also add a
+build script for the compiler, and in fact for each program, since we improved
+the shell precisely for this. To this end, create the following files with the
+text editor:
+
+\rust{
+  add_build_script(context, "TOYS", &t.get_toy5());
+  run_script(context, "TOYS");
+  assert_eq!(display.borrow().get_text(), ">shell src/toys/BUILD\n>");
+
+  let mut t = Transpiler5::default();
+}
+
+\medskip \noindent {\tt\bfseries src/toyc/BUILD}:
+\toy{
+toyc toyc src/base.toy src/toyc/base.toy src/toyc/scanner.toy\\
+ src/toyc/backend.toy src/toyc/parser.toy src/toyc/toyc.toy
+}%toy
+\rust{
+  add_build_script(context, "TOYC", &t.get_toy5());
+  let mut t = Transpiler5::default();
+}
+
+\noindent {\tt\bfseries src/copy/BUILD}:
+\toy{
+toyc copy src/base.toy src/copy/copy.toy
+}%toy
+\rust{
+  add_build_script(context, "COPY", &t.get_toy5());
+  let mut t = Transpiler5::default();
+}
+
+\noindent {\tt\bfseries src/delete/BUILD}:
+\toy{
+toyc delete src/base.toy src/delete/delete.toy
+}%toy
+\rust{
+  add_build_script(context, "DELETE", &t.get_toy5());
+  let mut t = Transpiler5::default();
+}
+
+\noindent {\tt\bfseries src/edit/BUILD}:
+\toy{
+toyc edit src/base.toy src/gpu.toy src/edit/edit.toy
+}%toy
+\rust{
+  add_build_script(context, "EDIT", &t.get_toy5());
+  let mut t = Transpiler5::default();
+}
+
+\noindent {\tt\bfseries src/list/BUILD}:
+\toy{
+toyc list src/base.toy src/memory.toy src/list/list.toy
+}%toy
+\rust{
+  add_build_script(context, "LIST", &t.get_toy5());
+  let mut t = Transpiler5::default();
+}
+
+\noindent {\tt\bfseries src/reboot/BUILD}:
+\toy{
+toyc reboot src/base.toy src/reboot/reboot.toy
+}%toy
+\rust{
+  add_build_script(context, "REBOOT", &t.get_toy5());
+  let mut t = Transpiler5::default();
+}
+
+\noindent {\tt\bfseries src/shell/BUILD}:
+\toy{
+toyc shell src/base.toy src/gpu.toy src/memory.toy src/shell/shell.toy
+}%toy
+\rust{
+  add_build_script(context, "SHELL", &t.get_toy5());
+  let mut t = Transpiler5::default();
+}
+
+\noindent {\tt\bfseries src/stat/BUILD}:
+\toy{
+toyc stat src/base.toy src/stat/stat.toy
+}%toy
+\rust{
+  add_build_script(context, "STAT", &t.get_toy5());
+  let mut t = Transpiler5::default();
+}
+
+For consistency with the other source files, copy ``{\tt boot.toy}'' to the
+{\tt src} directory with ``{\tt copy boot.toy src/boot/boot.toy}'' and create a
+script to compile it:
+
+\medskip \noindent {\tt\bfseries src/boot/BUILD}:
+\toy{
+toyc boot src/boot/boot.toy
+}%toy
+\rust{
+  add_build_script(context, "BOOT", &t.get_toy5());
+}
+
+\rust{
+  context.type_ascii("COPY BOOT.TOY SRC/BOOT/BOOT.TOY\n");
+  add_build_script(context, "BOOT", &t.get_toy5());
+}
+
+Finally, delete all the files which are no longer needed: {\tt boot.toy}, {\tt
+edit.toy}, {\tt edit2}, {\tt hello}, {\tt hello.toy}, {\tt script.sh}, {\tt
+shell.toy}, {\tt shell2}, {\tt split}, {\tt split.toy}, {\tt test.txt}, and
+{\tt toys.toy}. After this the file system content should be the one in
+\cref{table:final-file-stats} (the file sizes can differ if you used some
+spaces instead of tabulations, for instance). For reference, these files are
+also provided in the companion website of this book (\toypcurl{}).
+
+\rust{
+  context.type_ascii("DELETE BOOT.TOY\n");
+  context.type_ascii("DELETE EDIT.TOY\n");
+  context.type_ascii("DELETE EDIT2\n");
+  context.type_ascii("DELETE HELLO\n");
+  context.type_ascii("DELETE HELLO.TOY\n");
+  context.type_ascii("DELETE SCRIPT.SH\n");
+  context.type_ascii("DELETE SHELL.TOY\n");
+  context.type_ascii("DELETE SHELL2\n");
+  context.type_ascii("DELETE SPLIT\n");
+  context.type_ascii("DELETE SPLIT.TOY\n");
+  context.type_ascii("DELETE TEST.TXT\n");
+  context.type_ascii("DELETE TOYS.TOY\n");
+
+  // test all build scripts
+  let mut context1 = context.clone();
+  run_script(&mut context1, "BOOT");
+  run_script(&mut context1, "COPY");
+  run_script(&mut context1, "DELETE");
+  run_script(&mut context1, "EDIT");
+  run_script(&mut context1, "LIST");
+  run_script(&mut context1, "REBOOT");
+  run_script(&mut context1, "SHELL");
+  run_script(&mut context1, "STAT");
+  run_script(&mut context1, "TOYC");
+  run_script(&mut context1, "TOYS");
+
+  context.dump_files("website/toys");
+
+  let mut table1 = String::new();
+  let mut table2 = String::new();
+  table1.push_str("\\begin{tabular}[t]{|l|r|}\\hline\n");
+  table1.push_str(
+      "\\makecell{\\thead{Name}} & \\thead[r]{Size} \\\\ \\hline\n");
+  table2.push_str("\\begin{tabular}[t]{|l|r|r|}\\hline\n");
+  table2.push_str("\\makecell{\\thead{Name}} & \\thead[r]{Size} & \
+      \\thead[r]{Lines} \\\\ \\hline\n");
+  let mut total_lines = 0;
+  let mut total_size1 = 0;
+  let mut total_size2 = 0;
+  for (name, stat) in context.get_file_stats() {
+    if name.1.starts_with("src") {
+		  if stat.1 > 0 {
+		    table2.push_str(&format!("\\makecell{{{}}} & {} & {}\\\\\n",
+		        name.1, stat.0, stat.1));
+		  } else {
+		    table2.push_str(&format!("\\makecell{{{}}} & {} & \\\\\n",
+		        name.1, stat.0));
+		  }
+      total_size2 += stat.0;
+		} else {
+	    table1.push_str(&format!("\\makecell{{{}}} & {} \\\\\n", name.1, stat.0));
+      total_size1 += stat.0;
+		}
+    total_lines += stat.1;
+  }
+  table1.push_str(&format!("\\hline \\makecell{{\\thead{{Total}}}} & \
+      {total_size1}\\\\ \\hline \n"));
+  table1.push_str("\\end{tabular}\n");
+  table2.push_str(&format!("\\hline \\makecell{{\\thead{{Total}}}} & \
+      {total_size2} & {total_lines}\\\\ \\hline \n"));
+  table2.push_str("\\end{tabular}\n");
+}
+
+\begin{Table}
+  \rs{table2}\hspace{5mm} \rs{table1}
+
+  \caption{The final content of the file system, containing the complete source
+  code (left) and compiled code (right) of the Toys operating system. To which
+  the compiled boot loader code, not part of the file system, must be added
+  (less than 256 bytes).}\label{table:final-file-stats}
+\end{Table}
+

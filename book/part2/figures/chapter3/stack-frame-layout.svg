@@ -1,0 +1,104 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="60mm" viewBox="0 0 145 60" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="16" height="5" x="2" y="2" fill="#ebebeb" stroke="#000000"/>
+    <rect width="16" height="5" x="2" y="8" fill="#41a1c1" stroke="#000000"/>
+    <rect width="32" height="16" x="98" y="22" fill="#9a9a9a"/>
+    <rect width="32" height="16" x="66" y="22" fill="#cccccc"/>
+    <rect width="36" height="16" x="30" y="22" fill="#ebebeb"/>
+    <rect width="16" height="16" x="106" y="22" fill="#0e6e8e"/>
+    <rect width="16" height="16" x="78" y="22" fill="#118ab2"/>
+    <rect width="16" height="16" x="38" y="22" fill="#41a1c1"/>
+    <text x="-30" y="113" transform="rotate(-90)" font-size="3.5px" text-anchor="middle" fill="#ffffff">FA = ??</text>
+    <text x="-30" y="117" transform="rotate(-90)" font-size="3.5px" text-anchor="middle" fill="#ffffff">FP = ??</text>
+    <text x="-30" y="121" transform="rotate(-90)" font-size="3.5px" text-anchor="middle" fill="#ffffff">BP = 0</text>
+    <text x="-30" y="109" transform="rotate(-90)" font-size="3.5px" text-anchor="middle" fill="#ffffff">RA = ??</text>
+    <text x="-30" y="129" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">arg0</text>
+    <text x="-30" y="105" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">v0</text>
+    <text x="-30" y="101" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">v1</text>
+    <text x="-30" y="125" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">arg1</text>
+    <text x="-21" y="34" transform="rotate(-90)" font-size="2.8px">+0</text>
+    <text x="-21" y="130" transform="rotate(-90)" font-size="2.8px">+96</text>
+    <text x="-21" y="98" transform="rotate(-90)" font-size="2.8px">+64</text>
+    <text x="-21" y="66" transform="rotate(-90)" font-size="2.8px">+32</text>
+    <text x="-30" y="20" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">stack</text>
+    <path d="M 110,22 V 38" stroke="#000000"/>
+    <path d="M 106,22 V 38" stroke="#000000"/>
+    <path d="M 102,22 V 38" stroke="#000000"/>
+    <path d="M 98,22 V 38" stroke="#000000"/>
+    <path d="M 130,22 V 38" stroke="#000000"/>
+    <path d="m 126,22 v 16" stroke="#000000"/>
+    <path d="M 118,22 V 38" stroke="#000000"/>
+    <path d="M 122,22 V 38" stroke="#000000"/>
+    <path d="M 114,22 V 38" stroke="#000000"/>
+    <text x="-30" y="45" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">FA</text>
+    <text x="-30" y="49" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">FP = +64</text>
+    <text x="-30" y="53" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">BP = +48</text>
+    <text x="-30" y="41" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">RA</text>
+    <text x="-30" y="65" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">arg0</text>
+    <text x="-30" y="37" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">v0</text>
+    <text x="-30" y="33" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">v1</text>
+    <text x="-30" y="61" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">arg1</text>
+    <path d="m 42,22 v 16" stroke="#000000"/>
+    <path d="m 38,22 v 16" stroke="#000000"/>
+    <path d="m 34,22 v 16" stroke="#000000"/>
+    <path d="m 30,22 v 16" stroke="#000000"/>
+    <path d="m 62,22 v 16" stroke="#000000"/>
+    <path d="m 50,22 v 16" stroke="#000000"/>
+    <text x="-30" y="57" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">arg2</text>
+    <path d="m 54,22 v 16" stroke="#000000"/>
+    <path d="m 58,22 v 16" stroke="#000000"/>
+    <path d="m 46,22 v 16" stroke="#000000"/>
+    <text x="-30" y="85" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">FA</text>
+    <text x="-30" y="89" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">FP = +96</text>
+    <text x="-30" y="93" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">BP = +76</text>
+    <text x="-30" y="81" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">RA</text>
+    <text x="-30" y="77" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">v0</text>
+    <text x="-30" y="73" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">v1</text>
+    <text x="-30" y="69" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">v2</text>
+    <text x="-30" y="97" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">arg0</text>
+    <path d="m 82,22 v 16" stroke="#000000"/>
+    <path d="m 78,22 v 16" stroke="#000000"/>
+    <path d="m 74,22 v 16" stroke="#000000"/>
+    <path d="m 70,22 v 16" stroke="#000000"/>
+    <path d="m 90,22 v 16" stroke="#000000"/>
+    <path d="m 94,22 v 16" stroke="#000000"/>
+    <path d="m 86,22 v 16" stroke="#000000"/>
+    <path d="M 66,22 V 38" stroke="#000000"/>
+    <path d="m 87,22 v -8 h 40 v 8" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 91,22 v -6 h 16 v 6" fill="none" stroke="#0e6e8e" stroke-width="0.4" marker-end="url(#arrow)"/>
+    <path d="m 119,22 0,-4" stroke="#0e6e8e" stroke-width="0.4" marker-end="url(#arrow)"/>
+    <path d="m 120,18 -2,-2" stroke="#0e6e8e" stroke-width="0.4"/>
+    <path d="m 118,18 2,-2" stroke="#0e6e8e" stroke-width="0.4"/>
+    <path d="M 130,40 H 98" stroke="#000000" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="M 98,40 H 66" stroke="#000000" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="M 66,40 H 30" stroke="#000000" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+    <path d="M 47,22 V 12 h 48 l 0,10" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 51,22 v -6 h 28 l 0,6" fill="none" stroke="#0e6e8e" stroke-width="0.4" marker-end="url(#arrow)"/>
+    <path d="m 18,10 h 21 l 0,12" fill="none" stroke="#0e6e8e" stroke-width="0.4" marker-end="url(#arrow)"/>
+    <path d="m 18,16 h 13 v 6" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 28,30 H 22" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 18,4 h 45 l 0,18" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 2,22 H 138" stroke="#000000"/>
+    <path d="M 138,38 H 2" stroke="#000000"/>
+    <text x="129" y="44" text-anchor="end">(main) A</text>
+    <text x="97" y="44" text-anchor="end">B</text>
+    <text x="65" y="44" text-anchor="end">C</text>
+    <text x="10" y="12" text-anchor="middle">BP = +8</text>
+    <text x="10" y="6" text-anchor="middle">FP = +32</text>
+    <text x="10" y="18" text-anchor="middle">SP</text>
+    <rect width="16" height="5" x="2" y="14" fill="none" stroke="#000000"/>
+    <path d="m 98,39 v 2" stroke="#000000"/>
+    <path d="M 130,39 V 41" stroke="#000000"/>
+    <path d="m 66,39 v 2" stroke="#000000"/>
+  </g>
+</svg>

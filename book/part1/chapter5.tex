@@ -1,0 +1,359 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter5}
+\setcounter{rustid}{0}
+
+\chapter{A Toy Microprocessor}\label{chapter:toy-microprocessor}
+
+Thanks to control circuits we can now run a program stored in memory in an
+automated way, which is much faster and safer than using a processing unit
+manually. Together, a control unit and the processing unit it controls form a
+{\em Central Processing Unit} (CPU), also called a {\em microprocessor}. This
+chapter presents a very simple one, based on the design introduced in the
+previous chapter. It also illustrates its capabilities with two example
+programs.
+
+\section{Implementation}
+
+The circuit in \cref{fig:T8} is a microprocessor for the instruction set of
+\cref{section:toy-insn-set}. It is based on the circuit of
+\cref{fig:alu-and-ram} (extended to an 8-bit architecture), augmented with the
+control unit designed in \cref{section:toy-control-unit}. Its physical layout
+matches more or less the block diagram in \cref{fig:T8-schema}. This section
+only presents the parts of this circuit which have not been explained in the
+previous chapters.
+
+\subsection{Input and output}
+
+The input is made of 8 pins which are connected to the bus via tristate
+buffers, plus a {\em Light Emitting Diode} (LED). When on, the LED indicates
+that the microprocessor is waiting a value on the input pins. The user must set
+them to 0 or 1 as desired, and press a button when done. Similarly, the output
+is made of 8 pins connected to the bus, plus a LED. When on, the LED indicates
+that a value is available on the output pins, and that the user must press a
+button to resume the execution of the program.
+
+The two LEDs are connected to the two loops inside the EXECUTE subcircuit (for
+the IN and OUT instructions), which wait for the user to press a button. In
+this way they are turned on when an IN or OUT instruction starts, and turned
+off when the button is pressed.
+
+\newlength{\fullpagefigureheight}
+\setlength{\fullpagefigureheight}{\textheight-1.8\baselineskip}
+\begin{Figure}[p]
+  \begin{leftfullpage}
+    \resizebox{!}{\fullpagefigureheight}{\input{figures/chapter5/T8-left.tex}}
+
+    \caption{A toy microprocessor, implementing the instruction set of
+    \cref{section:toy-insn-set},}\label{fig:T8}
+  \end{leftfullpage}
+\end{Figure}
+
+\begin{Figure}[p]
+  \begin{fullpage}
+    \resizebox{!}{\fullpagefigureheight}{\input{figures/chapter5/T8-right.tex}}
+
+    \caption*{and its 25 bytes Random Access Memory and 7 bytes Read-Only
+    Memory.\hfill~}
+  \end{fullpage}
+\end{Figure}
+
+The button is a push button, used for both IN and OUT instructions. Due to its
+speed, the microprocessor might execute several instructions during the time
+this button stays pressed. In particular, it might execute several IN or OUT
+instructions. In this case the user would not have the time to enter a second
+value, or to read the first output value. To avoid this, the push button is
+connected to a circuit which generates a short pulse (lasting one clock cycle)
+when it transitions from the ``open'' to the ``closed'' state. It is then
+necessary to release and press again this button to generate a new pulse. The
+pulse generator circuit is the following:
+
+\begin{center}
+  \input{figures/chapter5/push-button.tex}
+\end{center}
+
+\noindent The output of the D flip-flop is the push button's state at the
+previous clock cycle. Hence the output of the AND gate is $1$ if and only if
+the button is currently pressed, and was not pressed at the previous clock
+cycle. In other words, it is $1$ only when the button transitions from the
+``open'' to the ``closed'' state, as desired.
+
+\subsection{Boot program}\label{subsection:toy-boot-program}
+
+To run a program with our microprocessor we first need to store it in memory
+(as we assumed earlier, all flip-flops are initially $0$, and thus all the
+memory too). But we no longer have any manual control over the memory, since we
+transferred it to the control unit. Hence the only way to store anything in
+memory is to use a program reading values in input and writing them in memory.
+But then we need to store this program in memory first! To solve this chicken
+and egg problem, a solution is to store it in a Read-Only Memory (ROM), \ie, a
+memory containing immutable values.
+
+This is what the memory circuit in \cref{fig:T8} does: values at addresses 0 to
+25 excluded (which is noted $[0, 25[\ = [0, 24]$) can be read and written, but
+values at addresses $[25, 32[$ cannot be modified. On the other hand, the
+latter do not need to be initialized first. They can thus contain a program
+which is ready to be executed when the microprocessor {\em boots}, \ie, when it
+is powered on. The ROM in \cref{fig:T8} contains the following {\em boot
+program}:
+
+\rust{
+  let mut a = T8Program::default();
+  {
+    const ONE: u8 = 31;
+    a.ldr(24);
+    a.add(ONE);
+    a.str(24);
+    a.input();
+    a.if_zero(0);
+    a.jump(24);
+    a.data(1, "the value $1$");
+  }
+}
+\rs{a.get_listing_with_offset(25)}
+
+Moreover, the Program Counter register uses NOT gates around its three most
+significant bits, which give it the initial value $11100_2=28$. Hence, when it
+boots, our microprocessor starts by executing the IN instruction at address
+$28$. It thus waits a value $v_0$ in input. If this value is not $0$, the
+instruction at address $30$ jumps to address $24$. Initially, the value at this
+address, in RAM, is $0$. This corresponds to a STR $0$ instruction, which thus
+stores $v_0$ at address $0$. The next 3 instructions, in $[25,27[$, add $1$ to
+the value at address $24$. This value thus becomes $1$, which corresponds to
+STR $1$. Hence, after a second value $v_1$ is read in input, and if it is not
+$0$, the new instruction at address $24$ stores $v_1$ at address $1$. And so on
+with the next input values: $v_2$ stored at address $2$, $v_3$ at address $3$,
+etc. This loop ends when the input value is $0$. In this case the IFZ
+instruction at address $29$ jumps to address $0$. The effect is to run the
+program $v_0, v_1, \ldots v_n$ stored in memory by the previous steps, starting
+at address $0$.
+
+\section{Example programs}
+
+The above microprocessor can run several ``useful'' programs. A first example
+is the adder program of \cref{subsection:adder-program}. To run it, one first
+need to enter its $6$ instructions with the boot program, followed by a $0$
+value. After that the programs reads two values in input, outputs their sum,
+and repeats these two steps forever.
+
+\subsection{Multiplier}
+
+Another example is a program to compute products. Since the Arithmetic Unit
+cannot perform multiplications, nor shifts (see \cref{subsection:binary-mult}),
+we need a program computing them with repeated additions. The general {\em
+algorithm}, \ie, the specification of the main steps that this program must
+follow, is the following:
+
+\begin{algorithmic}[1]
+\State read two numbers $a$ and $b$ in input, and initialize $c$ to $0$.
+\State if $b=0$ go to step 4.
+\State otherwise, subtract $1$ from $b$, add $a$ to $c$, and go back to step 2.
+\State output $c$ and go back to step 1 to compute another product.
+\end{algorithmic}
+
+This algorithm executes step 3 $b$ times, and thus adds $a$ to $c$ $b$ times.
+Hence, when $b=0$, $c$ contains $a * b$ and can be output. Assuming that $a$,
+$b$, and $c$ are stored at addresses $A$, $B$, and $C$, respectively, and that
+the values at addresses $\mathit{ZERO}$ and $\mathit{ONE}$ are $0$ and $1$,
+this gives the following (abstract) instructions:
+\begin{itemize}
+  \item step 1: IN, STR A (store an input value in $a$), IN, STR B (store an
+  input value in $b$), LDR ZERO, STR C (store $0$ in $c$).
+
+  \item step 2: LDR B, IFZ ``step4''.
+
+  \item step 3: SUB ONE, STR B (subtract $1$ from B, still in R0), LDR C, ADD
+  A, STR C (add $a$ to $c$), JMP ``step2'' (go back to step 2).
+
+  \item step 4: LDR C, OUT (output $c$), JMP 0 (go back to step 1).
+\end{itemize}
+
+Step 1 has $6$ instructions, and thus step 2 starts at address $6$. Step 2 and
+3 have a total of $8$ instructions, and thus step 4 starts at address $6+8=14$.
+We can thus replace IFZ ``step4'' with IFZ $14$, and JMP ``step2'' with JMP
+$6$. We can also store $a$, $b$, $c$, $0$, and $1$ after the last instruction,
+\ie, starting at address $17$ (since there are $17$ instructions). In the
+following we use $\mathit{ONE}=17$, $\mathit{ZERO}=18$, $A=19$, $B=20$ and
+$C=21$. This leads to the following {\em machine code}, \ie, a list of
+instructions in binary form that the machine (the microprocessor) can directly
+execute:
+
+\rust{
+  let mut a = T8Program::default();
+  {
+    const START: u8 = 0;
+    const LOOP: u8 = 6;
+    const END_LOOP: u8 = 14;
+    const ONE: u8 = 17;
+    const ZERO: u8 = 18;
+    const A: u8 = 19;
+    const B: u8 = 20;
+    const C: u8 = 21;
+    a.input();
+    a.str(A);
+    a.input();
+    a.str(B);
+    a.ldr(ZERO);
+    a.str(C);
+    a.ldr(B);
+    a.if_zero(END_LOOP);
+    a.sub(ONE);
+    a.str(B);
+    a.ldr(C);
+    a.add(A);
+    a.str(C);
+    a.jump(LOOP);
+    a.ldr(C);
+    a.output();
+    a.jump(START);
+    a.data(1, "the value $1$");
+    a.data(0, "the value $0$");
+    a.data(0, "the $a$ number");
+    a.data(0, "the $b$ number");
+    a.data(0, "the $c$ number");
+  }
+}
+\rs{a.get_listing()}
+
+\rust{
+  let outputs = T8Emulator::new().emulate(&a.get_machine_code(),
+      &[13, 7, 19, 11], 2);
+  assert_eq!(outputs, &[13 * 7, 19 * 11]);
+}
+
+To run it one fist need to enter its 17 instructions, plus the $\mathit{ONE}$
+value, followed by a $0$, with the boot program.
+
+\subsection{Prime numbers enumerator}
+
+A third and last example is a program which outputs all the prime numbers less
+than or equal to $255$ (the maximum value of an 8-bit number). For this the
+general algorithm is the following:
+
+\begin{algorithmic}[1]
+\State add $1$ to $n$, supposed initially equal to $1$.
+\State if $n$ is prime go to step 4.
+\State go back to step 1.
+\State output $n$ and go back to step 1 to find the next prime number.
+\end{algorithmic}
+
+This algorithm tests each number $n$ one by one, in increasing order, and
+starting from $n=2$. Step 2 needs to check whether $n$ can be divided by some
+number $f$ in $[2,n[$. For this, a simple method is to check all values of $f$
+in decreasing order, from $n-1$ to $2$. Step 2 can then be replaced with the
+following algorithm:
+
+\begin{algorithmic}[1]
+\State initialize $f$ to $n$.
+\State subtract $1$ from $f$.
+\State if $f=1$, $n$ is prime, stop (all $f$ values have been tested and no
+divisor was found).
+\State if $f$ does not divide $n$, go back to step 2.
+\end{algorithmic}
+
+Finally, to check whether $f$ divides $n$ or not, and since the Arithmetic Unit
+cannot perform divisions, we can use an algorithm which repeatedly subtracts
+$f$ from $n$. If this process ends with 0 then $f$ divides $n$,
+otherwise it does not:
+
+\begin{algorithmic}[1]
+\State initialize $r$ to $n$.
+\State subtract $f$ from $r$.
+\State if $r=0$, $f$ divides $n$, $n$ is not prime, stop.
+\State if $r<0$, $f$ does not divide $n$, stop.
+\State go back to step 2 to continue the division of $n$ by $f$.
+\end{algorithmic}
+
+By putting together the above partial algorithms we get the following complete
+algorithm:
+
+\begin{algorithmic}[1]
+\State add $1$ to $n$, supposed initially equal to $1$, and initialize $f$ to
+$n$.
+\State subtract $1$ from $f$.
+\State if $f=1$ then $n$ is prime, go to step 9.
+\State initialize $r$ to $n$.
+\State subtract $f$ from $r$.
+\State if $r=0$, $f$ divides $n$, $n$ is not prime. Go to step 1 to try the
+next $n$.
+\State if $r<0$, $f$ does not divide $n$, go back to step 2 to try the next $f$.
+\State go back to step 5 to continue the division of $n$ by $f$.
+\State output $n$ and go back to step 1 to find the next prime number.
+\end{algorithmic}
+
+Assuming that $n$ and $f$ are stored at addresses $N$ and $F$, respectively,
+that the value at address $\mathit{ONE}$ is $1$, and by storing $r$ in R0, this
+gives the following (abstract) instructions:
+
+\begin{itemize}
+  \item step 1: LDR N, ADD ONE, STR N (add $1$ to $n$), STR F (initialize $f$
+  to $n$).
+
+  \item step 2: LDR F, SUB ONE, STR F (subtract $1$ from $f$).
+
+  \item step 3: SUB ONE, IFZ ``step 9'' (if $f-1=0$ go to step 9).
+
+  \item step 4: LDR N (initialize $r$ to $n$).
+
+  \item step 5: SUB F (subtract $f$ from $r$).
+
+  \item step 6: IFZ 0 (if $r=0$, go back to step 1).
+
+  \item step 7: IFC ``step 2'' (if $r<0$, go back to step 2).
+
+  \item step 8: JMP ``step 5''
+
+  \item step 9: LDR N, OUT, JMP 0 (output $n$ and go back to step 1).
+\end{itemize}
+
+Finally, with the same method as for the multiplier program, we can replace IFZ
+``step 9'', IFC ``step 2'', JMP ``step5'' with IFZ 14, IFC 4, and JMP 10,
+respectively. And we can store $n$, $f$ and $1$ after the last instruction,
+\ie, starting at address $17$. By using $\mathit{ONE}=17$, $N=18$, and $F=19$
+we get the following machine code:
+
+\rust{
+  let mut a = T8Program::default();
+  {
+    const B0: u8 = 0;
+    const LOOP: u8 = 1;
+    const B1: u8 = 4;
+    const B2: u8 = 10;
+    const END_LOOP: u8 = 14;
+    const ONE: u8 = 17;
+    const N: u8 = 18;
+    const F: u8 = 19;
+    a.ldr(N);
+    a.add(ONE);
+    a.str(N);
+    a.str(F);
+    a.ldr(F);
+    a.sub(ONE);
+    a.str(F);
+    a.sub(ONE);
+    a.if_zero(END_LOOP);
+    a.ldr(N);
+    a.sub(F);
+    a.if_zero(B0);
+    a.if_carry(B1);
+    a.jump(B2);
+    a.ldr(N);
+    a.output();
+    a.jump(LOOP);
+    a.data(1, "the value $1$");
+    a.data(1, "the value $n$");
+    a.data(0, "the value $f$");
+  }
+}
+\rs{a.get_listing()}
+
+\rust{
+  let outputs = T8Emulator::new().emulate(&a.get_machine_code(), &[], 25);
+  assert_eq!(outputs, &[2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37,
+      41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
+}
+
+To run it one fist need to enter its 17 instructions, plus the $\mathit{ONE}$
+and initial $n$ values, followed by a $0$, with the boot program.

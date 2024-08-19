@@ -1,0 +1,340 @@
+{
+"name": "push-button",
+"timePeriod": 50,
+"clockEnabled": false,
+"projectId": "aIgCdoEqj9LpkUz0PZRa",
+"focussedCircuit": 95861033237,
+"orderedTabs": [
+"95861033237"
+],
+"scopes": [
+{
+"layout": {
+"width": 100,
+"height": 40,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": 30,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+15
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+14
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+5
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+16
+]
+},
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+8
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+2
+]
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+13
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+15
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+4
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+6
+]
+},
+{
+"x": 590,
+"y": 380,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1,
+15
+]
+},
+{
+"x": 590,
+"y": 400,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+7,
+14,
+0
+]
+},
+{
+"x": 750,
+"y": 390,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+3
+]
+}
+],
+"id": 95861033237,
+"name": "Main",
+"NotGate": [
+{
+"x": 670,
+"y": 400,
+"objectType": "NotGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 5,
+"inp1": 4
+}
+}
+}
+],
+"AndGate": [
+{
+"x": 710,
+"y": 390,
+"objectType": "AndGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+2,
+1
+],
+"nodes": {
+"inp": [
+1,
+2
+],
+"output1": 3
+}
+}
+}
+],
+"DflipFlop": [
+{
+"x": 630,
+"y": 410,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 6,
+"dInp": 7,
+"qOutput": 8,
+"qInvOutput": 9,
+"reset": 10,
+"preset": 11,
+"en": 12
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+}
+],
+"Clock": [
+{
+"x": 590,
+"y": 420,
+"objectType": "Clock",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 13
+},
+"constructorParamaters": [
+"RIGHT"
+]
+}
+}
+],
+"Button": [
+{
+"x": 540,
+"y": 400,
+"objectType": "Button",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 0
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+},
+"subcircuitMetadata": {
+"showInSubcircuit": false,
+"showLabelInSubcircuit": true,
+"labelDirection": "LEFT",
+"x": 0,
+"y": 0
+}
+}
+],
+"Text": [
+{
+"x": 410,
+"y": 410,
+"objectType": "Text",
+"label": "push button",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"push button",
+14
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": [
+14,
+15,
+16
+]
+}
+]
+}

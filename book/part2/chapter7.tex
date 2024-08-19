@@ -1,0 +1,1088 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter7}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "memory_editor.txt")?;
+}
+
+\chapter{Memory Editor}\label{chapter:memory-editor}
+
+Our toy computer is now fully assembled, and we have drivers to input and
+output data with its own keyboard and screen. The last remaining step to make
+it completely autonomous is to provide a way to enter programs and to run them,
+with the keyboard. The most basic way to do this is to write a program similar
+to the boot assistant, but using the keyboard instead of an external computer.
+This chapter implements such a program, hereafter called the ``memory editor''.
+We test it at the end to read the memory, control a LED with the keyboard, and
+run other programs.
+
+\section{User interface}
+
+A possible user interface for our memory editor would be to use the same
+interface as the boot assistant. We would thus type commands such as ``{\tt
+wC0000,\#}'', ``{\tt WC0000,1234\#}'', or ``{\tt GC0000\#}'', to read words,
+write words, or call functions. And the screen would display the commands and
+their results. This could lead to a very small program, but would not be very
+practical. Instead, we propose to make better use of the screen, by displaying
+a ``memory page'' at a time (256 bytes). In this way, we can read the memory
+like a book, instead of one word at a time. We also get more context when
+editing it, or before calling a function. More precisely, we propose the
+following user interface:
+
+\begin{flushleft}
+{\tt 00000003 00000002 00000001 00000000 {\color{gray} 20000100}}\\
+{\tt 00000007 00000006 {\color{green0} 12345678} 00000004 {\color{gray}
+20000110}}\\
+$\ldots$ {\em 13 other rows} $\ldots$\\
+{\tt 000000FF 000000FE 000000FD 000000FC {\color{gray} 200001F0}}\\
+~\\
+{\tt ~~~~~~~~ ~~~~~~~~ ~~~~~~~~ 2345678\underline{A} {\color{gray} 20000114}}\\
+\end{flushleft}
+
+\begin{itemize}
+  \item A {\em page view} shows 16 rows of 4 words each, followed by the row's
+  start address. As we did so far in this book, addresses increase {\em from
+  right to left} and from top to bottom (because this is more adapted to
+  little-endian order than left to right).
+
+  \item Two {\em fields} below the page view show a value $V$ and an address
+  $A$, that the user can edit. When editing $V$, the current value at address
+  $A$ is highlighted in the page view. This value is not changed until Enter is
+  pressed. When this happens $V$ is written at address $A$ and $A$ is
+  incremented by 4 to edit the next word.
+
+  \item When editing $A$ nothing else changes until Enter is pressed. When this
+  happens, $V$ is updated to show the value at this address. The page view is
+  updated as well to show the page containing this address.
+\end{itemize}
+
+To simplify the implementation, editing a field can only be done by typing an
+hexadecimal digit ([0-9] or [a-f] in lowercase). Doing so shifts the current
+value to the left by one hex digit, and inserts the new hex digit on the right.
+For instance, if the current value is {\tt 12345678}, typing {\tt A} gives {\tt
+2345678A}.
+
+Only one field can be edited at a time. The currently ``selected'' field is
+indicated with a blinking cursor under its least significant digit. Typing
+``w'' selects the address field. Typing Enter when editing the address selects
+the value field.
+
+Pressing ``r'' calls the function at the {\em highlighted address}. This is the
+address which is highlighted in the page view. It might differ from the value
+in the address field (if this value has been edited and Enter has not been
+pressed yet).
+
+Finally, for convenience -- this is not strictly necessary -- the arrow keys
+can be used to go to the next or previous word or row. The left (resp. right)
+arrow increases (resp. decreases) the highlighted address by 4. The up (resp.
+down) arrow decreases (resp. increases) the highlighted address by 16.
+
+\section{State variables}\label{subsection:med-state-variables}
+
+The state of the above user interface can be described with only 3 variables:
+
+\begin{itemize}
+  \item $address$: the address of the highlighted word in the page view. This
+  variable is sufficient to determine which page contains the highlighted word,
+  and thus to draw the page view (see the next section).
+
+  \item $mode$: which field is currently being edited. We use $mode=0$ if it is
+  the value field, and $mode=1$ if it is the address field.
+
+  \item $input$: the current value input with the keyboard. This value is shown
+  either in the value field (if $mode=0$), or in the address field (if
+  $mode=1$). When Enter is pressed, it is either written in memory at $address$
+  (if $mode=0$), or replaces $address$ (if $mode=1$).
+\end{itemize}
+
+\rust{
+  let driver_address = context.memory_region("keyboard_driver").end();
+  let mut b = BytecodeAssembler::new(RegionKind::Default, driver_address);
+  b.import_labels(context.memory_region("clock_driver"));
+  b.import_labels(context.memory_region("foundations"));
+  b.import_labels(context.memory_region("graphics_card_driver"));
+  b.import_labels(context.memory_region("keyboard_driver"));
+
+  const MED_ADDRESS: u32 = 0x400E1A9C;
+  const MED_MODE: u32 = 0x400E1AA0;
+  const MED_VALUE: u32 = 0x400E1AA4;
+}
+
+To simplify the implementation we use 3 more of the 8 General Purpose Backup
+Registers in the ``Controllers'' memory region to store these variables (we
+already used 3 of them for the keyboard driver, see
+\cref{subsection:keyboard-driver-impl}). More precisely we use the registers at
+addresses \rs{hex(MED_ADDRESS)}, \rs{hex(MED_MODE)}, and \rs{hex(MED_VALUE)},
+respectively (see \cref{fig:boot-memory-map} and in Chapter 17 in
+\cite{SAM3X8E}). For convenience, we provide the following functions to get and
+set their values, called {\em getters} and {\em setters}. We store them after
+the keyboard driver, at address \rs{hex(driver_address)}:
+
+\begin{TwoColumns}
+\rs{b.func("med_get_address", &[], "address", &["private"])}\\
+\bytecode{
+  b.cst(MED_ADDRESS);
+  b.load();
+  b.retv();
+}
+\\
+\rs{b.func("med_set_address", &["address"], "", &["private"])}\\
+\bytecode{
+  b.cst(MED_ADDRESS);
+  b.get("address");
+  b.store();
+  b.ret();
+}
+\\
+\rs{b.func("med_get_mode", &[], "mode", &["private"])}\\
+\bytecode{
+  b.cst(MED_MODE);
+  b.load();
+  b.retv();
+}
+\\
+\rs{b.func("med_set_mode", &["mode"], "", &["private"])}\\
+\bytecode{
+  b.cst(MED_MODE);
+  b.get("mode");
+  b.store();
+  b.ret();
+}
+\\
+\rs{b.func("med_get_input", &[], "input", &["private"])}\\
+\bytecode{
+  b.cst(MED_VALUE);
+  b.load();
+  b.retv();
+}
+\\
+\rs{b.func("med_set_input", &["input"], "", &["private"])}\\
+\bytecode{
+  b.cst(MED_VALUE);
+  b.get("input");
+  b.store();
+  b.ret();
+}
+\\
+~
+\end{TwoColumns}
+
+\section{Drawing functions}
+
+\subsection{Page view}
+
+To draw the page view we first need a function to draw its most basic element,
+an hexadecimal digit. The following function draws the hexadecimal digit $d$
+corresponding to the 4 least significant bits of its argument $x$ ($d=x \wedge
+F_{16}$). If $d \le 10$ it should draw a character between ``0'' and ``9'',
+which have contiguous ASCII codes in [\hexa{30},\hexa{39}]. It thus draws the
+character $d+\hexa{30}$. Otherwise, if $d \ge 10$, it should draw a character
+between ``A'' and ``F'', which have contiguous ASCII codes in
+[\hexa{41},\hexa{46}]. It thus draws the character $d-10+\hexa{41}=y+\hexa{37}$:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("gpu_draw_hex_digit", &["x"], "", &[])}
+
+Compute $d=x \wedge \hexa{F}$. The result is in the $5^{th}$ stack frame slot,
+after the function argument and 4 saved registers.
+
+\bytecode[switchcolumn]{
+  b.get("x");
+  b.cst8(0xF);
+  b.and();
+  b.def("d");
+}
+
+If $d \ge 10$, skip the next two instructions.
+
+\bytecode[switchcolumn]{
+  b.get("d");
+  b.cst8(10);
+  b.ifge("greater_than_or_equal_10");
+}
+
+Otherwise, push \hexa{30} on the stack and skip the next instruction.
+
+\bytecode[switchcolumn]{
+  b.cst8(0x30);
+  b.goto("draw_hex_digit");
+}
+
+Push \hexa{37} on the stack.
+
+\bytecode[switchcolumn]{
+  b.label("greater_than_or_equal_10");
+  b.cst8(0x37);
+  b.label("draw_hex_digit");
+}
+
+Add $d$ to the last pushed value (either \hexa{30} or \hexa{37}) and draw the
+resulting character with \verb!gpu_draw_char!.
+
+\bytecode[switchcolumn]{
+  b.get("d");
+  b.add();
+  b.call("gpu_draw_char");
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+With this we can write a function to draw the two digits of a byte $b$ ($b \gg
+4$ and $b$):
+
+\begin{TwoColumns}
+\rs{b.func("gpu_draw_hex_byte", &["b"], "", &[])}\\
+\bytecode{
+  b.get("b");
+  b.cst8(4);
+  b.lsr();
+  b.call("gpu_draw_hex_digit");
+  b.get("b");
+  b.call("gpu_draw_hex_digit");
+  b.ret();
+}
+\end{TwoColumns}
+
+\noindent which can itself be used to write a function drawing the 4 bytes
+of a word $w$ ($w \gg 24$, $w \gg 16$, $w \gg 8$, and $w$):
+
+\begin{TwoColumns}
+\rs{b.func("gpu_draw_hex_word", &["w"], "", &[])}\\
+\bytecode{
+  b.get("w");
+  b.cst8(24);
+  b.lsr();
+  b.call("gpu_draw_hex_byte");
+  b.get("w");
+  b.cst8(16);
+  b.lsr();
+  b.call("gpu_draw_hex_byte");
+  b.get("w");
+  b.cst8(8);
+  b.lsr();
+  b.call("gpu_draw_hex_byte");
+  b.get("w");
+  b.call("gpu_draw_hex_byte");
+  b.ret();
+}
+\end{TwoColumns}
+
+We continue with a function to draw the word at a given address, followed by a
+space (whose ASCII code is \hexa{20}, rendered with \verb!gpu_draw_char!):
+
+\begin{TwoColumns}
+\rs{b.func("med_draw_page_word_at", &["address"], "", &["private"])}\\
+\bytecode{
+  b.get("address");
+  b.load();
+  b.call("gpu_draw_hex_word");
+  b.cst8(0x20);
+  b.call("gpu_draw_char");
+  b.ret();
+}
+\end{TwoColumns}
+
+In turn, this can be used to write a function drawing a line of the page view,
+given its start $address$. This function sets the color to green $(0,7,0)$,
+draws the 4 words at addresses $address+12$, $address+8$, $address+4$, and
+$address$, sets the color to white $(7,7,3)$, and finally draws the start
+$address$ of the row:
+
+\begin{TwoColumns}
+\rs{b.func("med_draw_page_row", &["address"], "", &["private"])}\\
+\bytecode{
+  b.cst_0();
+  b.cst8(7);
+  b.cst_0();
+  b.call("gpu_set_color");
+  b.get("address");
+  b.cst8(12);
+  b.add();
+  b.call("med_draw_page_word_at");
+  b.get("address");
+  b.cst8(8);
+  b.add();
+  b.call("med_draw_page_word_at");
+  b.get("address");
+  b.cst8(4);
+  b.add();
+  b.call("med_draw_page_word_at");
+  b.get("address");
+  b.call("med_draw_page_word_at");
+  b.cst8(7);
+  b.cst8(7);
+  b.cst8(3);
+  b.call("gpu_set_color");
+  b.get("address");
+  b.call("gpu_draw_hex_word");
+  b.ret();
+}
+\end{TwoColumns}
+
+We can finally implement a function to draw the page view. This function takes
+an $address$ and draws the page containing it, with the word at $address$
+highlighted in yellow. The $i^{th}$ page corresponds to addresses in
+$[256i,256(i+1)[$. The page containing $address$ is thus such that $i=\lfloor
+address/256 \rfloor=address \gg 8$, and starts at $256i=i\ll 8=address\ \wedge$
+\hexa{FFFFFF00}. In fact, to simplify the highlighting, and to make sure that
+the word at $address$ is fully contained in the page, we actually use $256i +
+(address\ \mathrm{mod}\ 4)$ as the page's $base$ address. This gives
+$base=256i+(address \wedge 3)=address\ \wedge$ \hexa{FFFFFF03}. Note that since
+each row contains 16 bytes, the $j^{th}$ row in a page starts
+at address $base+16j$.
+
+The word to highlight is $h$ words after $base$, with $h=(address-base)/4$.
+This corresponds to the $k^{th}$ word in the $l^{th}$ row (starting from the
+right), with $k = h\ \mathrm{mod}\ 4$ and $l=\lfloor h/4 \rfloor$. This, in
+turn, corresponds to column $c_h=9(3 - k)$ and row $r_h=l$, since each word
+uses 9 characters (counting the space). Substituting $k$ and $l$ with their
+values finally gives $(c_h,r_h) = (27 - 9(h \wedge 3), h \gg 2)$.
+
+The \verb!med_draw_page! function follows from the above computations. It first
+computes $base$, then uses a loop to draw the 16 rows, and finally draws the
+highlighted word on top, at the above coordinates:\bigskip
+
+\begin{paracol}{2}
+\rs{b.func("med_draw_page", &["address"], "", &["private"])}
+
+Compute $base$. The result is in the $5^{th}$ stack frame slot.
+
+\bytecode[switchcolumn]{
+  b.get("address");
+  b.cst(0xFFFFFF03);
+  b.and();
+  b.def("base");
+}
+
+Initialize $j$ to 0 (in the $6^{th}$ slot).
+
+\bytecode[switchcolumn]{
+  b.cst_0();
+  b.def("j");
+}
+
+Set the cursor to $(0, j)$, the top-left corner of the next row to draw.
+
+\bytecode[switchcolumn]{
+  b.label("draw_row_loop");
+  b.cst_0();
+  b.get("j");
+  b.call("gpu_set_cursor");
+}
+
+Draw the next row, starting at $base + 16j = base + (j \ll 4)$.
+
+\bytecode[switchcolumn]{
+  b.get("base");
+  b.get("j");
+  b.cst8(4);
+  b.lsl();
+  b.add();
+  b.call("med_draw_page_row");
+}
+
+Increment $j$ by 1 to prepare drawing the next row.
+
+\bytecode[switchcolumn]{
+  b.cst_1();
+  b.add();
+}
+
+If $j < 16$, go back above to draw the next row.
+
+\bytecode[switchcolumn]{
+  b.get("j");
+  b.cst8(16);
+  b.iflt("draw_row_loop");
+}
+
+Compute $h=(address-base)/4$. The result is in the $7^{th}$ stack frame slot.
+
+\bytecode[switchcolumn]{
+  b.get("address");
+  b.get("base");
+  b.sub();
+  b.cst8(2);
+  b.lsr();
+  b.def("h");
+}
+
+Compute $c_h=27 - 9(h \wedge 3)$.
+
+\bytecode[switchcolumn]{
+  b.cst8(27);
+  b.cst8(9);
+  b.get("h");
+  b.cst8(3);
+  b.and();
+  b.mul();
+  b.sub();
+}
+
+Compute $r_h=\lfloor h/4 \rfloor=h \gg 2$.
+
+\bytecode[switchcolumn]{
+  b.get("h");
+  b.cst8(2);
+  b.lsr();
+}
+
+Set the cursor to these coordinates.
+
+\bytecode[switchcolumn]{
+  b.call("gpu_set_cursor");
+}
+
+Set the color to yellow $(7, 7, 0)$.
+
+\bytecode[switchcolumn]{
+  b.cst8(7);
+  b.cst8(7);
+  b.cst_0();
+  b.call("gpu_set_color");
+}
+
+Draw the word at $address$ and return.
+
+\bytecode[switchcolumn]{
+  b.get("address");
+  b.call("med_draw_page_word_at");
+  b.ret();
+}
+\end{paracol}
+
+\subsection{Fields}
+
+To draw the fields we first provide two functions to draw arbitrary values in
+each field. These functions just draw their argument $x$ at the correct column
+and row coordinates -- namely $(27,18)$ and $(36,18)$ -- and with the correct
+color (green and white):
+
+\begin{TwoColumns}
+\rs{b.func("med_draw_value", &["x"], "", &["private"])}\\
+\bytecode{
+  b.cst8(27);
+  b.cst8(18);
+  b.call("gpu_set_cursor");
+  b.cst_0();
+  b.cst8(7);
+  b.cst_0();
+  b.call("gpu_set_color");
+  b.get("x");
+  b.call("gpu_draw_hex_word");
+  b.ret();
+}
+\\
+\rs{b.func("med_draw_address", &["x"], "", &["private"])}\\
+\bytecode{
+  b.cst8(36);
+  b.cst8(18);
+  b.call("gpu_set_cursor");
+  b.cst8(7);
+  b.cst8(7);
+  b.cst8(3);
+  b.call("gpu_set_color");
+  b.get("x");
+  b.call("gpu_draw_hex_word");
+  b.ret();
+}
+\end{TwoColumns}
+
+We use them in the following function to draw the two fields, depending on the
+current mode. If $mode=0$, the first half of the function draws $address$ in
+the address field, and $input$ in the value field. It then sets the cursor
+under the least significant digit of the value field. Otherwise, if $mode \ne
+0$, the second half draws the value stored in memory at $address$ in the value
+field, and draws $input$ in the address field. It finally sets the cursor under
+the least significant digit of the address field:
+
+\begin{TwoColumns}
+\rs{b.func("med_draw_fields", &[], "", &["private"])}\\
+\bytecode{
+  b.call("med_get_mode");
+  b.cst_0();
+  b.ifne("not_edit_value");
+  b.call("med_get_address");
+  b.call("med_draw_address");
+  b.call("med_get_input");
+  b.call("med_draw_value");
+  b.cst8(34);
+  b.cst8(18);
+  b.call("gpu_set_cursor");
+  b.ret();
+  b.label("not_edit_value");
+  b.call("med_get_address");
+  b.load();
+  b.call("med_draw_value");
+  b.call("med_get_input");
+  b.call("med_draw_address");
+  b.cst8(43);
+  b.cst8(18);
+  b.call("gpu_set_cursor");
+  b.ret();
+}
+\end{TwoColumns}
+
+\section{Editing functions}
+
+We can now implement functions to react to keyboard inputs. These functions
+update the state variables and redraw the page view and/or the fields,
+depending on the key typed. We start with a function to enter a new hexadecimal
+digit $x$. As specified above, this should shift $input$ to the left by one hex
+digit, and insert $x$ on the right. This can be done with $input \leftarrow
+(input \ll 4) + x$. After that the fields must be redrawn (but not the page
+view). Characters have an opaque black background, so we don't need to erase
+the previous values before drawing new ones:
+
+\begin{TwoColumns}
+\rs{b.func("med_new_digit", &["x"], "", &["private"])}\\
+\bytecode{
+  b.call("med_get_input");
+  b.cst8(4);
+  b.lsl();
+  b.get("x");
+  b.add();
+  b.call("med_set_input");
+  b.call("med_draw_fields");
+  b.ret();
+}
+\end{TwoColumns}
+
+A function to enter a new highlighted address $x$ is also useful, since several
+keys can change this address (the Enter key and the arrow keys). The following
+function sets $address$ to $x$, sets $input$ to the current value at this
+address, and finally redraws the page view and the fields:
+
+\begin{TwoColumns}
+\rs{b.func("med_new_address", &["x"], "", &["private"])}\\
+\bytecode{
+  b.get("x");
+  b.call("med_set_address");
+  b.get("x");
+  b.load();
+  b.call("med_set_input");
+  b.get("x");
+  b.call("med_draw_page");
+  b.call("med_draw_fields");
+  b.ret();
+}
+\end{TwoColumns}
+
+With this we can write a function to handle the Enter key. Pressing this key
+has two different effects, depending on the current $mode$. If $mode=0$ the
+value field is being edited. In this case we want to store $input$ in memory at
+$address$, and set $address+4$ as the new highlighted address. This is what the
+first part of the function does, after a test of the $mode$ value. The second
+part, after the first \insn{ret}, handles the case $mode \ne 0$: it sets
+$mode$ to $0$ and the new address to $input$:
+
+\begin{TwoColumns}
+\rs{b.func("med_handle_enter", &[], "", &["private"])}\\
+\bytecode{
+  b.call("med_get_mode");
+  b.cst_0();
+  b.ifne("not_enter_value");
+  b.call("med_get_address");
+  b.call("med_get_input");
+  b.store();
+  b.call("med_get_address");
+  b.cst8(4);
+  b.add();
+  b.call("med_new_address");
+  b.ret();
+  b.label("not_enter_value");
+  b.cst_0();
+  b.call("med_set_mode");
+  b.call("med_get_input");
+  b.call("med_new_address");
+  b.ret();
+}
+\end{TwoColumns}
+
+We finally provide a function to handle any character $c$ typed on the
+keyboard. This function is quite long because there are ``many'' characters to
+support. But its overall structure is regular. It is made of several sequences
+of instructions $S_i$, one for each supported character (\eg, ``w'' or ``r'')
+or range of characters (\eg, [``0''-``9''] or [``a''-``f'']). Each sequence
+$S_i$ starts with one or two conditional jumps to go to the next sequence
+$S_{i+1}$, if $c$ is not a character handled by $S_i$. The sequence continues
+with instructions to handle this character, and ends with a \insn{ret}:\bigskip
+
+\begin{paracol}{2}
+\rs{b.func("med_handle_char", &["c"], "", &["private"])}
+
+$S_0$: decimal digits [0-9]. If $c$ < ``0'' (ASCII code \hexa{30}), go to $S_1$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0x30);
+  b.iflt("not_decimal");
+}
+
+If $c$ > ``9'' (ASCII code \hexa{39}), go to $S_1$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0x39);
+  b.ifgt("not_decimal");
+}
+
+Otherwise, enter the new hex digit $d=c-\hexa{30}$ and return.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0x30);
+  b.sub();
+  b.call("med_new_digit");
+  b.ret();
+  b.label("not_decimal");
+}
+
+$S_1$: hexadecimal digits [a-f]. If $c$ < ``a'' (ASCII code \hexa{61}), go to
+$S_2$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0x61);
+  b.iflt("not_hexadecimal");
+}
+
+If $c$ > ``f'' (ASCII code \hexa{66}), go to $S_2$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0x66);
+  b.ifgt("not_hexadecimal");
+}
+
+Otherwise, enter the new hex digit $d=c-\hexa{61}+10=c-\hexa{57}$ and return.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0x57);
+  b.sub();
+  b.call("med_new_digit");
+  b.ret();
+  b.label("not_hexadecimal");
+}
+
+$S_2$: Enter key. If $c$ is not Enter (ASCII code \hexa{0A}), go to $S_3$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(10);
+  b.ifne("not_enter");
+}
+
+Otherwise, handle this key and return.
+
+\bytecode[switchcolumn]{
+  b.call("med_handle_enter");
+  b.ret();
+  b.label("not_enter");
+}
+
+$S_3$: ``w'' character. If $c$ is not ``w'' (ASCII code \hexa{77}), go to $S_4$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0x77);
+  b.ifne("not_w");
+}
+
+Otherwise, handle this key: set $address$ as the new $input$, set $mode$ to 1,
+redraw the fields, and return.
+
+\bytecode[switchcolumn]{
+  b.call("med_get_address");
+  b.call("med_set_input");
+  b.cst_1();
+  b.call("med_set_mode");
+  b.call("med_draw_fields");
+  b.ret();
+  b.label("not_w");
+}
+
+$S_4$: ``r'' character. If $c$ is not ``r'' (ASCII code \hexa{72}), go to $S_5$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0x72);
+  b.ifne("not_r");
+}
+
+Otherwise, call the function at $address$, clear and redraw the screen (the
+called function might have changed it), and return.
+
+\bytecode[switchcolumn]{
+  b.call("med_get_address");
+  b.calld();
+  b.call("gpu_clear_screen");
+  b.call("med_get_address");
+  b.call("med_new_address");
+  b.ret();
+  b.label("not_r");
+}
+
+$S_5$: ArrowLeft character. If $c$ is not ArrowLeft (character
+\hexa{6B}+128=\hexa{EB}), go to $S_6$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0xEB);
+  b.ifne("not_arrow_left");
+}
+
+Otherwise, set $address + 4$ as the new address and return.
+
+\bytecode[switchcolumn]{
+  b.call("med_get_address");
+  b.cst8(4);
+  b.add();
+  b.call("med_new_address");
+  b.ret();
+  b.label("not_arrow_left");
+}
+
+$S_5$: ArrowRight character. If $c$ is not ArrowRight (character
+\hexa{74}+128=\hexa{F4}), go to $S_6$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0xF4);
+  b.ifne("not_arrow_right");
+}
+
+Otherwise, set $address - 4$ as the new address and return.
+
+\bytecode[switchcolumn]{
+  b.call("med_get_address");
+  b.cst8(4);
+  b.sub();
+  b.call("med_new_address");
+  b.ret();
+  b.label("not_arrow_right");
+}
+
+$S_6$: ArrowUp character. If $c$ is not ArrowUp (character
+\hexa{75}+128=\hexa{F5}), go to $S_7$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0xF5);
+  b.ifne("not_arrow_up");
+}
+
+Otherwise, set $address - 16$ as the new address and return.
+
+\bytecode[switchcolumn]{
+  b.call("med_get_address");
+  b.cst8(16);
+  b.sub();
+  b.call("med_new_address");
+  b.ret();
+  b.label("not_arrow_up");
+}
+
+$S_7$: ArrowDown character. If $c$ is not ArrowDown (character
+\hexa{72}+128=\hexa{F2}), go to $S_8$.
+
+\bytecode[switchcolumn]{
+  b.get("c");
+  b.cst8(0xF2);
+  b.ifne("not_arrow_down");
+}
+
+Otherwise, set $address + 16$ as the new address and return.
+
+\bytecode[switchcolumn]{
+  b.call("med_get_address");
+  b.cst8(16);
+  b.add();
+  b.call("med_new_address");
+  b.label("not_arrow_down");
+}
+
+$S_8$: any other character. Return.
+
+\bytecode[switchcolumn]{
+  b.ret();
+}
+\end{paracol}
+
+\section{Main function}
+
+We can finally implement the last function of the memory editor, and of our
+basic input output system! This function initializes the drivers, sets the
+initial $mode$ and $address$ to 0, and finally calls the previous function for
+each new character typed on the keyboard, in an endless loop:
+
+\begin{TwoColumns}
+\rs{b.func("memory_editor", &[], "", &[])}\\
+\bytecode{
+  // b.call("boot_mode_select_rom");
+  b.call("clock_init");
+  b.call("gpu_init");
+  b.call("keyboard_init");
+  b.cst_0();
+  b.call("med_set_mode");
+  b.cst_0();
+  b.call("med_new_address");
+  b.label("med_loop");
+  b.call("keyboard_wait_char");
+  b.call("med_handle_char");
+  b.goto("med_loop");
+}
+\end{TwoColumns}
+
+Note that this function does {\em not} change the boot mode selection to boot
+from ROM at the next reset. Indeed, with the memory editor, our toy computer is
+now completely autonomous, and we no longer need the boot assistant nor an
+external computer to use it. By putting together the code of all the functions
+defined in this chapter we get the memory editor's full code:
+
+\rs{b.get_bytecode_listing(0..b.get_instruction_count() as usize, false)}
+
+Lets store it in flash memory. The boot assistant commands to do this are
+provided in \verb!part2/memory_editor.txt!. Run them with:
+
+\rust{
+  let mut commands = Vec::new();
+  commands.extend(b.boot_assistant_commands());
+  commands.push(String::from("flash#"));
+  context.add_memory_region("memory_editor", b.memory_region());
+  write_lines("website/part2", "memory_editor.txt", &commands)?;
+  let mut flash_helper = FlashHelper::from_file(
+    context.micro_controller(), "website/", "part2/memory_editor.txt")?;
+}
+\rs{host_log(&flash_helper.read())}
+
+\rust{
+  let reset_handler = &context.memory_region("reset_handler");
+  let bytecode_handler =
+      reset_handler.label_address("bytecode handler program");
+}
+
+Note that the \verb!memory_editor! function is not stored at the \hexa{C2000}
+address used so far for main functions (see \cref{fig:bios-memory-map}). To run
+it on reset we need to change the \hexa{C2000} value, at address
+\rs{hex(bytecode_handler)} in the Reset handler (see
+\cref{subsection:bios-vector-table}), to the \verb!memory_editor! function
+address, namely \rs{hex(b.label_address("memory_editor"))}. Do this as follows:
+
+\rust{
+  let mut flash_helper = FlashHelper::new(context.micro_controller());
+  flash_helper.write(&format!("W{:X},{:X}#",
+      bytecode_handler, b.label_address("memory_editor")));
+  flash_helper.write("flash#");
+}
+\rs{host_log(&flash_helper.read())}
+
+\rust{
+  let mut native_size = 0;
+  let mut native_insns = 0;
+  let mut native_data = 0;
+  let native = vec![
+    context.memory_region("reset_handler"),
+    context.memory_region("hard_fault_handler"),
+    context.memory_region("usart0_handler"),
+    context.memory_region("interpreter"),
+  ];
+  for region in &native {
+    native_size += region.instruction_bytes + region.data_bytes;
+    native_insns += region.instruction_count;
+    native_data += region.data_bytes;
+  }
+
+  let bytecode = vec![
+    context.memory_region("foundations"),
+    context.memory_region("clock_driver"),
+    context.memory_region("graphics_card_driver"),
+    context.memory_region("keyboard_driver"),
+    context.memory_region("memory_editor"),
+  ];
+  let mut bytecode_size = 0;
+  let mut bytecode_insns = 0;
+  let mut bytecode_data = 0;
+  for region in &bytecode {
+    bytecode_size += region.instruction_bytes + region.data_bytes;
+    bytecode_insns += region.instruction_count;
+    bytecode_data += region.data_bytes;
+  }
+}
+
+The final layout of our basic input output system is shown in
+\cref{fig:final-bios-memory-map}, and its most important functions are listed
+in \cref{table:bios_functions}. In total, this system consists of
+\rs{dec(bytecode_insns)} bytecode instructions, plus \rs{dec(bytecode_data)}
+bytes of data, for a total size of \rs{dec(bytecode_size)} bytes. To which we
+must add \rs{dec(native_insns)} Cortex M3 instructions for the virtual machine
+interpreter and the Reset, Hard Fault and USART handlers, plus
+\rs{dec(native_data)} bytes of data, for a total of \rs{dec(native_size)} bytes.
+
+\begin{Figure}
+  \rs{define("mmapa", &hex(context.memory_region("interpreter").start))}
+  \rs{define("mmapb", &hex(context.memory_region("reset_handler").start))}
+  \rs{define("mmapc", &hex(context.memory_region("hard_fault_handler").start))}
+  \rs{define("mmapd", &hex(context.memory_region("usart0_handler").start))}
+  \rs{define("mmape", &hex(context.memory_region("clock_driver").start))}
+  \input{figures/chapter7/bios-memory-map.tex}
+
+  \caption{The final layout of our basic input output system in flash memory.
+  Red, blue and gray areas represent machine code, bytecode and unused
+  memory, respectively (not to scale).}\label{fig:final-bios-memory-map}
+\end{Figure}
+
+\section{Experiments}
+
+\begin{Table}[t]
+  \begin{tabular}{|l|l|} \hline
+    \makecell{\thead{Function}} & \thead{Address} \\ \hline
+    \rs{MemoryRegion::labels_table_rows(bytecode)} \\ \hline
+  \end{tabular}
+
+  \caption{The most important functions of the basic input output
+  system.}\label{table:bios_functions}
+\end{Table}
+
+You can now set the Arduino to boot from flash and restart it:
+
+\rust{
+  flash_helper.write("reset#");
+}
+\rs{host_log(&flash_helper.read())}
+
+\noindent If all goes well, you should see the memory editor's user interface
+on the screen, showing the first memory page, starting at address 0. Since we
+removed the function call to change the boot mode selection, this memory page
+is mapped to flash memory. More precisely, it is mapped to the page starting
+\hexa{80000}, which contains the Vector Table. You should recognize, on the
+first line, the Vector Table entries given at the end of
+\cref{subsection:bios-vector-table}:
+
+\rust{
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+
+  context.run_until_get_char();
+  let init_screen = display.borrow().get_text();
+
+  let vm_address = context.memory_region("interpreter").start;
+}
+
+\begin{flushleft}
+\rs{med_page_row(init_screen.lines().next().unwrap())}
+\end{flushleft}
+
+\noindent They are followed by empty entries (\hexa{FFFFFF}), except the one
+for the USART handler. Lets try another memory location. On the Arduino's
+keyboard, type ``w\rs{hex_word_low(vm_address)}'' followed by Enter. You should
+now see a new memory page, starting with
+
+\rust{
+  context.type_ascii(&format!("W{:08X}\n", vm_address));
+  let vm_screen = display.borrow().get_text();
+
+  let row0 = vm_screen.lines().next().unwrap();
+  let vm_words = &context.memory_region("interpreter").words;
+  assert!(row0.starts_with(&format!(
+    "{:08X} {:08X} {:08X} {:08X}",
+    vm_words[3], vm_words[2], vm_words[1], vm_words[0])));
+
+  let clock_driver_address = context.memory_region("clock_driver").start;
+}
+\begin{flushleft}
+\rs{med_page_row(vm_screen.lines().next().unwrap())}
+\end{flushleft}
+
+\noindent This corresponds to the beginning of our virtual machine interpreter,
+which is indeed stored at this address (see
+\cref{subsection:interpreter-code}). Similarly, you can type
+``w\rs{hex_word_low(clock_driver_address)}'' followed by Enter to look at the
+clock driver code. You should see a new memory page starting with the code
+shown at the end of \cref{section:delay-function}. In the same way, you can
+display the graphics card and keyboard driver code, and even the memory editor
+code.
+
+\rust{
+  context.type_ascii("W20070000\n");
+  context.type_ascii("12345678\n");
+  let ram_display = display.borrow().get_text();
+  let ram_row = ram_display.lines().next().unwrap();
+  assert!(ram_row.ends_with("12345678 20070000"));
+}
+
+Lets now try to store some values in memory. Type ``w20070000''+Enter to go the
+RAM region. Then type ``12345678''+Enter to store this value at this address.
+You should see the new value in the page view. We can use this method to
+control the Arduino's LED, as we did in \cref{subsection:pio-experiments}, but
+with our memory editor instead of the boot assistant. Type ``w400e1000''+Enter
+to show the PIO B registers. You should note that all registers are 0, except
+the PIO Status Register (\rs{hex(PIOB_PSR)}), as well as the Status, Output
+Status, Output Data Status, and Pull-up Status Registers. The bit 12 of these
+registers is 1, indicating that the PB12 pin is an output pin, controlled by
+the microprocessor, currently set to 1, and with its pull-up resistor disabled.
+Indeed, this is the pin used to reset the graphics card, configured in
+\verb!gpu_reset! (see \cref{section:gpu-driver}). We can now redo the
+experiments of \cref{subsection:pio-experiments}: press the ArrowDown key to
+select the \rs{hex(PIOB_OER)} address and then type ``08000000''+Enter: you
+should see the LED turning off. Using the arrow keys, select the
+\rs{hex(PIOB_SODR)} address and type ``08000000''+Enter: you should see the LED
+turning on again.
+
+We can also try to display a reserved memory region. Reading the memory in
+these regions causes an exception which should be handled by our Hard Fault
+handler, which blinks the LED very fast. To test this type ``w00200000''+Enter
+(see \cref{fig:boot-memory-map}). You should see the LED blinking. Moreover,
+typing any key should have no effect, since the memory editor effectively
+crashed. We could restart it by pressing the RESET button. Instead, to check
+that our toy computer is completely autonomous, unplug it from your computer
+and plug it to a power outlet with a phone charger. The memory editor should be
+running again.
+
+\rust{
+  let foundations = context.memory_region("foundations");
+  let boot_mode_select_address =
+      foundations.label_address("boot_mode_select_rom");
+  let boot_mode_select_address_str = format!("``w{:08x}''",
+      boot_mode_select_address);
+}
+
+As a last experiment, lets try to run a function. We can use
+\verb!boot_mode_select_rom! for this. Type
+\rs{boot_mode_select_address_str}+Enter to go to this function (see
+\cref{table:bios_functions}). Then type ``r''. Nothing changes on the screen,
+but the Arduino is now configured to boot from ROM, \ie, to run the boot
+assistant, at the next reset. To verify this, unplug the Arduino from the power
+outlet and plug it again to your computer. The screen should stay off. We can
+verify that the boot assistant is running as follows:
+
+\rust{
+  context.type_ascii(&format!("W{:08X}\n", boot_mode_select_address));
+  context.type_ascii("R");
+  context.micro_controller().borrow_mut().reset();
+  let mut flash_helper = FlashHelper::new(context.micro_controller());
+  flash_helper.write("V#");
+}
+\rs{host_log(&flash_helper.read())}
+
+We can then change again the boot mode selection to run from flash, and reset
+the Arduino, with:
+
+\rust{
+  flash_helper.write("reset#");
+}
+\rs{host_log(&flash_helper.read())}
+
+At this point the memory editor should be running again. The above method can
+be used to temporarily connect our toy computer to an external computer. This
+can be useful, for instance, to do a backup of its flash memory. Such a backup
+can be done by reading all the flash memory with boot assistant ``w'' commands,
+and storing the result in a file on the host computer. This file can then be
+used to restore the flash memory, with boot assistant ``W'' commands.

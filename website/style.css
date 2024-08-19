@@ -1,0 +1,47 @@
+body {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  font-family: 'PT Sans', sans-serif;
+}
+
+.column {
+  max-width: 75ch;
+}
+
+h1 {
+  text-align: center;
+  padding: 2ch 0 2ch 0;
+}
+
+h5 {
+  font-weight: normal;
+  font-style: italic;
+}
+
+code {
+  background-color: #EEEEEE;
+  font-size: 0.875rem;
+}
+
+svg {
+  display: block;
+  margin-top: 1em;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1ch;
+}
+
+.author {
+  text-align: center;
+  padding: 0 0 2ch 0;
+}
+
+.figure {
+  display: block;
+  margin-top: 1em;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1ch;
+  width: 50ch;
+}

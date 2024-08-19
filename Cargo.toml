@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "book",
+    "book/preprocessor",
+    "emulator",
+    "scripts",
+    "webapp",
+]
+
+[profile.web-release]
+inherits = "release"
+strip = true
+lto = true

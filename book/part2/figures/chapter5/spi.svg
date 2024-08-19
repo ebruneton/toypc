@@ -1,0 +1,89 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="m 120,61 0,-29 -56,0" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <rect width="28" height="5" x="36" y="43" fill="#ebebeb" stroke="#000000"/>
+    <text x="105" y="37">MOSI</text>
+    <text x="105" y="28">MISO</text>
+    <text x="105" y="60">SCK</text>
+    <text x="135" y="28" text-anchor="end">PA25</text>
+    <text x="135" y="37" text-anchor="end">PA26</text>
+    <text x="135" y="60" text-anchor="end">PA27</text>
+    <text x="135" y="75" text-anchor="end">PA28</text>
+    <text x="105" y="75">CS</text>
+    <text x="34" y="75" text-anchor="end">Chip Select</text>
+    <text x="-45" y="141" transform="rotate(-90)" text-anchor="middle">PIO Controller</text>
+    <text x="-45" y="5" transform="rotate(-90)" text-anchor="middle">Power Management Controller</text>
+    <text x="10" y="64" fill="#048966">Peripheral Clock 24</text>
+    <text x="-24" y="22" transform="rotate(-90)">Status</text>
+    <text x="66" y="47">Transmit Data</text>
+    <text x="66" y="17">Receive Data</text>
+    <path d="m 50,43 v 5" stroke="#000000"/>
+    <path d="m 54,43 v 5" stroke="#000000"/>
+    <text x="52" y="47" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 60,43 v 5" stroke="#000000"/>
+    <text x="62" y="47" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="64" y="51" font-size="2.8px" text-anchor="end">0</text>
+    <text x="54" y="51" font-size="2.8px" text-anchor="end">15</text>
+    <text x="57" y="47" font-size="3.5px" text-anchor="middle">...</text>
+    <rect width="28" height="5" x="36" y="71" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 44,71 v 5" stroke="#000000"/>
+    <path d="m 48,71 v 5" stroke="#000000"/>
+    <text x="46" y="75" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 54,71 v 5" stroke="#000000"/>
+    <path d="m 58,71 v 5" stroke="#000000"/>
+    <text x="56" y="75" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="58" y="79" font-size="2.8px" text-anchor="end">8</text>
+    <text x="48" y="79" font-size="2.8px" text-anchor="end">15</text>
+    <text x="40" y="75" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="61" y="75" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="51" y="75" font-size="3.5px" text-anchor="middle">...</text>
+    <rect width="28" height="5" x="36" y="13" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 50,13 v 5" stroke="#000000"/>
+    <path d="m 54,13 v 5" stroke="#000000"/>
+    <text x="52" y="17" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="m 60,13 v 5" stroke="#000000"/>
+    <text x="62" y="17" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="64" y="12" font-size="2.8px" text-anchor="end">0</text>
+    <text x="54" y="12" font-size="2.8px" text-anchor="end">15</text>
+    <text x="57" y="17" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="50" y="32" text-anchor="middle">Shift Register</text>
+    <text x="86" y="62" text-anchor="middle">Freq. Divider</text>
+    <text x="86" y="77" text-anchor="middle">Chip selector</text>
+    <rect width="28" height="7" x="36" y="27" fill="none" stroke="#000000"/>
+    <rect width="5" height="28" x="18" y="26" fill="#ebebeb" stroke="#000000"/>
+    <path d="M 18,30 H 23" stroke="#000000"/>
+    <path d="M 18,34 H 23" stroke="#000000"/>
+    <text x="-28" y="22" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="-32" y="22" transform="rotate(-90)" font-size="3.5px" text-anchor="middle">0</text>
+    <path d="M 23,28 H 27 l 0,-12 h 9" fill="none" stroke="#000000" marker-start="url(#arrow)"/>
+    <path d="M 23,32 H 27 V 46 h 9" fill="none" stroke="#000000" marker-start="url(#arrow)"/>
+    <path d="m 50,42 1,-1 h 12 l 1,1" fill="none" stroke="#000000"/>
+    <path d="m 50,19 1,1 H 63 l 1,-1" fill="none" stroke="#000000"/>
+    <path d="m 57,41 0,-7" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 44,70 1,-1 h 12 l 1,1" fill="none" stroke="#000000"/>
+    <path d="m 57,27 0,-7" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 9,60 H 72" stroke="#048966" marker-end="url(#arrow)"/>
+    <path d="M 1,10 H 9 L 9,80 H 1" fill="none" stroke="#000000"/>
+    <path d="m 144,10 h -8 V 80 h 8" fill="none" stroke="#000000"/>
+    <path d="m 64,29 h 72" stroke="#000000" marker-start="url(#arrow)"/>
+    <path d="M 136,61 H 100" stroke="#000000" marker-start="url(#arrow)"/>
+    <path d="M 136,76 H 100" stroke="#000000" marker-start="url(#arrow)"/>
+    <rect width="2" height="2" x="119" y="37" fill="#ffffff"/>
+    <rect width="2" height="2" x="56" y="37" fill="#ffffff"/>
+    <path d="M 36,32 H 32 L 32,38 l 104,0" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <rect width="28" height="7" x="72" y="57" fill="none" stroke="#000000"/>
+    <rect width="28" height="7" x="72" y="72" fill="none" stroke="#000000"/>
+    <path d="m 51,69 0,-7 21,0" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <circle cx="120" cy="61" r="0.5" stroke="#000000"/>
+  </g>
+</svg>

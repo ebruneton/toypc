@@ -1,0 +1,69 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\usepackage{dpfloat}
+\usepackage{caption}
+
+% Figures ---------------------------------------------------------------------
+
+\newenvironment{Figure}[1][tbp]%
+  {\begin{figure}[#1]\sffamily\small\centering}%
+  {\end{figure}}
+
+\DeclareCaptionFont{figlabelfont}{\small\color{titlescolor}}
+\DeclareCaptionFont{figcaptionfont}{\small}
+\captionsetup[figure]{
+  labelsep=quad,
+  labelfont={figlabelfont,bf,sf},
+  font={figcaptionfont,sf},
+  name=FIGURE,
+}
+
+% Tables ----------------------------------------------------------------------
+
+\usepackage{longtable}
+\usepackage{makecell}
+\renewcommand\theadfont{\bfseries}
+\renewcommand\theadalign{l}
+\renewcommand\theadgape{}
+\renewcommand\cellalign{l}
+\renewcommand\cellgape{\Gape[2pt][0pt]}
+
+\newenvironment{Table}[1][tbp]%
+  {\begin{table}[#1]\sffamily\small\centering}%
+  {\end{table}}
+
+\captionsetup[table]{
+  labelsep=quad,
+  labelfont={figlabelfont,bf,sf},
+  font={figcaptionfont,sf},
+  name=TABLE,
+}
+
+% Algorithms ------------------------------------------------------------------
+
+\usepackage[chapter]{algorithm}
+\usepackage{algorithmicx}
+
+% Fix some pdflatex warnings, see https://tex.stackexchange.com/questions/177025
+\newcounter{Halgorithmic}
+\AtBeginEnvironment{algorithmic}{\stepcounter{Halgorithmic}}
+\ExpandArgs{c}\newcommand{theHALG@line}{\arabic{Halgorithmic}.\arabic{ALG@line}}
+
+\algdef{SN}[DefaultBlock]{Begin}{End}{}
+\algdef{CN}[ContinueBlock]{DefaultBlock}{Continue}{End}{}
+\renewcommand\alglinenumber[1]{\footnotesize #1.}
+\renewcommand\algorithmicindent{1em}
+
+\newenvironment{Algorithm}[1][tbp]%
+  {\begin{algorithm}[#1]}%
+  {\end{algorithm}}
+
+\captionsetup[algorithm]{
+  labelsep=quad,
+  labelfont={figlabelfont,bf,sf},
+  font={figcaptionfont,sf},
+  name=ALGORITHM,
+}
+

@@ -1,0 +1,117 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="100mm" viewBox="0 0 145 100" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="66" height="9" x="31" y="52" fill="#ffd166" fill-opacity="0.1"/>
+    <path d="m 31,8 67,0 V 41 H 54 V 33 L 54,36 H 31 Z" fill="#ffd166" fill-opacity="0.1"/>
+    <path d="m 77,17 v 1 L 92,18 v -1 l 1,1.5 -1,1.5 V 19 H 62 l 0,6.5 h -1 l 0,-7.5 14,0 V 17 Z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 62,49.5 0,3 h 1 l -1.5,1 -1.5,-1 h 1 L 61,49.5 Z" fill="#cccccc" stroke-width="0.6"/>
+    <rect width="2" height="3" x="71" y="54.5" fill="#cccccc"/>
+    <rect width="22" height="5" x="73" y="53.5" fill="#ffffff" stroke="#000000"/>
+    <rect width="16" height="5" x="33" y="53.5" fill="#ffffff" stroke="#000000"/>
+    <rect width="20" height="5" x="51" y="53.5" fill="#ffffff" stroke="#000000"/>
+    <path d="m 127,90 2,1 h -1 v 5 l -25,0 v -2 l 23,0 v -3 h -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 115,28.5 -1,1.5 v -1 L 93.5,29 v -1 l 20.5,0 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 80,31 -1.5,-1 h 1 v -1 h 1 v 1 h 1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 88,22.5 1,1.5 v -1 l 4.5,0 V 22 L 89,22 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 90,37.5 v 2.5 H 68 v -8 h -1" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 90,27.5 v 2.5 H 67" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 90,18.5 v 1.5 H 68 v 8 h -1" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="M 103,12 H 89 v 1 L 88,11 89,9 V 10 h 14 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 126,9 v -4 L 105,5 v 1 l -1,-2 1,-2 v 1 l 23,0 v 6 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="M 93,27.5 92,29 v -1 l -4,0 v -1 L 92,27 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 103,74 h -7 v 1 l -1,-2 1,-2 v 1 h 7 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 91,80 h 1 l -2,1 -2,-1 h 1 v -1 h 2 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="M 103,64 H 80 v 1 l -1,-2 1,-2 v 1 h 23 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 102,67 -1,2 v -1 H 79 v -2 h 22 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 61,80 h 1 l -2,1 -2,-1 h 1 v -11 h 2 z" fill="#cccccc" stroke-width="0.6"/>
+    <rect width="24" height="8" x="55" y="61" fill="#ebebeb" stroke="#000000"/>
+    <rect width="24" height="8" x="64" y="9" fill="#ebebeb" stroke="#000000"/>
+    <rect width="24" height="8" x="71" y="71" fill="#ebebeb" stroke="#000000"/>
+    <rect width="12" height="6" x="38" y="87" fill="#ebebeb" stroke="#000000"/>
+    <rect width="16" height="8" x="72" y="21" fill="#ebebeb" stroke="#000000"/>
+    <rect width="24" height="81" x="115" y="9" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 102,4 -1,2 V 5 H 95 V 3 h 6 V 2 Z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="M 93,37.5 92,39 v -1 l -4,0 v -1 L 92,37 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 102,95 -1,2 v -1 h -6 v -2 h 6 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 60,74 h -5 v 1 l -1,-2 1,-2 v 1 h 5 z" fill="#cccccc" stroke-width="0.6"/>
+    <text x="127" y="50" text-anchor="middle">RAM</text>
+    <text x="67" y="66" font-size="3.9px" text-anchor="middle">R0 register</text>
+    <rect width="1" height="6" x="61" y="34.5" fill="#cccccc"/>
+    <rect width="28" height="8" x="55" y="41" fill="#ffffff" stroke="#000000"/>
+    <text x="69" y="46" font-size="3.9px" text-anchor="middle">Bus controller</text>
+    <rect width="12" height="8" x="55" y="26" fill="#ffffff" stroke="#000000"/>
+    <text x="61" y="31" font-size="3.9px" text-anchor="middle">Bus</text>
+    <text x="44" y="91" font-size="3.9px" text-anchor="middle">Carry</text>
+    <text x="75" y="90" font-size="3.9px" text-anchor="middle">Arithmetic Unit</text>
+    <text x="49" y="84" font-size="3.5px" text-anchor="end">subtract</text>
+    <rect width="3" height="3" x="101.5" y="27" fill="#ffffff"/>
+    <rect width="2" height="98" x="102" y="0" fill="#cccccc" stroke-width="0"/>
+    <rect width="1" height="23" x="93" y="17" fill="#cccccc" stroke-width="0"/>
+    <text x="-49" y="104" transform="rotate(-90)" text-anchor="middle">Data Bus</text>
+    <text x="-28.5" y="97" transform="rotate(-90)" text-anchor="middle">Address Bus</text>
+    <text x="76" y="14" font-size="3.9px" text-anchor="middle">Instruction</text>
+    <text x="41" y="57.5" font-size="3.9px" text-anchor="middle">FETCH</text>
+    <text x="61" y="57.5" font-size="3.9px" text-anchor="middle">DECODE</text>
+    <text x="84" y="57.5" font-size="3.9px" text-anchor="middle">EXECUTE</text>
+    <text x="83" y="76" font-size="3.9px" text-anchor="middle">R1 register</text>
+    <rect width="40" height="16" x="55" y="81" fill="none" stroke="#000000"/>
+    <path d="M 55,88 H 50" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 42,73 H 38" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 50,83 h 5" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 50,96 53,96 v -4 h -3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <text x="48" y="74" font-size="3.9px" text-anchor="middle">$\ne 0$</text>
+    <rect width="12" height="6" x="42" y="70" fill="none" stroke="#000000"/>
+    <text x="83" y="5" font-size="3.9px" text-anchor="middle">Input</text>
+    <rect width="24" height="8" x="71" y="0" fill="none" stroke="#000000"/>
+    <text x="109" y="89" font-size="3.5px" text-anchor="end">$w$</text>
+    <path d="m 110,88 h 5" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 83,44 h 24 V 4" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="M 83,42 H 99 V 4" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="M 83,46 H 99 V 95" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="M 83,48 H 97 V 67" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 98,3 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 89,36.5 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 96,66 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 98,94 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <text x="49" y="40" font-size="3.5px" text-anchor="end">selectINPUT</text>
+    <path d="m 50,39 h 2 v 3 h 3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 50,26 h 2 v 2 h 3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 50,22 19,0 v 6 h 3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 50,51 h 2 v -3 h 3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 50,34 h 2 v -2 h 3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 50,43 h 2 v 1 h 3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 50,47 h 2 v -1 h 3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <text x="49" y="44" font-size="3.5px" text-anchor="end">selectRAM</text>
+    <text x="49" y="48" font-size="3.5px" text-anchor="end">selectALU</text>
+    <text x="49" y="52" font-size="3.5px" text-anchor="end">selectR0</text>
+    <text x="49" y="69" font-size="3.5px" text-anchor="end">writeR0</text>
+    <path d="m 50,68 h 5" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="49" y="79" font-size="3.5px" text-anchor="end">writeR1</text>
+    <path d="M 50,78 H 71" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="80" y="26" font-size="3.9px" text-anchor="middle">PC</text>
+    <rect width="16" height="8" x="72" y="31" fill="#ffffff" stroke="#000000"/>
+    <text x="80" y="36" font-size="3.9px" text-anchor="middle">PC+1</text>
+    <path d="m 89,26.5 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 89,17.5 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <text x="49" y="27" font-size="3.5px" text-anchor="end">selectIR</text>
+    <text x="49" y="31" font-size="3.5px" text-anchor="end">selectPC</text>
+    <text x="49" y="35" font-size="3.5px" text-anchor="end">selectPC+1</text>
+    <path d="m 50,30 h 5" stroke="#000000" stroke-linejoin="bevel" marker-end="url(#arrow)"/>
+    <text x="49" y="97" font-size="3.5px" text-anchor="end">writeCarry</text>
+    <text x="49" y="17" font-size="3.5px" text-anchor="end">writeIR</text>
+    <text x="49" y="23" font-size="3.5px" text-anchor="end">writePC</text>
+    <path d="m 50,16 14,0" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 108,3 V 5 L 106,4 Z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 95,56 h 1 v 4 h -64 V 56 H 33" fill="none" stroke="#000000"/>
+    <path d="m 49,56 h 2" stroke="#000000"/>
+  </g>
+</svg>

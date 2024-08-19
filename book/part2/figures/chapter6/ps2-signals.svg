@@ -1,0 +1,27 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs/>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <text x="48" y="23" text-anchor="end">CLOCK</text>
+    <text x="48" y="35" text-anchor="end">DATA</text>
+    <text x="-33" y="116" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">parity</text>
+    <text x="-33" y="122" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">stop</text>
+    <text x="-33" y="110" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 7</text>
+    <text x="-33" y="104" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 6</text>
+    <text x="-33" y="98" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 5</text>
+    <text x="-33" y="92" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 4</text>
+    <text x="-33" y="86" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 3</text>
+    <text x="-33" y="80" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 2</text>
+    <text x="-33" y="74" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 1</text>
+    <text x="-33" y="68" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">bit 0</text>
+    <text x="-33" y="62" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">start</text>
+    <path d="M 49,17 59.5,17 v 8 h 3 V 17 h 3 v 8 h 3 V 17 h 3 v 8 h 3 V 17 h 3 v 8 h 3 V 17 h 3 v 8 h 3 V 17 h 3 v 8 h 3 V 17 h 3 v 8 h 3 V 17 l 3,0 v 8 h 3 v -8 h 3 v 8 h 3 v -8 h 3 v 8 h 3 V 17 h 3 v 8 h 3 V 17 l 7.5,0" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 65,37 h -6 l -2,-7 h -8" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 118,33 -1,-4 h -4 l -2,8 h -4 l -2,-8 h -4 l -2,8 h -4 l -2,-8 h -4 l -2,8 h -4 l -2,-8 h -4 l -2,8 h -4 L 69,29 h -4 l -1,4 1,4 h 4 l 2,-8 h 4 l 2,8 h 4 l 2,-8 h 4 l 2,8 h 4 l 2,-8 H 99 l 2,8 h 4 l 2,-8 h 4 l 2,8 h 4 z" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+    <path d="m 118,33 1,-4 11,0" fill="none" fill-opacity="0.501654" stroke="#0e6e8e"/>
+  </g>
+</svg>

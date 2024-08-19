@@ -1,0 +1,2125 @@
+{
+"name": "decode-and-execute",
+"timePeriod": 530,
+"clockEnabled": false,
+"projectId": "Hhs8CxLRAq5lcbtsJqqz",
+"focussedCircuit": 52233090654,
+"orderedTabs": [
+"52233090654"
+],
+"scopes": [
+{
+"layout": {
+"width": 100,
+"height": 120,
+"title_x": 50,
+"title_y": 13,
+"titleEnabled": true
+},
+"verilogMetadata": {
+"isVerilogCircuit": false,
+"isMainCircuit": false,
+"code": "// Write Some Verilog Code Here!",
+"subCircuitScopeIds": []
+},
+"allNodes": [
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+15
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+17
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+19
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+16
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+19
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+21
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": 910,
+"y": 480,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+21
+]
+},
+{
+"x": 610,
+"y": 500,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+0,
+69
+]
+},
+{
+"x": 760,
+"y": 500,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+7,
+137
+]
+},
+{
+"x": 530,
+"y": 480,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+1,
+70,
+18
+]
+},
+{
+"x": 530,
+"y": 470,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+17
+]
+},
+{
+"x": 680,
+"y": 480,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+2,
+8,
+20
+]
+},
+{
+"x": 680,
+"y": 470,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+19
+]
+},
+{
+"x": 830,
+"y": 480,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+9,
+14,
+22
+]
+},
+{
+"x": 830,
+"y": 470,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+21
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+40
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+71
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+27
+]
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Control Signal",
+"connections": [
+32
+]
+},
+{
+"x": 500,
+"y": 520,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+25,
+68
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+42
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+34
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+35
+]
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Control Signal",
+"connections": [
+41
+]
+},
+{
+"x": 460,
+"y": 530,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+26,
+41,
+60
+]
+},
+{
+"x": 500,
+"y": 600,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+34,
+135
+]
+},
+{
+"x": 500,
+"y": 620,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+29,
+33
+]
+},
+{
+"x": 500,
+"y": 640,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+30,
+102
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+55
+]
+},
+{
+"x": -10,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+43
+]
+},
+{
+"x": -10,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+44
+]
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Control Signal",
+"connections": [
+103
+]
+},
+{
+"x": 450,
+"y": 510,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+23,
+43
+]
+},
+{
+"x": 460,
+"y": 650,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+31,
+32
+]
+},
+{
+"x": 450,
+"y": 630,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+28,
+44
+]
+},
+{
+"x": 450,
+"y": 560,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+37,
+40
+]
+},
+{
+"x": 450,
+"y": 580,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+38,
+42
+]
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+53
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+57
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+54
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": 0,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+56
+]
+},
+{
+"x": 300,
+"y": 590,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+45,
+58
+]
+},
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+47
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+36
+]
+},
+{
+"x": -10,
+"y": 0,
+"type": 0,
+"bitWidth": 1,
+"label": "",
+"connections": [
+52
+]
+},
+{
+"x": 20,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+46
+]
+},
+{
+"x": 300,
+"y": 710,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+53,
+112,
+113
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+103
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+32
+]
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+69
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+115
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+125
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": 500,
+"y": 540,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+27,
+115
+]
+},
+{
+"x": 610,
+"y": 560,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+15,
+61,
+87
+]
+},
+{
+"x": 500,
+"y": 480,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+17,
+71
+]
+},
+{
+"x": 500,
+"y": 500,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+24,
+70
+]
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+87
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+135
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+90
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+88
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+90
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+92
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": 910,
+"y": 600,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+92
+]
+},
+{
+"x": 610,
+"y": 620,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+69,
+72,
+101
+]
+},
+{
+"x": 760,
+"y": 620,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+79,
+89,
+137
+]
+},
+{
+"x": 760,
+"y": 680,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+88,
+104,
+111
+]
+},
+{
+"x": 680,
+"y": 600,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+74,
+80,
+91
+]
+},
+{
+"x": 680,
+"y": 590,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+90
+]
+},
+{
+"x": 830,
+"y": 600,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+81,
+86,
+93
+]
+},
+{
+"x": 830,
+"y": 590,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+92
+]
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+101
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+133
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+131
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": 610,
+"y": 680,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+87,
+94,
+112
+]
+},
+{
+"x": 500,
+"y": 660,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+35,
+133
+]
+},
+{
+"x": 410,
+"y": 590,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+39,
+59
+]
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+89
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+131
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+129
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": 760,
+"y": 710,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+89,
+112
+]
+},
+{
+"x": 610,
+"y": 710,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+58,
+101,
+111
+]
+},
+{
+"x": 10,
+"y": 0,
+"type": 1,
+"bitWidth": 1,
+"label": "",
+"connections": [
+58
+]
+},
+{
+"x": 910,
+"y": 660,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+129
+]
+},
+{
+"x": 530,
+"y": 540,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+62,
+68,
+116
+]
+},
+{
+"x": 530,
+"y": 530,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+115
+]
+},
+{
+"x": -20,
+"y": 10,
+"type": 0,
+"bitWidth": 1,
+"label": "Clock",
+"connections": [
+137
+]
+},
+{
+"x": -20,
+"y": -10,
+"type": 0,
+"bitWidth": 1,
+"label": "D",
+"connections": [
+125
+]
+},
+{
+"x": 20,
+"y": -10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q",
+"connections": [
+127
+]
+},
+{
+"x": 20,
+"y": 10,
+"type": 1,
+"bitWidth": 1,
+"label": "Q Inverse",
+"connections": []
+},
+{
+"x": 10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Asynchronous Reset",
+"connections": []
+},
+{
+"x": 0,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Preset",
+"connections": []
+},
+{
+"x": -10,
+"y": 20,
+"type": 0,
+"bitWidth": 1,
+"label": "Enable",
+"connections": []
+},
+{
+"x": 910,
+"y": 540,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+127
+]
+},
+{
+"x": 680,
+"y": 540,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+63,
+118,
+126
+]
+},
+{
+"x": 680,
+"y": 530,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+125
+]
+},
+{
+"x": 830,
+"y": 540,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+119,
+124,
+128
+]
+},
+{
+"x": 830,
+"y": 530,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+127
+]
+},
+{
+"x": 830,
+"y": 660,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+106,
+114,
+130
+]
+},
+{
+"x": 830,
+"y": 650,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+129
+]
+},
+{
+"x": 680,
+"y": 660,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+96,
+105,
+132
+]
+},
+{
+"x": 680,
+"y": 650,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+131
+]
+},
+{
+"x": 530,
+"y": 660,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+95,
+102,
+134
+]
+},
+{
+"x": 530,
+"y": 650,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+133
+]
+},
+{
+"x": 530,
+"y": 600,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+33,
+73,
+136
+]
+},
+{
+"x": 530,
+"y": 590,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+135
+]
+},
+{
+"x": 760,
+"y": 560,
+"type": 2,
+"bitWidth": 1,
+"label": "",
+"connections": [
+16,
+88,
+117
+]
+}
+],
+"id": 52233090654,
+"name": "Main",
+"Input": [
+{
+"x": 410,
+"y": 450,
+"objectType": "Input",
+"label": "\\cvmath{op_1}",
+"direction": "DOWN",
+"labelDirection": "UP",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 59
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"DOWN",
+1,
+{
+"x": 0,
+"y": 20,
+"id": "V96HSkKxDSK4L0oyiI5X"
+}
+]
+}
+},
+{
+"x": 460,
+"y": 450,
+"objectType": "Input",
+"label": "\\cvmath{op_0}",
+"direction": "DOWN",
+"labelDirection": "UP",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 60
+},
+"values": {
+"state": 0
+},
+"constructorParamaters": [
+"DOWN",
+1,
+{
+"x": 0,
+"y": 40,
+"id": "GFceY9FsrsTXlkk7ObDs"
+}
+]
+}
+}
+],
+"NotGate": [
+{
+"x": 370,
+"y": 570,
+"objectType": "NotGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 55,
+"inp1": 54
+}
+}
+},
+{
+"x": 280,
+"y": 570,
+"objectType": "NotGate",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"RIGHT",
+1
+],
+"nodes": {
+"output1": 57,
+"inp1": 56
+}
+}
+}
+],
+"Ground": [
+{
+"x": 250,
+"y": 580,
+"objectType": "Ground",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 52
+},
+"constructorParamaters": [
+1
+]
+}
+}
+],
+"DflipFlop": [
+{
+"x": 640,
+"y": 490,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 0,
+"dInp": 1,
+"qOutput": 2,
+"qInvOutput": 3,
+"reset": 4,
+"preset": 5,
+"en": 6
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+},
+{
+"x": 790,
+"y": 490,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 7,
+"dInp": 8,
+"qOutput": 9,
+"qInvOutput": 10,
+"reset": 11,
+"preset": 12,
+"en": 13
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+},
+{
+"x": 330,
+"y": 580,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 45,
+"dInp": 46,
+"qOutput": 47,
+"qInvOutput": 48,
+"reset": 49,
+"preset": 50,
+"en": 51
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+},
+{
+"x": 640,
+"y": 550,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 61,
+"dInp": 62,
+"qOutput": 63,
+"qInvOutput": 64,
+"reset": 65,
+"preset": 66,
+"en": 67
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+},
+{
+"x": 640,
+"y": 610,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 72,
+"dInp": 73,
+"qOutput": 74,
+"qInvOutput": 75,
+"reset": 76,
+"preset": 77,
+"en": 78
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+},
+{
+"x": 790,
+"y": 610,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 79,
+"dInp": 80,
+"qOutput": 81,
+"qInvOutput": 82,
+"reset": 83,
+"preset": 84,
+"en": 85
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+},
+{
+"x": 640,
+"y": 670,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 94,
+"dInp": 95,
+"qOutput": 96,
+"qInvOutput": 97,
+"reset": 98,
+"preset": 99,
+"en": 100
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+},
+{
+"x": 790,
+"y": 670,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 104,
+"dInp": 105,
+"qOutput": 106,
+"qInvOutput": 107,
+"reset": 108,
+"preset": 109,
+"en": 110
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+},
+{
+"x": 790,
+"y": 550,
+"objectType": "DflipFlop",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"nodes": {
+"clockInp": 117,
+"dInp": 118,
+"qOutput": 119,
+"qInvOutput": 120,
+"reset": 121,
+"preset": 122,
+"en": 123
+},
+"constructorParamaters": [
+"RIGHT",
+1
+]
+}
+}
+],
+"Clock": [
+{
+"x": 250,
+"y": 710,
+"objectType": "Clock",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 0,
+"customData": {
+"nodes": {
+"output1": 113
+},
+"constructorParamaters": [
+"RIGHT"
+]
+}
+}
+],
+"Demultiplexer": [
+{
+"x": 480,
+"y": 510,
+"objectType": "Demultiplexer",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"LEFT",
+1,
+1
+],
+"nodes": {
+"output1": [
+24,
+25
+],
+"input": 23,
+"controlSignalInput": 26
+}
+}
+},
+{
+"x": 480,
+"y": 630,
+"objectType": "Demultiplexer",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"LEFT",
+1,
+1
+],
+"nodes": {
+"output1": [
+29,
+30
+],
+"input": 28,
+"controlSignalInput": 31
+}
+}
+},
+{
+"x": 430,
+"y": 570,
+"objectType": "Demultiplexer",
+"label": "",
+"direction": "LEFT",
+"labelDirection": "RIGHT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"LEFT",
+1,
+1
+],
+"nodes": {
+"output1": [
+37,
+38
+],
+"input": 36,
+"controlSignalInput": 39
+}
+}
+}
+],
+"Text": [
+{
+"x": 530,
+"y": 460,
+"objectType": "Text",
+"label": "wire0-1",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire0-1",
+14
+]
+}
+},
+{
+"x": 680,
+"y": 460,
+"objectType": "Text",
+"label": "wire0-2",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire0-2",
+14
+]
+}
+},
+{
+"x": 830,
+"y": 460,
+"objectType": "Text",
+"label": "wire0-3",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire0-3",
+14
+]
+}
+},
+{
+"x": 530,
+"y": 520,
+"objectType": "Text",
+"label": "wire1-1",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire1-1",
+14
+]
+}
+},
+{
+"x": 680,
+"y": 520,
+"objectType": "Text",
+"label": "wire1-2",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire1-2",
+14
+]
+}
+},
+{
+"x": 830,
+"y": 520,
+"objectType": "Text",
+"label": "wire1-3",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire1-3",
+14
+]
+}
+},
+{
+"x": 530,
+"y": 580,
+"objectType": "Text",
+"label": "wire2-1",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire2-1",
+14
+]
+}
+},
+{
+"x": 680,
+"y": 580,
+"objectType": "Text",
+"label": "wire2-2",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire2-2",
+14
+]
+}
+},
+{
+"x": 830,
+"y": 580,
+"objectType": "Text",
+"label": "wire2-3",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire2-3",
+14
+]
+}
+},
+{
+"x": 530,
+"y": 640,
+"objectType": "Text",
+"label": "wire3-1",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire3-1",
+14
+]
+}
+},
+{
+"x": 680,
+"y": 640,
+"objectType": "Text",
+"label": "wire3-2",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire3-2",
+14
+]
+}
+},
+{
+"x": 830,
+"y": 640,
+"objectType": "Text",
+"label": "wire3-3",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"wire3-3",
+14
+]
+}
+},
+{
+"x": 400,
+"y": 690,
+"objectType": "Text",
+"label": "DECODE",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"DECODE",
+14
+]
+}
+},
+{
+"x": 820,
+"y": 690,
+"objectType": "Text",
+"label": "EXECUTE",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+"EXECUTE",
+14
+]
+}
+}
+],
+"Rectangle": [
+{
+"x": 400,
+"y": 470,
+"objectType": "Rectangle",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+20,
+11
+]
+}
+},
+{
+"x": 520,
+"y": 440,
+"objectType": "Rectangle",
+"label": "",
+"direction": "RIGHT",
+"labelDirection": "LEFT",
+"propagationDelay": 10,
+"customData": {
+"constructorParamaters": [
+26,
+38
+]
+}
+}
+],
+"restrictedCircuitElementsUsed": [],
+"nodes": [
+14,
+15,
+16,
+17,
+18,
+19,
+20,
+21,
+22,
+27,
+32,
+33,
+34,
+35,
+40,
+41,
+42,
+43,
+44,
+53,
+58,
+68,
+69,
+70,
+71,
+86,
+87,
+88,
+89,
+90,
+91,
+92,
+93,
+101,
+102,
+103,
+111,
+112,
+114,
+115,
+116,
+124,
+125,
+126,
+127,
+128,
+129,
+130,
+131,
+132,
+133,
+134,
+135,
+136,
+137
+]
+}
+]
+}

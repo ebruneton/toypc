@@ -1,0 +1,339 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter[Logic Gates and Arithmetic Circuits]
+  {Logic Gates and\\ Arithmetic Circuits}\label{chapter:logic-gates}
+
+As explained in the previous chapter, computing arithmetic operations on binary
+numbers boils down to the computation of simple logical operations such as
+conjunctions and exclusive disjunctions. This chapter explains how these
+operations can be implemented with electric circuits, and then how these
+circuits can be combined to perform arithmetic operations.
+
+\section{Transistors}
+
+In order to implement a logical operation with an electric circuit we first
+need a way to represent 0 and 1 with some electric states. One possibility is
+to view a wire connected to the ground as 0, and a wire connected to the power
+source (\eg, +5V) as 1. To implement a circuit for $\neg p$, for instance,
+we can use an input wire for $p$, and an output wire for the result $\neg p$.
+The circuit in the middle must then connect the output wire to the ground
+(resp. power source) if the input wire is connected to the power source (resp.
+ground). A simple switch can do this, provided it is controlled by the input
+wire, instead of manually. In fact, as illustrated in the next sections, such
+switches are sufficient to implement any logical operation.
+
+An electric switch itself controlled by electricity connects or disconnects two
+terminals, hereafter noted $a$ and $b$, depending on the voltage or current in
+a third one, noted $c$. One method to do this is to use a {\em transistor}.
+Another method is to use a {\em relay}. Transistors are much more efficient
+than relays, and are used virtually everywhere. But relays are simpler to
+understand and, for this reason, we use them in this chapter to explain how
+logic gates work.
+
+A relay can be built with an electromagnet controlling a metallic connector.
+There are two types of relays connecting or disconnecting two terminals (see
+\cref{fig:relays}):
+\begin{itemize}
+  \item in a {\em normally open} relay, the $a$ and $b$ terminals are
+  disconnected when no current is flowing through the electromagnet. They are
+  connected when the relay is {\em active}, \ie, when there is a current in the
+  electromagnet.
+
+  \item in a {\em normally closed} relay, the $a$ and $b$ terminals are
+  connected when the relay is {\em inactive}, \ie, when there is no current in
+  the electromagnet. They are disconnected when it is active.
+\end{itemize}
+
+In the following we represent relays with the symbols illustrated in
+\cref{fig:relay-symbols}. We draw input terminals connected to the ground
+(resp. power source) with a 0 (resp. 1) inside a black square. Similarly, we
+use a 0 (resp. 1) inside a blue square for output terminals connected to the
+ground (resp. power source). We represent those which are not connected to
+anything with an X inside a red square. Finally, we draw wires connected to the
+ground, to the power source, or to nothing in blue, green, and red,
+respectively (see \cref{fig:relay-symbols}).
+
+\begin{Figure}
+  \input{figures/chapter2/relays.tex}
+
+  \caption{The two types of relays used in this chapter. The electromagnet,
+  when active (right), attracts a metallic piece. This connects the $a$ and $b$
+  terminals of a normally open relay (top), and disconnects those of a normally
+  closed one (bottom). When the electromagnet inactive, a spring moves the
+  metallic piece away from it.}\label{fig:relays}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter2/relay-symbols.tex}
+
+  \caption{The symbols and colors used for normally closed (left) and normally
+  open (right) relays, as well as for wires and input (black) and output (blue)
+  terminals connected to the ground, to the power source (up triangle), or to
+  nothing (in red).}\label{fig:relay-symbols}
+\end{Figure}
+
+\section{Logic gates}
+
+\subsection{NOT}
+
+A {\em NOT gate} is a circuit implementing the logical not operation. This gate
+can be built with two relays controlled by the same input\footnote{In practice,
+with electromagnet relays, 0 can be represented with a terminal connected to
+the ground or to nothing. Then a single normally closed relay is sufficient to
+build a NOT gate \cite{MerciaRelay}. In this chapter we do as if it was not the
+case. This leads to circuits which are much closer to those built with the most
+common technology, namely Complementary Metal Oxide Semi-conductors (CMOS).}.
+The first, normally closed, connects the output to the power source by default.
+The second, normally open, connects the output to the ground when active (see
+\cref{fig:not-gate}). Hence, when the input is 0 the first relay connects the
+output to the power source, \ie, sets it to 1 (while the second does nothing).
+Conversely, when the input is 1, the first relay has no effect but the second
+connects the output to the ground, \ie, sets it to 0 (see \cref{fig:not-gate}).
+
+\begin{Figure}
+  \input{figures/chapter2/not-gate.tex}
+
+  \caption{The two possible states of the NOT gate.}\label{fig:not-gate}
+\end{Figure}
+
+\subsection{AND and NAND}
+
+\begin{Figure}
+  \input{figures/chapter2/and-gate.tex} \\
+  \medskip
+  \input{figures/chapter2/nand-gate.tex}
+
+  \caption{The four possible states of the AND (top) and NAND (bottom)
+    gates.}\label{fig:and-gate}
+\end{Figure}
+
+The {\em AND gate} is a circuit implementing the logical and operation. This
+circuit must connect the output to the power source when both inputs are 1.
+This can be done with two normally open relays connected in series. Conversely,
+this gate must connect the output to the ground when at least one input is 0.
+This can be done with two normally closed relays connected in parallel (see
+\cref{fig:and-gate}).
+
+The {\em NAND gate} implements the negation of the logical and, \ie, it
+computes $\neg (p \wedge q)$. It can be obtained by connecting a NOT gate to
+the output of an AND gate. But a simpler method is to switch the power source
+and the ground of the AND gate or, equivalently, the upper and lower halves of
+this circuit\footnote{With the CMOS technology ``normally closed'' (resp.
+``open'') transistors are only used in the upper (resp. lower) half of a gate.
+Hence a CMOS AND gate is built with a NAND gate followed by a NOT.} (see
+\cref{fig:and-gate}).
+
+\subsection{OR and NOR}
+
+The {\em OR gate} is a circuit implementing the logical or operation. This
+gate must connect the output to the power source when at least one input is
+1. This can be done with two normally open relays connected in parallel.
+Conversely, this gate must connect the output to the ground when both inputs
+are 0. This can be done with two normally closed relays connected in series
+(see \cref{fig:or-gate}).
+
+The {\em NOR gate} implements the negation of the logical or, \ie, it computes
+$\neg (p \vee q)$. As the NAND gate, it can be obtained by switching the upper
+and lower halves of the OR gate circuit (see \cref{fig:or-gate}).
+
+\begin{Figure}
+  \input{figures/chapter2/or-gate.tex} \\
+  \medskip
+  \input{figures/chapter2/nor-gate.tex}
+
+  \caption{The four possible states of the OR (top) and NOR (bottom)
+  gates.}\label{fig:or-gate}
+\end{Figure}
+
+\subsection{XOR}
+
+The {\em XOR gate} implements the exclusive or operation. The result of $p
+\oplus q$ is 1 when $p$ is 1 and $q$ is 0, or when $p$ is 0 and $q$ is 1. This
+gate must thus connect the output to the power source if at least one these two
+cases happens. This can be done with two sub circuits, one for each case,
+connected in parallel. Each sub circuit must connect its output to the power
+source when both inputs have a specific value. This can be done with two relays
+connected in series: a normally open for $p$ or $q$, and a normally closed for
+$\neg p$ or $\neg q$.
+
+Conversely, the result of $p \oplus q$ is 0 when both ``$p$ is 0 or $q$ is 1''
+and ``$p$ is 1 or $q$ is 0'' are true. The same reasoning as above leads to two
+sub circuits connected in series, where each sub circuit uses two relays
+connected in parallel. This lead to the final circuit shown in
+\cref{fig:xor-gate}.
+
+In the following, to simplify figures and to make it easier to distinguish each
+logic gate, we represent them with their American National Standards Institute
+(ANSI) symbols, shown in \cref{fig:gate-symbols}.
+
+\begin{Figure}
+  \input{figures/chapter2/xor-gate.tex}
+
+  \caption{The four possible states of the XOR gate.}\label{fig:xor-gate}
+\end{Figure}
+
+\begin{Figure}
+  \input{figures/chapter2/gate-symbols.tex}
+
+  \caption{The ANSI symbols of the NOT, AND, NAND, OR, NOR and XOR logic
+  gates.}\label{fig:gate-symbols}
+\end{Figure}
+
+\section{Multiplexers and demultiplexers}
+
+Logic gates can be assembled to create more and more complex circuits. A simple
+example is the {\em demultiplexer}, shown below, and represented with the
+symbol on the right:
+
+\begin{center}
+  \input{figures/chapter2/demux.tex}
+\end{center}
+
+This circuit copies its input $i$ to the $o_s$ output, \ie, to $o_0$ if $s=0$
+or to $o_1$ if $s=1$. It sets the other to 0. It can be viewed as a ``railroad
+switch'' for signals. The {\em multiplexer}, shown below and represented with
+the symbol on the right, does the opposite:
+
+\begin{center}
+  \input{figures/chapter2/mux.tex}
+\end{center}
+
+This circuit sets its output $o$ to the $i_s$ input, \ie, to $i_0$ if $s=0$, or
+to $i_1$ if $s=1$.
+
+\section{Arithmetic circuits}
+
+\subsection{Adder}\label{subsection:adder-circuit}
+
+\begin{Figure}
+  \input{figures/chapter2/adder.tex}
+
+  \caption{A circuit to add two 4-bit numbers (bottom) can be built with 4
+    full-adder circuits (top right), each made of two half-adders (top left) and
+    an OR gate. Here this circuit computes $0111_2+0011_2=1010_2$
+    ($7+3=10$).}\label{fig:adder}
+\end{Figure}
+
+As shown in the previous chapter, the addition of two bits is simply their
+exclusive disjunction, with a carry equal to their conjunction. In other words,
+we can add two bits with an XOR gate, plus an AND gate for the carry. The
+resulting circuit, called a {\em half-adder}, is illustrated in
+\cref{fig:adder}.
+
+As explained in \cref{subsection:binary-add}, adding two binary numbers $a$ and
+$b$ must be done step by step, from right to left. At each step, one bit $a_i$
+from $a$ must be added to one bit $b_i$ from $b$, and to the carry $c_{i-1}$
+from the previous step. In other words, three bits must be added at each step,
+but the above circuit can only add two. The solution is to connect two copies
+of it: a first copy adds $a_i$ and $b_i$, and a second adds $c_{i-1}$ to the
+result of the first. Each copy produces a new carry, but at most one of these
+can be 1. Indeed, if $a_i+b_i$ gives a carry then the second stage necessarily
+adds $c_{i-1}$ to $0$, which cannot give a carry. Hence the new carry $c_i$
+resulting from $a_i+b_i+c_{i-1}$ can be computed with a disjunction of the
+carries from the two half-adders. This leads to the {\em full adder} circuit
+shown in \cref{fig:adder}.
+
+Finally, to add two binary numbers with $n$ bits each, we simply need to
+connect $n$ full-adder circuits, with the output carry $c_i$ of step $i$
+connected to the input carry $c_{i-1}$ of step $i+1$ (see \cref{fig:adder}).
+
+\subsection{Subtractor}
+
+\begin{Figure}
+  \input{figures/chapter2/subtractor.tex}
+
+  \caption{A circuit to subtract two 4-bit numbers (bottom) can be built with 4
+    full-subtractor circuits (top right), each made of two half-subtractors (top
+    left) and an OR gate. Here this circuit computes $1010_2-0111_2=0011_2$
+    ($10-7=3$).}\label{fig:subtractor}
+\end{Figure}
+
+Subtracting two binary numbers can be done with a very similar circuit. As
+shown in the previous chapter, subtracting a bit $b$ from $a$ gives their
+exclusive disjunction (as their addition), plus a carry equal to the
+conjunction of $\neg a$ and $b$ (versus of $a$ and $b$ for an addition). In
+other words, a circuit to subtract $b$ from $a$ can be obtained by adding a NOT
+gate in a half-adder circuit. The result, called a {\em half-subtractor}, is
+illustrated in \cref{fig:subtractor}.
+
+Subtracting two binary numbers $a$ and $b$ must be done step by step, from
+right to left. At each step, one bit $b_i$ from $b$, and the carry $c_{i-1}$
+from the previous step, must be subtracted from a bit $a_i$ from $a$. In other
+words, three bits must be subtracted at each step, but the above circuit can
+only subtract two. The solution is to connect two copies of it: a first copy
+subtracts $b_i$ from $a_i$, and a second subtracts $c_{i-1}$ from the result of
+the first. Each copy produces a new carry, but at most one of these can be 1.
+Indeed, if $a_i-b_i$ gives a carry then the second stage necessarily subtracts
+$c_{i-1}$ from $1$, which cannot give a carry. Hence the new carry $c_i$
+resulting from $a_i-b_i-c_{i-1}$ can be computed with a disjunction of the
+carries from the two half-subtractors. This leads to the {\em full subtractor}
+circuit shown in \cref{fig:subtractor}.
+
+Finally, to subtract two binary numbers with $n$ bits each, we simply need to
+connect $n$ full subtractor circuits, with the output carry $c_i$ of step $i$
+connected to the input carry $c_{i-1}$ of step $i+1$ (see
+\cref{fig:subtractor}).
+
+\subsection{Arithmetic and Logic Unit}
+
+\begin{Figure}
+  \input{figures/chapter2/alu.tex}
+
+  \caption{A simple Arithmetic Unit which can perform additions, subtractions,
+    and comparisons of $4$-bit numbers.}\label{fig:alu}
+\end{Figure}
+
+As shown in \cref{subsection:binary-add}, multiplying two binary numbers $a$
+and $b$ boils down to additions of left shifted copies of $a$, each multiplied
+by a bit of $b$. Furthermore, $a_i * b_j$ gives the same result as $a_i \wedge
+b_j$. Hence a circuit to multiply two $n$-bit binary numbers (yielding $2n$
+bits) can be obtained with $n$ copies of an $n$-bit adder, plus $n^2$ AND gates
+to compute the $a_i \wedge b_j$ terms.
+
+Comparing two $n$-bit binary numbers is also easy to do. Indeed:
+\begin{itemize}
+  \item $a=b$ if and only if the $n$ least significant bits of $a-b$ are equal
+  to 0.
+
+  \item $a>b$ if and only if at least one of the $n$ least significant bits of
+  $a-b$ is different from 0, and if there is no carry in the $n^{th}$ column
+  (counting from 0).
+
+  \item $a<b$ if and only if at least one of the $n$ least significant bits of
+  $a-b$ is different from 0, and if there {\em is} a carry in the $n^{th}$
+  column (counting from 0).
+\end{itemize}
+Hence a subtractor circuit, plus a another computing whether its output
+(excluding the carry) is different from 0, is sufficient to compare two numbers.
+
+Finally, circuits computing bitwise logical operations on $n$-bit numbers are
+trivial to implement. Indeed, we just need $n$ copies of the corresponding
+logic gate, each computing one bit of the result, independently of the others
+(\ie, in parallel).
+
+All these circuits can be put together into a larger circuit called an {\em
+Arithmetic and Logic Unit}. Such a circuit accepts two binary numbers as input,
+plus a third one specifying an operation to perform on them. It produces as
+output the result of this operation, on the given numbers.
+
+For instance, a very simple Arithmetic ``and Logic'' Unit which can only
+perform additions, subtractions, and comparisons is shown in \cref{fig:alu}.
+If its {\tt subtract} input is 1 it subtracts its two 4-bit inputs. Otherwise
+it adds them. For this it uses a subtractor circuit where the NOT gates are
+replaced with XOR gates, connected to the {\tt subtract} input. When this input
+is 0, the XOR gates behave as a simple wire ($p \oplus 0 = p$), which gives an
+adder circuit. When {\tt subtract} is 1 these gates behave as NOT gates ($p
+\oplus 1 = \neg p$), yielding a subtractor. Finally, three OR gates compute
+whether at least one bit of the output is 1. Together with the carry bit, this
+can be used to compare the inputs, as explained above.
+
+To conclude this chapter, it should be noted that a relay takes some time to
+switch between its active and inactive states (because its moving metallic
+piece cannot move instantly). This is the case for transistors too.
+Consequently, the output of a logic gate does not change instantly when its
+inputs change. And this is the same for all circuits. The more logic gates
+there is between an input and an output, the longer it takes for an input
+change to {\em propagate} to the output. These propagation delays must be taken
+into account in some circuits, including some presented in the next chapters.

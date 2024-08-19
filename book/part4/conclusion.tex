@@ -1,0 +1,62 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter*{Conclusion}
+\addcontentsline{toc}{chapter}{Conclusion}
+
+An operating system manages the resources and the peripherals of a computer,
+such as the memory, the disk, the keyboard, the screen, etc. It also provides a
+simple and safe way for processes to use them, via system calls. In this part
+we built a very basic monotasking operating system, in several steps. Starting
+from a basic input output system and a compiler, in the Flash1 memory bank, we
+progressively built and stored in the Flash0 bank an initial, self-hosting
+operating system. Then, using this system alone, we improved its kernel and
+added some utility programs.
+
+The resulting computer is much easier to use than what it was at the beginning
+of this part, but can still be improved in many ways. For instance, if a
+process enters in an infinite loop because of a bug, we currently have no way
+to stop it other than rebooting the computer. To solve this we could use a
+combination of keys, detected in the keyboard interrupt handler, to stop the
+current process. Incidentally, we could also improve the keyboard driver to
+support combinations of keys, such as Ctrl+C or Ctrl+V. Another possible
+improvement is to format the Flash1 memory bank, no longer needed, into free
+blocks added to the Flash0 file system (to get more disk space). Alternatively,
+we could format the Flash1 bank with a better file system format, for instance
+with hierarchical directories. We could then build a new kernel version,
+supporting this new file system, and store it in this new disk. By successively
+switching between the two memory banks like this, we could then improve our
+kernel in arbitrary ways (in the limit of the available memory and disk space).
+
+\subsubsection{Further readings}
+
+Another possible improvement is to switch to a multitasking operating system,
+capable of running several processes concurrently. But this is a complex task,
+which impacts almost all parts of the system. To know how this can be done, or
+to know more about operating systems in general, you can read one of the
+following books:
+\begin{itemize}
+  \item ``Modern Operating Systems'' \cite{ModernOSes}. This book presents the
+  fundamental concepts used in operating systems, and discusses several
+  strategies to implement each aspect (processes, memory management, file
+  systems, peripherals, etc). It starts with processes, discusses all the
+  problems related to their concurrent execution, and presents methods to solve
+  them.
+
+  \item ``Operating Systems Design and Implementation'' \cite{Minix}. This book
+  is from the same author and contains many sections also present
+  in~\cite{ModernOSes}. But it has a more practical point of view and presents
+  the source code of a real operating system, small enough to be included in
+  the book.
+\end{itemize}
+
+You can also visit the OSDev website (\url{https://wiki.osdev.org}), which
+provides many more resources about operating systems. It contains for instance
+a list of operating systems, including educational ones such as MentOS
+(\url{https://mentos-team.github.io/}) and xv6
+(\url{https://pdos.csail.mit.edu/6.828/2023/xv6.html}), used for teaching in
+universities. Finally, you can also read ``Project Oberon: the design of an
+operating system and compiler'' \cite{Oberon} (a second edition is available
+online), which describes a small self-hosting operating system and its compiler.
+

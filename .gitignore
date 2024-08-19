@@ -1,0 +1,11 @@
+/.vscode
+**/*_generator.rs
+**/generated
+**/figures/**/*.tex
+**/build
+/book/website
+/public
+/scripts/src/__pycache__
+/target
+/Cargo.lock
+

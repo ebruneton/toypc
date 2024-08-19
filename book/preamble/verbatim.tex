@@ -1,0 +1,38 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\usepackage{framed}
+\colorlet{shadecolor}{yellow1!10!white}
+\newenvironment{Shaded}{\setlength\topsep{0pt}\begin{snugshade}\small}
+  {\end{snugshade}}
+
+\usepackage{fancyvrb}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{}
+
+\DefineVerbatimEnvironment{Code}{Verbatim}
+  {commandchars=\\\{\},fontsize=\small}
+
+\newlength{\ColorBoxWidth}%
+\newcommand{\ColorBox}[2]%
+{%
+  \settowidth{\ColorBoxWidth}{#2}%
+  \setlength{\fboxsep}{0pt}%
+  \raisebox{0.1\baselineskip}[0pt][0pt]{%
+    \colorbox{#1}{\parbox[c][\baselineskip]{\ColorBoxWidth}{~}}%
+  }%
+  \hspace{-\ColorBoxWidth}#2%
+}
+\colorlet{Inserted}{green1!10!white}
+\colorlet{Deleted}{red1!10!white}
+\newcommand{\ToyComment}[1]{\textcolor{gray}{#1}}
+\newcommand{\ToyConst}[1]{\textcolor{gray}{#1}}
+\newcommand{\ToyParam}[1]{\textcolor{gray}{#1}}
+\newcommand{\ToyVar}[1]{\textcolor{gray}{#1}}
+\newcommand{\ToyLet}[1]{\textcolor{gray}{\makebox[1.5em]{$\rightarrow$}{#1}}}
+\newcommand{\ToyDelete}[1]{\ColorBox{Deleted}{#1}}
+\newcommand{\ToyInsert}[1]{\ColorBox{Inserted}{#1}}
+\newcommand{\ToyWrap}{\textcolor{gray}{\makebox[0.5em]{$\wr$}}}
+\newcommand{\ToyUnwrap}{\textcolor{gray}{\makebox[0.5em]{$\wr$}}}
+\newcommand{\ToyChange}{\rlap{\hspace{-5pt}%
+    \raisebox{-0.2\baselineskip}[0pt][0pt]{\rule{1pt}{\baselineskip}}}}

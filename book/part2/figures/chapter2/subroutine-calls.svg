@@ -1,0 +1,146 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="75mm" viewBox="0 0 145 75" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="12" height="15" x="1" y="58" fill="#cccccc"/>
+    <rect width="24" height="5" x="1" y="8" fill="#ebebeb"/>
+    <text x="13" y="12" text-anchor="middle">BL $b$</text>
+    <text x="24" y="46" text-anchor="end">1234</text>
+    <text x="26" y="12">$a$</text>
+    <path d="M 1,13 25,13" stroke="#000000"/>
+    <path d="M 1,8 25,8" stroke="#000000"/>
+    <rect width="24" height="15" x="1" y="58" fill="none" stroke="#000000"/>
+    <text x="7" y="62" text-anchor="middle">SP</text>
+    <text x="19" y="67" text-anchor="middle">...</text>
+    <text x="7" y="67" text-anchor="middle">LR</text>
+    <text x="19" y="72" text-anchor="middle">$a$</text>
+    <text x="7" y="72" text-anchor="middle">PC</text>
+    <text x="19" y="62" text-anchor="middle">$s$</text>
+    <path d="m 25,63 -24,0" stroke="#000000"/>
+    <path d="M 25,68 H 1" stroke="#000000"/>
+    <path d="M 13,58 V 73" stroke="#000000"/>
+    <rect width="12" height="15" x="40" y="58" fill="#cccccc"/>
+    <rect width="24" height="15" x="40" y="58" fill="none" stroke="#000000"/>
+    <text x="46" y="62" text-anchor="middle">SP</text>
+    <text x="58" y="67" text-anchor="middle" fill="#048966">$a+5$</text>
+    <text x="46" y="67" text-anchor="middle">LR</text>
+    <text x="58" y="72" text-anchor="middle" fill="#048966">$b$</text>
+    <text x="46" y="72" text-anchor="middle">PC</text>
+    <text x="58" y="62" text-anchor="middle">$s$</text>
+    <path d="m 64,63 -24,0" stroke="#000000"/>
+    <path d="m 64,68 h -24" stroke="#000000"/>
+    <path d="M 52,58 V 73" stroke="#000000"/>
+    <rect width="12" height="15" x="79" y="58" fill="#cccccc"/>
+    <rect width="24" height="15" x="79" y="58" fill="none" stroke="#000000"/>
+    <text x="85" y="62" text-anchor="middle">SP</text>
+    <text x="97" y="67" text-anchor="middle">$a+5$</text>
+    <text x="85" y="67" text-anchor="middle">LR</text>
+    <text x="97" y="72" text-anchor="middle" fill="#048966">$b+4$</text>
+    <text x="85" y="72" text-anchor="middle">PC</text>
+    <text x="97" y="62" text-anchor="middle" fill="#048966">$s-4$</text>
+    <path d="M 103,63 79,63" stroke="#000000"/>
+    <path d="M 103,68 H 79" stroke="#000000"/>
+    <path d="M 91,58 V 73" stroke="#000000"/>
+    <rect width="12" height="15" x="118" y="58" fill="#cccccc"/>
+    <rect width="24" height="15" x="118" y="58" fill="none" stroke="#000000"/>
+    <text x="124" y="62" text-anchor="middle">SP</text>
+    <text x="136" y="67" text-anchor="middle" fill="#048966">$b+9$</text>
+    <text x="124" y="67" text-anchor="middle">LR</text>
+    <text x="136" y="72" text-anchor="middle" fill="#048966">$c$</text>
+    <text x="124" y="72" text-anchor="middle">PC</text>
+    <text x="136" y="62" text-anchor="middle">$s-4$</text>
+    <path d="m 142,63 -24,0" stroke="#000000"/>
+    <path d="m 142,68 h -24" stroke="#000000"/>
+    <path d="M 130,58 V 73" stroke="#000000"/>
+    <text x="2" y="4" font-size="3.5px">Memory</text>
+    <text x="2" y="56" font-size="3.5px">Registers</text>
+    <text x="-47" y="39" font-size="3.5px" transform="rotate(-90)">Stack</text>
+    <text x="102" y="56" font-size="3.5px" text-anchor="end">before BL $c$</text>
+    <text x="63" y="56" font-size="3.5px" text-anchor="end">after BL $b$</text>
+    <text x="141" y="56" font-size="3.5px" text-anchor="end">after BL $c$</text>
+    <text x="26" y="46">$s$</text>
+    <path d="M 1,42 25,42" stroke="#000000"/>
+    <path d="M 1,47 H 25" stroke="#000000"/>
+    <text x="65" y="46">$s$</text>
+    <text x="40" y="56">(2)</text>
+    <text x="79" y="56">(3)</text>
+    <text x="25" y="56" text-anchor="end">(1)</text>
+    <path d="m 40,42 24,0" stroke="#000000"/>
+    <path d="m 40,47 h 24" stroke="#000000"/>
+    <text x="104" y="41">$s-4$</text>
+    <path d="m 79,42 24,0" stroke="#000000"/>
+    <path d="m 79,37 h 24" stroke="#000000"/>
+    <path d="m 118,37 h 24" stroke="#000000"/>
+    <path d="M 79,47 H 103" stroke="#000000"/>
+    <rect width="12" height="5" x="52" y="20" fill="#ebebeb"/>
+    <text x="58" y="24" text-anchor="middle">PUSH</text>
+    <text x="46" y="24" text-anchor="middle">ADD</text>
+    <text x="65" y="24">$b$</text>
+    <path d="m 40,20 24,0" stroke="#000000"/>
+    <path d="M 40,30 H 64" stroke="#000000"/>
+    <path d="M 40,25 H 64" stroke="#000000"/>
+    <path d="m 52,20 v 5" stroke="#000000"/>
+    <text x="52" y="29" text-anchor="middle">BL $c$</text>
+    <path d="m 118,42 24,0" stroke="#000000"/>
+    <path d="m 118,47 h 24" stroke="#000000"/>
+    <rect width="24" height="5" x="79" y="25" fill="#ebebeb"/>
+    <text x="97" y="24" text-anchor="middle">PUSH</text>
+    <text x="85" y="24" text-anchor="middle">ADD</text>
+    <text x="104" y="29">$b+4$</text>
+    <path d="M 79,20 103,20" stroke="#000000"/>
+    <path d="m 79,30 h 24" stroke="#000000"/>
+    <path d="m 79,25 h 24" stroke="#000000"/>
+    <path d="m 91,20 v 5" stroke="#000000"/>
+    <text x="91" y="29" text-anchor="middle">BL $c$</text>
+    <text x="136" y="24" text-anchor="middle">PUSH</text>
+    <text x="124" y="24" text-anchor="middle">ADD</text>
+    <path d="m 118,20 24,0" stroke="#000000"/>
+    <path d="m 118,30 h 24" stroke="#000000"/>
+    <path d="m 118,25 h 24" stroke="#000000"/>
+    <path d="m 130,20 v 5" stroke="#000000"/>
+    <text x="130" y="29" text-anchor="middle">BL $c$</text>
+    <text x="63" y="46" text-anchor="end">1234</text>
+    <text x="102" y="46" text-anchor="end">1234</text>
+    <text x="102" y="41" text-anchor="end">$a+5$</text>
+    <text x="141" y="41" text-anchor="end">$a+5$</text>
+    <text x="141" y="46" text-anchor="end">1234</text>
+    <path d="M 1,49 V 35 L 13,34 v 2 L 25,35 V 49" fill="none" stroke="#000000"/>
+    <path d="M 40,49 V 35 l 12,-1 v 2 L 64,35 v 14" fill="none" stroke="#000000"/>
+    <path d="M 79,49 V 35 l 12,-1 v 2 L 103,35 v 14" fill="none" stroke="#000000"/>
+    <path d="M 118,49 V 35 l 12,-1 V 36 l 12,-1 V 49" fill="none" stroke="#000000"/>
+    <path d="m 40,18 12,-1 v 2 L 64,18 V 32 L 52,33 V 31 L 40,32 V 18" fill="none" stroke="#000000"/>
+    <path d="m 79,18 12,-1 v 2 l 12,-1 V 32 L 91,33 V 31 L 79,32 V 18" fill="none" stroke="#000000"/>
+    <path d="m 118,18 12,-1 v 2 l 12,-1 v 14 l -12,1 V 31 l -12,1 V 18" fill="none" stroke="#000000"/>
+    <text x="19" y="24" text-anchor="middle">PUSH</text>
+    <text x="7" y="24" text-anchor="middle">ADD</text>
+    <path d="m 1,20 24,0" stroke="#000000"/>
+    <path d="M 1,30 H 25" stroke="#000000"/>
+    <path d="M 1,25 H 25" stroke="#000000"/>
+    <path d="m 13,20 v 5" stroke="#000000"/>
+    <text x="13" y="29" text-anchor="middle">BL $c$</text>
+    <path d="m 1,18 12,-1 v 2 L 25,18 V 32 L 13,33 V 31 L 1,32 V 18" fill="none" stroke="#000000"/>
+    <path d="M 1,6 V 15 l 12,-1 v 2 L 25,15 V 6" fill="none" stroke="#000000"/>
+    <text x="52" y="12" text-anchor="middle">BL $b$</text>
+    <path d="m 40,13 24,0" stroke="#000000"/>
+    <path d="M 40,8 64,8" stroke="#000000"/>
+    <path d="m 40,6 v 9 l 12,-1 v 2 L 64,15 V 6" fill="none" stroke="#000000"/>
+    <text x="91" y="12" text-anchor="middle">BL $b$</text>
+    <path d="m 79,13 24,0" stroke="#000000"/>
+    <path d="M 79,8 103,8" stroke="#000000"/>
+    <path d="M 79,6 V 15 l 12,-1 v 2 l 12,-1 V 6" fill="none" stroke="#000000"/>
+    <text x="130" y="12" text-anchor="middle">BL $b$</text>
+    <path d="m 118,13 24,0" stroke="#000000"/>
+    <path d="M 118,8 142,8" stroke="#000000"/>
+    <path d="M 118,6 V 15 l 12,-1 v 2 l 12,-1 V 6" fill="none" stroke="#000000"/>
+    <path d="m 65,65 h 7 l 0,-26 h 6" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <text x="118" y="56">(4)</text>
+  </g>
+</svg>

@@ -1,0 +1,577 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter8}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "snake_game.txt")?;
+}
+
+\chapter{Snake Game}\label{chapter:snake-game}
+
+The Toys operating system is now complete. It can of course be improved in
+numerous ways, but this book is already quite long. Thus, instead of doing
+this, and since toys are made to play, we use it in this last chapter to
+implement a small ``snake'' game.
+
+\section{Requirements}
+
+In this game the player uses the arrow keys to control a ``snake'' moving at
+constant speed across the screen. The goal is to ``eat'' as many ``apples'' as
+possible. Each time the snake eats one, its get longer and a new apple appears
+at random in a free spot.
+
+The snake is represented with a contiguous series of green square cells, from
+head to tail. The apple is represented with a red cell (there is only one apple
+at any given time). At each time step the head moves in the same direction as
+in the previous step or, if an arrow key was pressed, in the arrow direction.
+The body follows it, as illustrated in the following example:
+
+\begin{center}
+  \input{figures/chapter8/snake-move.tex}
+\end{center}
+
+If the head hits a ``wall'' (the screen boundary) or the snake's own body, the
+game is over. If the head moves in the apple cell the tail does not move, which
+increases the snake's length:
+
+\begin{center}
+  \input{figures/chapter8/snake-eat.tex}
+\end{center}
+
+Then a new apple appears at random {\em in a free cell}. If the player is
+extremely good there might be no free cell left, in which case the game is
+over. The score is the number of apples eaten.
+
+\section{Data structures}
+
+In order to implement the above requirements we need to store in memory the
+current state of the game. For this we start by dividing the screen in a grid
+of cells. Each cell is uniquely identified by its $(x,y)$ coordinates, with $x$
+increasing from left to right and $y$ from top to bottom (see
+\cref{fig:snake-data-structures}). We can then store the current apple position
+with its grid coordinates. Storing the current snake state is more complex. One
+possibility is to store a list of $(x,y)$ coordinates, representing the cells
+occupied by the snake, from head to tail. We can then move the snake by adding
+a new element at the beginning of the list, and by removing the last element
+(unless the snake eats the apple). However, this method has two drawbacks:
+\begin{enumerate}
+  \item to determine if the head hits the body we need to iterate over each
+  element of the list, and check whether it is equal to the head.
+
+  \item there is no easy way to find a free cell to place a new apple. The best
+  we can do is try a cell $c$ at random, and then iterate over each snake cell
+  to check if $c$ is free or not. If not, we need to repeat this process until
+  a free cell is found.
+\end{enumerate}
+
+\begin{Figure}
+  \input{figures/chapter8/data-structures.tex}
+
+  \caption{The game state on the right is represented with the struct on the
+  left, containing pointers to the cell states and the free cells, and the
+  $(x,y)$ coordinates of the head, tail and apple. The state of a free cell is
+  its index in the free cells list. This list contains the $(x,y)$ coordinates
+  of each free cell. The state of a used cell is the direction towards the next
+  used cell.}\label{fig:snake-data-structures}
+\end{Figure}
+
+To mitigate this we can use an additional grid data structure, storing the
+current state of each cell: used or free. This state is easy to update when
+moving the snake, and avoids a loop over the snake's list of cells in 1) and
+2). But this is not sufficient to avoid trying cells at random until a free one
+is found.
+
+To solve this issue we introduce a third data structure, namely a list of all
+the free cells, identified by their $(x,y)$ coordinates. Finding a free cell is
+then very easy: just pick any element in this list at random. But we then need
+to remove this cell from the list of free cells. We also need to update this
+list when moving the snake. For instance, we need to remove the new head cell
+from the list of free cells. This requires finding a cell in this list, given
+its coordinates. To do this without iterating over this list (we are trying to
+avoid any loop), we can store more than a ``used or free'' state for each cell.
+More precisely, we can store for each free cell its index in the list of free
+cells. This gives two data structures referencing each other (see
+\cref{fig:snake-data-structures}):
+\begin{itemize}
+  \item a grid data structure storing the state of each cell, \ie, whether it
+  is used or free and, if so, its index in the list of free cells.
+
+  \item a list of all the free cells, specified by their $(x,y)$ coordinates in
+  the grid data structure.
+\end{itemize}
+
+Finally, to avoid a third data structure for the list of snake cells, we encode
+this list in the grid structure. More precisely, we store for each used cell
+the direction of the next used cell (towards the head). Then the only other
+additional state which is needed are the coordinates of the head and tail cells
+(see \cref{fig:snake-data-structures}).
+
+\subsection{Operations}\label{subsection:snake-operations}
+
+In order to move the snake the new head cell must be changed from a free cell
+to a used cell. And the old tail cell must be changed from a used cell to a
+free cell. With the above data structures, these operations can be done as
+follows:
+
+\begin{itemize}
+  \item to change a cell $(x,y)$ to a free cell (see
+  \cref{fig:snake-algorithms}, left):
+
+  \begin{enumerate}
+    \item add the $(x,y)$ element at the end of the free cells list. Note $n$
+    the new size of this list.
+
+    \item change the state of the $(x,y)$ cell in the grid to ``free, stored at
+    index $n-1$'' in the free cells list.
+  \end{enumerate}
+
+  \item to change a free cell $(x, y)$ to a used cell, replace this cell in the
+  free list with the last free cell, in order to avoid a ``hole'' in this list
+  (see \cref{fig:snake-algorithms}, right):
+
+  \begin{enumerate}
+    \item get the free cell index stored in the $(x,y)$ cell of the grid, noted
+    $i$.
+
+    \item set the state of the $(x,y)$ cell of the grid to ``used''.
+
+    \item get the $(x',y')$ coordinates in the last element of the free cells
+    list.
+
+    \item change the free cell index stored in the $(x',y')$ cell of the grid
+    to  $i$.
+
+    \item change the coordinates in the $i^{th}$ element of the free cells list
+    to $(x',y')$.
+
+    \item remove the last element of the free cells list.
+  \end{enumerate}
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter8/algorithms.tex}
+
+  \caption{Left: changing the $(4,2)$ cell to a free cell. Right: changing the
+    free cell $(0,1)$ to a used cell is done by replacing it with the last cell
+    in the free cells list.}\label{fig:snake-algorithms}
+\end{Figure}
+
+To place a new apple we need to choose a random cell in the free cells list.
+For this it suffice to choose a number at random between 0 and $n$ (excluded),
+where $n$ is the size of this list. But the microprocessor has no instruction
+for this. The solution is to use values which {\em look} random. For instance,
+0, 3, 2, 13, 4, 7, 6, 1, 8, 11, 10, 5, 12, 15, 14, 9 seems to contain the
+numbers between 0 and 16 (excluded) in random order. In fact each value
+$v_{t+1}$ is computed from the previous one $v_t$ with $v_{t+1}=5v_t+3 \mod
+16$. More generally, using $v_{t+1}=a.v_t+b \mod m$, can give values which
+look random {\em if $a$, $b$, and $m$ are well chosen} (for instance, $a=b=1$
+is a bad choice). The Knuth \& Lewis parameters, $a=1664525$, $b=1013904223$,
+and $m=32$, are frequently used. They give all the values between 0 and
+$2^{32}$ (excluded) in ``random'' order, without repetitions.
+
+\subsection{Encoding}\label{subsection:snake-encodings}
+
+We store the elements of the free cells list one after the other in a buffer,
+using one byte for each coordinate. The $x$ (resp. $y$) coordinate of the
+$i^{th}$ free cell (counting from 0) is thus at offset $2i$ (resp $2i+1$) from
+the beginning of this buffer.
+
+We represent a used cell with a number from 0 to 3, encoding the direction of
+the next used cell (0 for left, 1 for right, 2 for up, and 3 for bottom). We
+represent a free cell with its index in the list of free cells, {\em plus 4}.
+Hence, a cell state less than 4 represents a used cell, while a cell state
+greater than or equal to 4 denotes a free cell. To support ``large'' grids (up
+to 65532 cells) we store each state on 16 bits. We store them one after the
+other in a buffer, from left to right and from top to bottom. Hence, if the
+grid width is $W$ cells, the state of the $(x,y)$ cell is at a offset
+$2(x+y.W)$ from the beginning of this buffer.
+
+\section{Implementation}
+
+\rust{
+  let mut t = Transpiler5::default();
+}
+
+The screen has 30 rows of 100 characters, but each character is $8\times16$
+pixels. To get square cells we represent each cell with 2 characters, yielding
+30 rows of 50 cells. We reserve the first line to display the current score,
+which leaves a play area of 29 rows and 50 columns:
+
+\toy{
+const WIDTH: u32 = 50;
+const HEIGHT: u32 = 29;
+const LEFT: u32 = 0;
+const RIGHT: u32 = 1;
+const UP: u32 = 2;
+const DOWN: u32 = 3;
+}%toy
+
+The following struct implements the data structures discussed above. The first
+two fields are pointers to the grid of cell states and to the list of free
+cells. The {\tt seed} field contains the last $v_t$ value computed with the
+Knuth \& Lewis random number generator:
+
+\toy{
+struct Game {
+  cell_states: &u32,
+  free_cells: &u32,
+  num_free_cells: u32,
+  head_x: u32,
+  head_y: u32,
+  tail_x: u32,
+  tail_y: u32,
+  apple_x: u32,
+  apple_y: u32,
+  direction: u32,
+  score: u32,
+  seed: u32
+}
+}%toy
+
+The following functions are used to read and write values in the grid of cell
+states and in the list of free cells. They use the offsets explained in the
+previous section:
+
+\toy{
+fn game_get_cell_state(self: &Game, x: u32, y: u32) -> u32 {
+  return load16(self.cell_states + 2 * (x + y * WIDTH));
+}
+fn game_set_cell_state(self: &Game, x: u32, y: u32, state: u32) {
+  store16(self.cell_states + 2 * (x + y * WIDTH), state);
+}
+fn game_get_free_cell_coords(self: &Game, index: u32, x: &u32, y: &u32) {
+  *x = load8(self.free_cells + 2 * index);
+  *y = load8(self.free_cells + 2 * index + 1);
+}
+fn game_set_free_cell_coords(self: &Game, index: u32, x: u32, y: u32) {
+  store8(self.free_cells + 2 * index, x);
+  store8(self.free_cells + 2 * index + 1, y);
+}
+}%toy
+
+The next functions use them to change a used cell into a free cell, and vice
+versa (with the algorithms and encodings presented in
+\cref{subsection:snake-operations,subsection:snake-encodings}):
+
+\toy{
+fn game_free_cell(self: &Game, x: u32, y: u32) {
+  let free_cell_index = self.num_free_cells;
+  game_set_cell_state(self, x, y, free_cell_index + 4);
+  game_set_free_cell_coords(self, free_cell_index, x, y);
+  self.num_free_cells = free_cell_index + 1;
+}
+
+fn game_use_cell(self: &Game, x: u32, y: u32, direction: u32) {
+  let free_cell_index = game_get_cell_state(self, x, y) - 4;
+  game_set_cell_state(self, x, y, direction);
+  let last_free_cell_index = self.num_free_cells - 1;
+  let last_x = 0;
+  let last_y = 0;
+  game_get_free_cell_coords(self, last_free_cell_index, &last_x, &last_y);
+  game_set_free_cell_coords(self, free_cell_index, last_x, last_y);
+  game_set_cell_state(self, last_x, last_y, free_cell_index + 4);
+  self.num_free_cells = last_free_cell_index;
+}
+}%toy
+
+We can use them to create a new {\tt Game} data structure, with its cell grid
+and free cells list buffers, and to initialize all the cells to free cells:
+
+\toy{
+fn game_new(heap_p: &&u32, heap_limit: &u32) -> &Game {
+  let game = mem_allocate(sizeof(Game), heap_p, heap_limit) as &Game;
+  let cell_states = mem_allocate(2 * WIDTH * HEIGHT, heap_p, heap_limit);
+  let free_cells = mem_allocate(2 * WIDTH * HEIGHT, heap_p, heap_limit);
+  if game == null || cell_states == null || free_cells == null {
+    return null;
+  }
+  game.cell_states = cell_states;
+  game.free_cells = free_cells;
+  game.num_free_cells = 0;
+  let y = 0;
+  let x = 0;
+  while y < HEIGHT {
+    x = 0;
+    while x < WIDTH {
+      game_free_cell(game, x, y);
+      x = x + 1;
+    }
+    y = y + 1;
+  }
+  return game;
+}
+}%toy
+
+The following functions implement the Knuth \& Lewis random number generator,
+and use it to place a new apple (they assume there is at least one free cell).
+The generated numbers are in $[0, 2^{32}[$, but we need a value in $[0, n[$,
+where $n$ is the size of the free cells list ($n \le 50*29 = 1450$). For this
+we use the 11 most significant bits\footnote{The least significant bits are
+``less random''. For instance, in the 0, 3, 2, 13, 4, 7, 6, 1, 8, 11, 10, 5,
+12, 15, 14, 9 sequence shown above, numbers are alternatively even and odd,
+\ie, bit 0 is 0, 1, 0, 1, 0, 1, \ldots} of a random number, modulo $n$:
+
+\toy{
+fn random(seed: &u32) -> u32 {
+  *seed = *seed * 1664525 + 1013904223;
+  return *seed;
+}
+fn modulo(x: u32, m: u32) -> u32 { return x - (x / m) * m; }
+
+fn game_new_apple(self: &Game) {
+  let index = modulo(random(&self.seed) >> 21, self.num_free_cells);
+  game_get_free_cell_coords(self, index, &self.apple_x, &self.apple_y);
+}
+}%toy
+
+To draw the apple, and to move the snake, we just need to draw a red cell, a
+green cell (for the new head), or a black cell (to erase the old tail). We thus
+implement a function to draw a cell in a given color. Since we
+reserved the first line for the score, and use 2 characters per cell, the
+$(x,y)$ cell corresponds to row $y+1$ and to columns $2x$ and $2x+1$. To fill
+these characters with the given color we draw two spaces with this color as
+background color (the graphics card has 3 registers to set it, using the same
+format as for the foreground color -- see \cref{subsection:text-config} and
+\cite{RA8875}).
+
+\toy{
+fn gpu_set_background(r: u32, g: u32, b: u32) {
+  gpu_set_register(96 /*Background Color 0*/, r);
+  gpu_set_register(97 /*Background Color 1*/, g);
+  gpu_set_register(98 /*Background Color 2*/, b);
+}
+fn draw_cell(x: u32, y: u32, r: u32, g: u32, b: u32) {
+  gpu_set_background(r, g, b);
+  gpu_set_cursor(2 * x, y + 1);
+  gpu_draw_char(' ');
+  gpu_draw_char(' ');
+  gpu_set_background(0, 0, 0);
+}
+}%toy
+
+The next 3 functions are used to draw the score in the top-left corner:
+
+\toy{
+static SCORE = ['S','c','o','r','e',':',' '];
+static GAME_OVER = ['G','a','m','e',' ','o','v','e','r','!'];
+
+fn draw_integer(x: u32) {
+  let quotient = x / 10;
+  if quotient > 0 { draw_integer(quotient); }
+  gpu_draw_char(x - 10 * quotient + '0');
+}
+fn draw_string(src: &u32, length: u32) {
+  let i = 0;
+  while i < length {
+    gpu_draw_char(load8(src + i));
+    i = i + 1;
+  }
+}
+fn draw_score(score: u32) {
+  gpu_set_cursor(0, 0);
+  draw_string(SCORE, 7);
+  draw_integer(score);
+}
+}%toy
+
+The following function places an initial snake in the middle of screen, using 6
+cells and moving left, draws it, places and draws the apple, and finally
+initializes and draws the score. It does not initialize the {\tt seed} on
+purpose, otherwise the apple would always be at the same initial position.
+Instead, the seed gets whatever value was here in memory (most likely the last
+{\tt seed} value from a previous run of this game).
+
+\toy{
+fn game_init(self: &Game) {
+  self.head_x = WIDTH / 2;
+  self.head_y = HEIGHT / 2;
+  self.tail_x = self.head_x + 5;
+  self.tail_y = self.head_y;
+  self.direction = LEFT;
+  self.score = 0;
+  let x = self.head_x;
+  while x <= self.tail_x {
+    game_use_cell(self, x, self.head_y, LEFT);
+    draw_cell(x, self.head_y, 0, 7, 0);
+    x = x + 1;
+  }
+  game_new_apple(self);
+  draw_cell(self.apple_x, self.apple_y, 7, 0, 0);
+  draw_score(0);
+}
+}%toy
+
+The function below moves the snake in the current direction, and returns {\tt
+OK} if this is valid, or {\tt INVALID\_STATE} otherwise. It starts by updating
+the head position and detecting collisions with the ``walls'':
+
+\toy{
+fn game_update(self: &Game) -> u32 \{
+  let old_head_x = self.head_x;
+  let old_head_y = self.head_y;
+  if self.direction == LEFT {
+    if self.head_x == 0 { return INVALID_STATE; }
+    self.head_x = self.head_x - 1;
+  } else if self.direction == RIGHT {
+    if self.head_x == WIDTH - 1 { return INVALID_STATE; }
+    self.head_x = self.head_x + 1;
+  } else if self.direction == UP {
+    if self.head_y == 0 { return INVALID_STATE; }
+    self.head_y = self.head_y - 1;
+  } else if self.direction == DOWN {
+    if self.head_y == HEIGHT - 1 { return INVALID_STATE; }
+    self.head_y = self.head_y + 1;
+  }
+}%toy
+
+It then checks if the head hits the body. If not, it updates the old and new
+head cells, and draws the new one:
+
+\toy{
+  if game_get_cell_state(self, self.head_x, self.head_y) < 4 {
+    return INVALID_STATE;
+  }
+  game_set_cell_state(self, old_head_x, old_head_y, self.direction);
+  game_use_cell(self, self.head_x, self.head_y, 0);
+  draw_cell(self.head_x, self.head_y, 0, 7, 0);
+}%toy
+
+If the head just moved in the apple cell, it places and draws a new apple (if
+there is at least one free cell left), and then updates the score:
+
+\toy{
+  if self.head_x == self.apple_x && self.head_y == self.apple_y {
+    if self.num_free_cells == 0 { return INVALID_STATE; }
+    game_new_apple(self);
+    draw_cell(self.apple_x, self.apple_y, 7, 0, 0);
+    self.score = self.score + 1;
+    draw_score(self.score);
+    return OK;
+  }
+}%toy
+
+Finally, if the apple was not eaten, this function ends by freeing the current
+tail cell, erasing it on screen, and updating the tail position to the next
+used cell (using the direction stored in the old tail cell):
+
+\toy{
+  let tail_direction = game_get_cell_state(self, self.tail_x, self.tail_y);
+  game_free_cell(self, self.tail_x, self.tail_y);
+  draw_cell(self.tail_x, self.tail_y, 0, 0, 0);
+  if tail_direction == LEFT {
+    self.tail_x = self.tail_x - 1;
+  } else if tail_direction == RIGHT {
+    self.tail_x = self.tail_x + 1;
+  } else if tail_direction == UP {
+    self.tail_y = self.tail_y - 1;
+  } else if tail_direction == DOWN {
+    self.tail_y = self.tail_y + 1;
+  }
+  return OK;
+\}
+}%toy
+
+We can finally implement the main function of the game. This function starts by
+clearing the screen, hiding the cursor (see \cref{subsection:ra8875-config}),
+creating and initializing the game data structures, and drawing this initial
+state:
+
+\toy{
+const ESCAPE_KEY: u32 = 27;
+const ARROW_LEFT_KEY: u32 = 235;
+const ARROW_RIGHT_KEY: u32 = 244;
+const ARROW_UP_KEY: u32 = 245;
+const ARROW_DOWN_KEY: u32 = 242;
+
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 \{
+  gpu_set_single_buffer();
+  gpu_clear_screen();
+  gpu_set_register(64 /*Memory Write Control 0*/, 128 /*Hide cursor*/);
+  gpu_set_color(0, 7, 0);
+  let game = game_new(&heap, heap_limit);
+  if game == null { return OUT_OF_MEMORY; }
+  game_init(game);
+}%toy
+
+It continues by waiting for a short time, updating the current direction if an
+arrow key was pressed, updating the game state in memory and on screen, and by
+repeating this until the game is over:
+
+\toy{
+  let c = 0;
+  loop {
+    sleep(125);
+    read(KEYBOARD, &c, 1);
+    if c == ESCAPE_KEY { break; }
+    else if c == ARROW_LEFT_KEY { game.direction = LEFT; }
+    else if c == ARROW_RIGHT_KEY { game.direction = RIGHT; }
+    else if c == ARROW_UP_KEY { game.direction = UP; }
+    else if c == ARROW_DOWN_KEY { game.direction = DOWN; }
+    if game_update(game) != OK {
+      gpu_set_cursor(44, 0);
+      gpu_set_color(7, 0, 0);
+      draw_string(GAME_OVER, 10);
+      read(STANDARD_INPUT, &c, 1);
+      break;
+    }
+  }
+  gpu_set_register(64 /*Memory Write Control 0*/, 224 /*Show cursor*/);
+  return OK;
+\}
+}%toy
+
+\section{Compilation and play}
+
+\rust{
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  context.type_ascii("EDIT SRC/SNAKE/SNAKE.TOY\n");
+  t.write_toy5("website/sources/snake.txt")?;
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+
+  let mut t = Transpiler5::default();
+}
+
+Type ``{\tt edit src/snake/snake.toy}'' and enter the above code. For
+reference, we also provide this code in the {\tt snake.txt} file in
+\toypcurl{sources.zip}. Then use the text editor again to create the following
+build file:
+
+\medskip \noindent {\tt\bfseries src/snake/BUILD}:
+\toy{
+toyc snake src/base.toy src/memory.toy src/gpu.toy src/snake/snake.toy
+}%toy
+
+\rust{
+  context.type_ascii("EDIT SRC/SNAKE/");
+  context.type_keys(vec!["Shift"]);
+  context.type_ascii("BUILD");
+  context.type_keys(vec!["~Shift", "Enter"]);
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(context.get_display().borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+}
+
+Finally, type ``{\tt shell src/snake/BUILD}'' to compile the game and ``{\tt
+snake}'' to play with it!
+
+\rust{
+  context.type_ascii("SHELL SRC/SNAKE/");
+  context.type_keys(vec!["Shift"]);
+  context.type_ascii("BUILD");
+  context.type_keys(vec!["~Shift", "Enter"]);
+  assert_eq!(context.get_display().borrow().get_text(),
+      ">shell src/snake/BUILD\n>");
+
+  context.write_backup("website/backups", "final.txt")?;
+}

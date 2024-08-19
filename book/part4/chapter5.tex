@@ -1,0 +1,1580 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter5}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "shell.txt")?;
+}
+
+\chapter[Shell, Text Editor, and Compiler]{Shell, Text Editor,\\and
+Compiler}\label{chapter:shell}
+
+Our kernel can spawn an initial process which can now use all the computer
+resources, thanks to the system calls added in the previous chapter. However,
+we only have a useless test initial program for now. Moreover, in order to
+store new programs on disk we need the command editor to edit, compile, and
+save them. And we need to switch back and forth between the basic input output
+system and the operating system to launch them. The goal of this chapter is to
+solve these issues by making it possible to edit, compile, save, and launch
+programs from the operating system alone.
+
+For this we need a text editor and a compiler which can run as processes, and
+which can read and write files (instead of data buffers). We already have a
+text editor, but only in binary bytecode form. We thus need to rewrite it in
+Toy, and to update it to work with files. Our compiler is already in Toy, but
+also needs to be updated to work with files. Finally, to launch arbitrary
+programs, we need something like the command editor, but more practical, called
+a {\em shell}. This chapter provides these 3 programs. We test them at the
+end with a ``Hello, Word!'' application.
+
+\section{Shell}
+
+\subsection{Requirements}
+
+The shell must allow the user to interactively launch arbitrary programs. For
+this the user must be able to specify which program to launch, and its
+arguments. On disk programs and data are stored as files, and can thus be
+specified with file names. Hence, for instance, ``{\tt toyc hello hello.toy}''
+could be used to specify that the program stored in the file named ``{\tt
+toyc}'' must be launched with the file names ``{\tt hello}'' and ``{\tt
+hello.toy}'' as arguments. We thus require the following:
+\begin{itemize}
+  \item the shell should allow the user to type a line of text called a {\em
+  command line}, or {\em command}, after a {\em prompt} ``{\tt >}''. To
+  simplify, we do not require the possibility to insert or delete characters in
+  the middle of a command, but only at the end.
+
+  \item commands must be of the form ``{\em <program>} {\em <arguments>}''.
+  Typing Enter should spawn the program stored in the file named {\em
+  <program>}, with {\em <arguments>} as arguments (which can be empty). The
+  launched program is then responsible to parse {\em <arguments>} in order to
+  extract each individual argument.
+
+  \item the shell must display on screen the output of the last executed
+  command. Either an error message if the program could not be launched, or the
+  text written to standard output by this program. It should then repeat the
+  above steps.
+\end{itemize}
+
+To save memory we only require our shell to display the last executed command,
+its output, and the currently edited command. Older commands are not displayed.
+For instance, after a ``{\tt hello}'' command writing ``Hello, World!'' to
+standard output, and while typing a new ``{\tt edit hello.toy}'' command, the
+screen should display:
+\begin{Code}
+>hello
+Hello, World!
+>edit hello.to\_
+\end{Code}
+
+To simplify, for now, we do not require the possibility to save commands, as in
+the command editor. Still, to avoid having to re-type recent commands, we
+require the shell to keep in memory a {\em history} of the last $N$ executed
+commands. It should then be possible, with the arrow up and down keys, to
+replace the currently edited command with one from the above history.
+
+\subsection{Data structures}
+
+In order to meet the above requirements we use a buffer to store the currently
+edited command, $N$ buffers to store the previous $N$ commands, and one buffer
+to store the output of the last executed one (see
+\cref{fig:shell-data-structures}).
+
+After a command is run we must 1) add it to the history, and 2) remove the
+oldest command from this history. To make this is easy to implement we link the
+$N+1$ command buffers in a circular {\em doubly linked list}. This means that
+each buffer has a link to a next one and to a previous one, and that these
+links form two rings going in opposite directions (see the green and red links
+in \cref{fig:shell-data-structures}). We also use a pointer to the currently
+edited command. Then, after this command is run, it suffice to update this
+pointer to the next command, and to clear this command, to automatically
+achieve 1) and 2) above:
+
+\begin{center}
+\input{figures/chapter5/command-history.tex}
+\end{center}
+
+\noindent In fact this only requires links from one command to the next. We use
+the opposite links to easily go back in the history, with the arrow up key.
+
+In summary we use a {\tt Command} data structure, with two pointers to previous
+and next commands, and a length indicating the number of characters of this
+command (followed by the characters themselves -- see
+\cref{fig:shell-data-structures}). We also use a {\tt Shell} data structure,
+containing a pointer to one of the commands, as well as pointers to the output
+of the last command: its beginning (inclusive), its end (exclusive), and the
+limit of the underlying buffer (exclusive -- see
+\cref{fig:shell-data-structures}).
+
+\begin{Figure}
+  \input{figures/chapter5/data-structures.tex}
+
+  \caption{A shell with a history of two commands ($N=2$). The user is
+  currently editing an ``edit hello.to'' command, of length 13. The previous
+  command was ``hello'' and its output was ``Hello, World!''. The command
+  before it was ``foo''.}\label{fig:shell-data-structures}
+\end{Figure}
+
+\subsection{Implementation}
+
+We implement the shell by editing our test application, which already
+contains some useful code, in order to avoid re-typing it. After the {\tt
+entry} function, unchanged, we insert the {\tt load8}, {\tt store8}, {\tt
+load16}, and {\tt store16} functions, copied from our native compiler (the last
+two are not needed right now but will be useful later).
+
+\rust{
+  let command_editor_source = context.memory_region("command_editor_source");
+  let ram_command_source =
+      command_editor_source.label_address("ram_command_source");
+  let ram_source = command_editor_source.label_address("ram_compiler_source");
+  let kernel_source = context.memory_region("kernel_source").start;
+  let kernel_code = context.memory_region("kernel_code").start;
+  let application_source = context.memory_region("application_source").start;
+  let compiler_source = context.memory_region("compiler_source").start;
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  // Start command editor.
+  let command_editor_main = context
+      .memory_region("command_editor")
+      .label_address("command_editor");
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert!(display
+      .borrow()
+      .get_text()
+      .contains("Welcome to the command editor."));
+
+  let mut t = Transpiler5::new_str(&context.get_text(application_source));
+  t.add_unchanged("fn main(", "fn system_call(");
+}
+
+\toy{
+fn load8(ptr: &u32) -> u32 [ /*LDRB_R0_R0_0*/30720; /*MOV_PC_LR*/18167; ]
+fn load16(ptr: &u32) -> u32 [ /*LDRH_R0_R0_0*/34816; /*MOV_PC_LR*/18167; ]
+fn store8(ptr: &u32, value: u32) [ /*STRB_R1_R0_0*/28673; /*MOV_PC_LR*/18167; ]
+fn store16(ptr: &u32, value: u32) [ /*STRH_R1_R0_0*/32769; /*MOV_PC_LR*/18167; ]
+}%toy
+
+We continue with a function to read a token from a command, \ie, the program
+name or an argument. This function uses a simplified version of
+\cref{alg:scanner0}, with a pointer to $\mathit{src}$ instead of $\mathit{src}$
+itself as parameter. It returns a pointer to the token's first character,
+stores its length at address $\mathit{length}$ and updates $\mathit{src}$ to
+the address of the first character after it. This allows reading a command with
+repeated calls to this function with the same first two arguments.
+
+\toy{
+fn sh_read_token(src_p: &&u32, src_end: &u32, length: &u32) -> &u32 {
+  let src = *src_p;
+  while src < src_end && load8(src) == ' ' { src = src + 1; }
+  if src >= src_end { return null; }
+  let token = src;
+  while src < src_end && load8(src) != ' ' { src = src + 1; }
+  *length = src - token;
+  *src_p = src;
+  return token;
+}
+}%toy
+
+\rust{
+  t.add_unchanged("fn system_call(", "const OK: u32");
+}
+
+We also copy, after the existing {\tt OK} constant, the error codes from the
+kernel (which are useful to return errors and analyze the result of commands):
+
+\toy{
+@const OK: u32 = 0;
+const INVALID_ARGUMENT: u32 = 1;
+const INVALID_STATE: u32 = 2;
+const NOT_FOUND: u32 = 3;
+const ALREADY_EXISTS: u32 = 4;
+const OUT_OF_MEMORY: u32 = 5;
+const INTERNAL_ERROR: u32 = 6;
+}%toy
+
+The shell needs to draw text on the screen, with double buffering to avoid
+flickering (see \cref{subsection:double-buffering}). For this we implement the
+following functions, after the existing system call functions (from {\tt
+status} to {\tt reboot}). They are re-implementations of functions of the same
+names in \cref{section:gpu-driver,section:ted-implementation}, in Toy and using
+system calls (see these sections and the {\tt draw\_char} function from
+\cref{section:streams-tests} for more details).
+
+\rust{
+  t.add_unchanged("fn status(", "fn wait_char(");
+}
+
+\toy{
+fn gpu_set_register(id: u32, value: u32) {
+  let buffer = (value & 255) << 16 | (32768 /*Select Register*/ | id);
+  write(GPU, &buffer, 4);
+}
+
+fn gpu_set_double_buffer() {
+  gpu_set_register(32 /*Display Configuration*/, 128);
+  gpu_set_register(65 /*Memory Write Control 1*/, 1);
+}
+
+fn gpu_set_single_buffer() {
+  gpu_set_register(65 /*Memory Write Control 1*/, 0);
+  gpu_set_register(82 /*Layer Transparency 0*/, 0);
+  gpu_set_register(32 /*Display Configuration*/, 0);
+}
+
+fn gpu_switch_buffer() {
+  let buffer = 32768 /*Select Register*/ | 65 /*Memory Write Control 1*/;
+  write(GPU, &buffer, 2);
+  let layer = 0;
+  read(GPU, &layer, 1);
+  buffer = /*0 (Write Data) | */ 1 - layer;
+  write(GPU, &buffer, 2);
+  gpu_set_register(82 /*Layer Transparency 0*/, layer);
+}
+
+fn gpu_clear_screen() {
+  gpu_set_register(142 /*Memory Clear Control*/, 192);
+  let buffer = 0;
+  loop {
+    read(GPU, &buffer, 1);
+    if buffer & 128 == 0 { return; }
+  }
+}
+
+fn gpu_set_cursor(col: u32, row: u32) {
+  gpu_set_register(42 /*Font Write Cursor H Position 0*/, col << 3);
+  gpu_set_register(43 /*Font Write Cursor H Position 1*/, col >> 5);
+  gpu_set_register(44 /*Font Write Cursor V Position 0*/, row << 4);
+  gpu_set_register(45 /*Font Write Cursor V Position 1*/, row >> 4);
+}
+
+fn gpu_set_color(r: u32, g: u32, b: u32) {
+  gpu_set_register(99 /*Foreground Color 0*/, r);
+  gpu_set_register(100 /*Foreground Color 1*/, g);
+  gpu_set_register(101 /*Foreground Color 2*/, b);
+}
+
+fn gpu_draw_char(c: u32) { gpu_set_register(2, c); }
+}%toy
+
+The shell also needs to allocate memory for its data structures, and to copy
+commands from the history. For this we copy the following functions from the
+Toy compiler and from the kernel (with a {\tt return null} instead of a {\tt
+panic}):
+
+\toy{
+fn mem_allocate(size: u32, heap_p: &&u32, heap_limit: &u32) -> &u32 {
+  let ptr = *heap_p;
+  if size > heap_limit as u32 || ptr > heap_limit - size { return null; }
+  *heap_p = ptr + size;
+  return ptr;
+}
+fn mem_copy_non_overlapping(src: &u32, dst: &u32, size: u32) {
+  let i = 0;
+  while i < size {
+    store8(dst + i, load8(src + i));
+    i = i + 1;
+  }
+}
+}%toy
+
+We can now start the ``real'' shell implementation, beginning with a definition
+of its data structures, and of their maximum sizes ({\tt NUM\_COMMANDS} is
+equal to $N+1$; {\tt data} contains the first 4 characters of a command;
+hence, {\tt \&c.data} points the first character of command {\tt c}):
+
+\toy{
+const NUM_COMMANDS: u32 = 4;
+const MAX_COMMAND_LENGTH: u32 = 196;
+const MAX_OUTPUT_SIZE: u32 = 512;
+
+struct Command {
+  previous: &Command,
+  next: &Command,
+  length: u32,
+  data: u32
+}
+struct Shell {
+  commands: &Command,
+  output_begin: &u32,
+  output_end: &u32,
+  output_limit: &u32
+}
+}%toy
+
+We continue with a function to copy the text of a command into another, and a
+function to create a {\tt Shell} struct. The latter allocates all the required
+memory, returns {\tt null} if this fails, and initializes the shell and its
+commands otherwise. In particular, it initializes the {\tt previous} and {\tt
+next} command links as illustrated in \cref{fig:shell-data-structures}. These
+links stay unchanged after that.
+
+\toy{
+fn command_copy(src: &Command, dst: &Command) {
+  dst.length = src.length;
+  mem_copy_non_overlapping(&src.data, &dst.data, src.length);
+}
+
+fn sh_new(heap_p: &&u32, heap_limit: &u32) -> &Shell {
+  let shell = mem_allocate(sizeof(Shell), heap_p, heap_limit) as &Shell;
+  let command_size = sizeof(Command) - 4 + MAX_COMMAND_LENGTH;
+  let command =
+      mem_allocate(NUM_COMMANDS * command_size, heap_p, heap_limit) as &Command;
+  let output = mem_allocate(MAX_OUTPUT_SIZE, heap_p, heap_limit);
+  if shell == null || command == null || output == null { return null; }
+  shell.commands = command;
+  shell.output_begin = output;
+  shell.output_end = output;
+  shell.output_limit = output + MAX_OUTPUT_SIZE;
+  let i = 0;
+  let previous_command = command + (NUM_COMMANDS - 1) * command_size;
+  while i < NUM_COMMANDS {
+    previous_command.next = command;
+    command.previous = previous_command;
+    command.length = 0;
+    previous_command = command;
+    command = command + command_size;
+    i = i + 1;
+  }
+  return shell;
+}
+}%toy
+
+The next function appends up to {\tt length} characters from {\tt src} to the
+shell's output buffer (depending on its remaining capacity):
+
+\toy{
+fn sh_print(self: &Shell, src: &u32, length: u32) {
+  if length > self.output_limit - self.output_end {
+    length = self.output_limit - self.output_end;
+  }
+  mem_copy_non_overlapping(src, self.output_end, length);
+  self.output_end = self.output_end + length;
+}
+}%toy
+
+We use it in the following function, which runs the command in $[\mathit{src},
+\mathit{src\_end}[$. This function starts by extracting the program name, \ie,
+the command's first token. If it is not empty it spawns this program, with the
+rest of the command as arguments, and the shell's output buffer as standard
+output buffer. It then appends to this buffer an error message if the program
+could not be launched, if it ran out of memory, or if it crashed. Finally, it
+appends a new line character if the output of the previous steps is not empty
+and does not already ends with a new line:
+
+\toy{
+static CANT_FIND = ['C','a','n',''','t',' ','f','i','n','d',' '];
+static CANT_LAUNCH = ['C','a','n',''','t',' ','l','a','u','n','c','h',' '];
+static NOT_ENOUGH_MEMORY = ['O','u','t',' ','o','f',' ',\
+'m','e','m','o','r','y'];
+static CRASHED = [' ','c','r','a','s','h','e','d'];
+
+const NEW_LINE: u32 = 10;
+
+fn sh_run(self: &Shell, src: &u32, src_end: &u32) {
+  let length = 0;
+  let name = sh_read_token(&src, src_end, &length);
+  if name == null { return; }
+  let old_end = self.output_end;
+  let result = spawn(self.output_limit, name, length, src, src_end - src, \
+&self.output_end);
+  if status(result) == NOT_FOUND {
+    sh_print(self, CANT_FIND, 11);
+    sh_print(self, name, length);
+  } else if status(result) != OK {
+    sh_print(self, CANT_LAUNCH, 13);
+    sh_print(self, name, length);
+  } else if result == OUT_OF_MEMORY {
+    sh_print(self, NOT_ENOUGH_MEMORY, 13);
+  } else if result == INTERNAL_ERROR {
+    sh_print(self, name, length);
+    sh_print(self, CRASHED, 8);
+  }
+  let new_line = NEW_LINE;
+  if self.output_end > old_end && load8(self.output_end - 1) != NEW_LINE {
+    sh_print(self, &new_line, 1);
+  }
+}
+}%toy
+
+The next 3 functions are used to draw commands and their output on screen. The
+first one draws the characters in $[\mathit{src}, \mathit{src\_end}[$, starting
+at column and row ($\mathit{col}$, {\tt *}$\mathit{row}$) on screen. It
+automatically starts a new line when a ``new line'' character is found
+or when the maximum line width is reached (100 characters). To simplify,
+tabulations are not supported.
+
+\toy{
+fn sh_draw_string(src: &u32, src_end: &u32, col: u32, row: &u32) {
+  let c = 0;
+  while src < src_end {
+    c = load8(src);
+    src = src + 1;
+    if c != NEW_LINE {
+      gpu_draw_char(c);
+      col = col + 1;
+    }
+    if c == NEW_LINE || col == 100 {
+      col = 0;
+      *row = *row + 1;
+      gpu_set_cursor(col, *row);
+    }
+  }
+}
+}%toy
+
+The second one draws the given command, after a ``{\tt >}'' prompt, and updates
+{\tt *}$\mathit{row}$ to the next screen row:
+
+\toy{
+fn sh_draw_command(command: &Command, row: &u32) {
+  gpu_draw_char('>');
+  sh_draw_string(&command.data, &command.data + command.length, 1, row);
+  *row = *row + 1;
+}
+}%toy
+
+The third one draws the last executed command in green (if it is not empty),
+its output in yellow (if it is not empty), and the currently edited command in
+green:
+
+\toy{
+fn sh_draw(self: &Shell, current_command: &Command) {
+  gpu_clear_screen();
+  gpu_set_cursor(0, 0);
+  gpu_set_color(0, 7, 0);
+  let row = 0;
+  if current_command.previous.length > 0 {
+    sh_draw_command(current_command.previous, &row);
+    gpu_set_cursor(0, row);
+  }
+  if self.output_end > self.output_begin {
+    gpu_set_color(7, 7, 0);
+    sh_draw_string(self.output_begin, self.output_end, 0, &row);
+    gpu_set_cursor(0, row);
+    gpu_set_color(0, 7, 0);
+  }
+  sh_draw_command(current_command, &row);
+  gpu_switch_buffer();
+}
+}%toy
+
+The next function handles characters typed on the keyboard in a loop, and
+redraws the screen after each key typed (with the above function). It maintains
+two pointers:
+\begin{itemize}
+  \item {\tt current} points to the currently edited command. It is moved to
+  the next command after the current one is run.
+
+  \item {\tt history} can point to any command. It is moved to the previous or
+  next command with the arrow up and down keys, respectively. Selecting a new
+  history command copies it into the current one.
+\end{itemize}
+\noindent The supported keys and their associated actions are the following:
+\begin{itemize}
+  \item the Escape key exits the shell. This can fail if the current process is
+  the initial one (this is not always the case since the shell can also be
+  spawned by a process). In this case we restore double buffering, which is
+  disabled before calling {\tt exit}.
+
+  \item the Enter key executes the current command, sets the next command as
+  the current one, clears it, and resets the {\tt history} pointer to {\tt
+  current}.
+
+  \item the ArrowUp key moves the history command to the previous one, unless
+  there is none (\ie, unless this would circle back to the current one).
+
+  \item the ArrowDown key moves the history command to the next one, if there
+  is one. If this goes back to the current command we clear it instead of
+  copying it to itself.
+
+  \item the Backspace key deletes the last character of the current command.
+  Printable ASCII characters are appended to the current command, if it is not
+  full.
+\end{itemize}
+
+\toy{
+const BACKSPACE_KEY: u32 = 8;
+const ENTER_KEY: u32 = 10;
+const ESCAPE_KEY: u32 = 27;
+const DELETE_KEY: u32 = 127;
+const ARROW_UP_KEY: u32 = 245;
+const ARROW_DOWN_KEY: u32 = 242;
+
+fn sh_run_editor(self: &Shell) -> u32 {
+  gpu_set_double_buffer();
+  let current = self.commands;
+  let history = current;
+  let c = 0;
+  loop {
+    sh_draw(self, current);
+    read(STANDARD_INPUT, &c, 1);
+    if c == ESCAPE_KEY {
+      gpu_set_single_buffer();
+      exit(OK);
+      gpu_set_double_buffer();
+    } else if c == ENTER_KEY {
+      self.output_end = self.output_begin;
+      sh_run(self, &current.data, &current.data + current.length);
+      gpu_set_double_buffer();
+      current = current.next;
+      current.length = 0;
+      history = current;
+    } else if c == ARROW_UP_KEY && history.previous != current {
+      history = history.previous;
+      command_copy(history, current);
+    } else if c == ARROW_DOWN_KEY && history != current {
+      history = history.next;
+      if history == current {
+        current.length = 0;
+      } else {
+        command_copy(history, current);
+      }
+    } else if c == BACKSPACE_KEY && current.length > 0 {
+      current.length = current.length - 1;
+    } else if c >= 32 && c < DELETE_KEY && current.length < MAX_COMMAND_LENGTH {
+      store8(&current.data + current.length, c);
+      current.length = current.length + 1;
+    }
+  }
+}
+}%toy
+
+Finally, we delete the existing functions (from {\tt wait\_char} to {\tt
+child}), and replace the main function with the following one. This function
+simply creates and runs the shell if there are no arguments. Otherwise, for
+testing purposes, it writes them to standard output.
+
+\toy{
+@fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 {
+  let shell = sh_new(&heap, heap_limit);
+  if shell == null { return OUT_OF_MEMORY; }
+  if args_end > args {
+    write(STANDARD_OUTPUT, args, args_end - args);
+    return OK;
+  }
+  return sh_run_editor(shell);
+}
+}%toy
+
+\subsection{Compilation and tests}
+
+Type ``F11''+``r'' in the command editor to load the current application source
+code, and ``F4''+``r'' to edit it. Then update it as described above. For
+reference, we also provide this new version in the {\tt shell\_v0.txt} file in
+\toypcurl{sources.zip}. When done, type ``F12''+``r'' to save it and
+``F9''+``r'' to compile it. If necessary, repeat these steps until the
+compilation is successful. To copy the source code (at address
+\rs{hex_dec(application_source)}) and the compiled code in files use F3 to load
+the builder source code, and F4 to edit it. Then change its main function to
+the following:
+
+\rust{
+  t.write_toy5("website/sources/shell_v0.txt")?;
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F12"]);
+  context.type_ascii("R\n");
+  // F9 to compile it and save it
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  let builder_source =
+      context.get_text(context.memory_region("builder_source").start);
+  let mut t = Transpiler5::new_str(&builder_source);
+  t.add_unchanged("fn main() -> u32;", "static NAME = [");
+  t.add_placeholder("#CODE", &format!("{}", kernel_code));
+  t.add_placeholder("#SOURCE", &format!("{}", application_source));
+}
+
+\toy{
+@static NAME = ['s','h','e','l','l'];
+static SOURCE = ['s','h','e','l','l','.','t','o','y'];
+@fn main() -> u32 {
+@  const COMPILED_CODE: &u32 = #CODE;
+  const SOURCE_CODE: &u32 = #SOURCE;
+@  let result = buffer_write(COMPILED_CODE, NAME, 5);
+  if result == OK { result = buffer_write(SOURCE_CODE, SOURCE, 9); }
+@  if result == OK { flash_boot_loader_and_reset(); }
+@  return result;
+@}
+}%toy
+
+\noindent Finally, save the builder with F5, compile it with F6, and run it
+with F7. If all goes well this should launch the kernel and the shell. To test
+it, try the commands ``{\tt hello world}'' and ``{\tt shell hello world}''. The
+former should fail because there is no program named ``{\tt hello}''. The
+latter should print its arguments, \ie, ``{\tt hello world}''. You can also try
+the ``{\tt shell}'' command, which should launch another shell. You can check
+this with the arrow keys, which should not show the previous commands. Then
+type Escape to return in the initial shell, and try the Escape, arrow up and
+down keys again. Finally, reset the Arduino, which should restart with the
+memory editor.
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+  // F7 to run it (restarts with kernel)
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  // TESTS OF SHELL
+  context.run_until_get_char();
+  assert_eq!(display.borrow().get_text(), ">");
+  context.type_ascii("HELLO WORLD\n");
+  assert_eq!(
+      display.borrow().get_text(),
+      ">hello world\nCan't find hello\n>"
+  );
+  context.type_ascii("SHELL HELLO\n");
+  assert_eq!(display.borrow().get_text(), ">shell hello\n hello\n>");
+}
+
+\section{Text editor}
+
+\subsection{Requirements}
+
+The text editor should take as argument the name of the file to edit, and
+should create it if it does not exist. It should also take an initial text
+cursor position as an optional argument. The goal is to be able to edit a
+source file directly at the location of an error indicated by the compiler.
+Typing Escape should show a message asking the user whether to save the file or
+not before exiting.
+
+\subsection{Implementation}
+
+We implement the text editor by editing the shell program, which already
+contains some useful code, in order to avoid re-typing it. More precisely we
+keep the beginning of its code, up to the {\tt mem\_allocate} function
+(excluded), and delete everything else. We then re-implement the functions from
+\cref{section:ted-implementation}, and the {\tt mem\_copy} function from
+\cref{section:flash-memory-driver-impl} that they need (see these sections for
+more details):
+
+\rust{
+  // Reset and go back in command editor.
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert!(display
+      .borrow()
+      .get_text()
+      .contains("Welcome to the command editor."));
+
+  let mut t = Transpiler5::new_str(&context.get_text(application_source));
+  t.add_unchanged("fn main(", "fn mem_allocate(");
+}
+
+\toy{
+fn mem_copy(src: &u32, dst: &u32, n: u32) {
+  let i = 0;
+  if dst < src {
+    while i + 4 <= n {
+      *(dst + i) = *(src + i);
+      i = i + 4;
+    }
+    while i < n {
+      store8(dst + i, load8(src + i));
+      i = i + 1;
+    }
+  } else {
+    i = n;
+    while i >= 4 {
+      i = i - 4;
+      *(dst + i) = *(src + i);
+    }
+    while i > 0 {
+      i = i - 1;
+      store8(dst + i, load8(src + i));
+    }
+  }
+}
+
+const ARROW_DOWN_KEY: u32 = 242;
+const ARROW_LEFT_KEY: u32 = 235;
+const ARROW_RIGHT_KEY: u32 = 244;
+const ARROW_UP_KEY: u32 = 245;
+const BACKSPACE_KEY: u32 = 8;
+const DELETE_KEY: u32 = 127;
+const ENTER_KEY: u32 = 10;
+const ESCAPE_KEY: u32 = 27;
+const PAGE_DOWN_KEY: u32 = 250;
+const PAGE_UP_KEY: u32 = 253;
+const TAB_KEY: u32 = 9;
+
+fn ted_set_cursor(begin: &u32, cursor: &u32, gap: u32, new_cursor: &u32) \
+-> &u32 {
+  if new_cursor > cursor {
+    mem_copy(cursor + gap, cursor, new_cursor - cursor);
+  } else {
+    mem_copy(new_cursor, new_cursor + gap, cursor - new_cursor);
+  }
+  return new_cursor;
+}
+
+fn ted_move_backward(begin: &u32, cursor: &u32, lines: u32, col: &u32, \
+row: &u32) -> &u32 {
+  let c = 0;
+  let ptr = cursor;
+  while ptr > begin {
+    c = load8(ptr - 1);
+    if c == ENTER_KEY {
+      if *row == lines { break; }
+      *row = *row + 1;
+    } else if *row == 0 {
+      if c == TAB_KEY {
+        *col = *col + 2;
+      } else {
+        *col = *col + 1;
+      }
+    }
+    ptr = ptr - 1;
+  }
+  return ptr;
+}
+
+fn ted_move_forward(cursor: &u32, gap: u32, end: &u32, lines: u32) -> &u32 {
+  loop {
+    if cursor == end - gap { return cursor; }
+    if load8(cursor + gap) == ENTER_KEY {
+      if lines == 1 { return cursor + 1; }
+      lines = lines - 1;
+    }
+    cursor = cursor + 1;
+  }
+}
+
+fn ted_handle_key(begin: &u32, cursor: &u32, gap: u32, end: &u32, c: u32) \
+-> &u32 {
+  let col = 0;
+  let row = 0;
+  if c == ARROW_LEFT_KEY && cursor > begin {
+    return cursor - 1;
+  } else if c == ARROW_RIGHT_KEY && cursor < end - gap {
+    return cursor + 1;
+  } else if c == ARROW_UP_KEY {
+    return ted_move_backward(begin, cursor, 1, &col, &row);
+  } else if c == ARROW_DOWN_KEY {
+    return ted_move_forward(cursor, gap, end, 1);
+  } else if c == PAGE_UP_KEY {
+    return ted_move_backward(begin, cursor, 30, &col, &row);
+  } else if c == PAGE_DOWN_KEY {
+    return ted_move_forward(cursor, gap, end, 30);
+  }
+  return cursor;
+}
+
+fn ted_draw(begin: &u32, cursor: &u32, gap: u32, end: &u32) {
+  gpu_clear_screen();
+  gpu_set_cursor(0, 0);
+  let r = 0;
+  let c = 0;
+  let col = 0;
+  let row = 0;
+  let ptr = ted_move_backward(begin, cursor, 15, &col, &row);
+  if ptr == cursor { ptr = ptr + gap; }
+  while ptr < end && r < 30 {
+    c = load8(ptr);
+    if c == ENTER_KEY {
+      r = r + 1;
+      gpu_set_cursor(0, r);
+    } else if c == TAB_KEY {
+      gpu_draw_char(' ');
+      gpu_draw_char(' ');
+    } else {
+      gpu_draw_char(c);
+    }
+    ptr = ptr + 1;
+    if ptr == cursor { ptr = ptr + gap; }
+  }
+  gpu_switch_buffer();
+  gpu_set_cursor(col, row);
+}
+
+fn text_editor(buffer: &u32, offset: u32, max_length: u32) {
+  let length = *buffer;
+  if length > max_length { return; }
+  let begin = buffer + 4;
+  let cursor = begin + length;
+  let end = begin + max_length;
+  let gap = end - cursor;
+  let c = 0;
+  if offset > length { offset = length; }
+  cursor = ted_set_cursor(begin, cursor, gap, begin + offset);
+  gpu_set_color(0, 7, 0);
+  gpu_set_double_buffer();
+  ted_draw(begin, cursor, gap, end);
+  loop {
+    read(STANDARD_INPUT, &c, 1);
+    if c == ESCAPE_KEY {
+      *buffer = ted_set_cursor(begin, cursor, gap, end - gap) - begin;
+      gpu_set_single_buffer();
+      return;
+    }
+    if c == BACKSPACE_KEY {
+      if cursor > begin {
+        cursor = cursor - 1;
+        gap = gap + 1;
+      }
+    } else if c < DELETE_KEY {
+      if gap > 0 {
+        store8(cursor, c);
+        cursor = cursor + 1;
+        gap = gap - 1;
+      }
+    } else {
+      cursor = ted_set_cursor(begin, cursor, gap,
+          ted_handle_key(begin, cursor, gap, end, c));
+    }
+    ted_draw(begin, cursor, gap, end);
+  }
+}
+}%toy
+
+The rest of the code is new and implements the above requirements. The
+following function computes the value of the optional command line argument,
+the initial cursor position. It stores the value of this argument, if present,
+at address {\tt offset}. It returns an error if this argument is not a number,
+and {\tt OK} otherwise. $[\mathit{args},\mathit{args\_end}[$ must be the rest
+of the command line arguments, after the name of the file to edit.
+
+\toy{
+fn read_offset(args: &&u32, args_end: &u32, offset: &u32) -> u32 {
+  let length = 0;
+  let argument = sh_read_token(args, args_end, &length);
+  if argument == null { return OK; }
+  let i = 0;
+  let c = 0;
+  while i < length {
+    c = load8(argument + i);
+    if c < '0' || c > '9' { return INVALID_ARGUMENT; }
+    *offset = (*offset) * 10 + (c - '0');
+    i = i + 1;
+  }
+  return OK;
+}
+}%toy
+
+The next function simply returns an error after writing a corresponding error
+message to standard output. It is followed by some messages needed in {\tt
+main}:
+
+\toy{
+fn write_error(src: &u32, length: u32, error: u32) -> u32 {
+  write(STANDARD_OUTPUT, src, length);
+  return error;
+}
+
+static USAGE = ['U','s','a','g','e',':',' ',
+  'e','d','i','t',' ','f','i','l','e',' ',
+  '[','o','f','f','s','e','t',']'];
+
+static READ_ERROR = ['R','e','a','d',' ','e','r','r','o','r'];
+static WRITE_ERROR = ['W','r','i','t','e',' ','e','r','r','o','r'];
+static SAVE_PROMPT = ['S','a','v','e',' ','(','y','/','n',')','?'];
+}%toy
+
+The {\tt main} function starts by reading the command line arguments. If they
+are invalid, it prints a message explaining their expected format and returns
+an error. It also checks that the heap is large enough to edit a small text.
+
+\toy{
+@fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 \{
+  let length = 0;
+  let name = sh_read_token(&args, args_end, &length);
+  let offset = 0;
+  if name == null || read_offset(&args, args_end, &offset) != OK {
+    return write_error(USAGE, 25, INVALID_ARGUMENT);
+  }
+  if heap_limit < heap + 256 { return OUT_OF_MEMORY; }
+}%toy
+
+It continues by reading the file to edit, if it exists, into the data buffer
+named {\tt buffer}, using all the available heap memory (minus 4 bytes for the
+data buffer header). Otherwise it initializes an empty buffer.
+\toy{
+  let buffer = heap;
+  let max_length = heap_limit - heap - 4;
+  let stream = open(name, length, 'r');
+  if status(stream) == OK {
+    *buffer = read(stream, buffer + 4, max_length);
+    close(stream);
+    if status(*buffer) != OK {
+      return write_error(READ_ERROR, 10, status(*buffer));
+    }
+    if *buffer == max_length { return OUT_OF_MEMORY; }
+  } else {
+    *buffer = 0;
+  }
+}%toy
+
+The end of the function calls {\tt text\_editor} to edit this buffer. When it
+returns, it displays a message asking the user whether the changes must be
+saved or not, with {\tt ted\_draw}. If the user types ``y'' it saves the {\tt
+buffer} content (without its 4 bytes header) into the edited file and returns
+{\tt OK}, or an error if the file could not be saved.
+
+\toy{
+  text_editor(buffer, offset, max_length);
+  ted_draw(SAVE_PROMPT, SAVE_PROMPT + 11, 0, SAVE_PROMPT + 11);
+  let c = 0;
+  read(STANDARD_INPUT, &c, 1);
+  if c != 'y' { return OK; }
+  stream = open(name, length, 'w');
+  if status(stream) != OK {
+    return write_error(WRITE_ERROR, 11, status(stream));
+  }
+  let n = write(stream, buffer + 4, *buffer);
+  if status(n) != OK {
+    return write_error(WRITE_ERROR, 11, status(n));
+  }
+  return OK;
+\}
+}%toy
+
+\subsection{Compilation and tests}
+
+Type ``F11''+``r'' in the command editor to load the current shell source code,
+and ``F4''+``r'' to edit it. Then update it as described above. For reference,
+we also provide this code in the {\tt edit\_v0.txt} file in
+\toypcurl{sources.zip}. When done, type ``F12''+``r'' to save it and
+``F9''+``r'' to compile it. If necessary, repeat these steps until the
+compilation is successful. To copy the text editor source code and compiled
+code in files use F3 to load the builder source code, and F4 to edit it. Then
+change its main function to the following:
+
+\rust{
+  t.write_toy5("website/sources/edit_v0.txt")?;
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F12"]);
+  context.type_ascii("R\n");
+  // F9 to compile it and save it
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  let builder_source =
+      context.get_text(context.memory_region("builder_source").start);
+  let mut t = Transpiler5::new_str(&builder_source);
+  t.add_unchanged("fn main() -> u32;", "static NAME = [");
+  t.add_placeholder("#CODE", &format!("{}", kernel_code));
+  t.add_placeholder("#SOURCE", &format!("{}", application_source));
+}
+
+\toy{
+static NAME = ['e','d','i','t'];
+static SOURCE = ['e','d','i','t','.','t','o','y'];
+@fn main() -> u32 {
+@  const COMPILED_CODE: &u32 = #CODE;
+@  const SOURCE_CODE: &u32 = #SOURCE;
+  let result = buffer_write(COMPILED_CODE, NAME, 4);
+  if result == OK { result = buffer_write(SOURCE_CODE, SOURCE, 8); }
+@  if result == OK { flash_boot_loader_and_reset(); }
+@  return result;
+@}
+}%toy
+
+\noindent Finally, save the builder with F5, compile it with F6, and run it
+with F7. If all goes well this should launch the kernel and the shell. To test
+the text editor, type ``{\tt edit test.txt}'' and Enter. Type some text and
+then Escape and ``{\tt y}'' to save it. To check that this worked, type ``{\tt
+edit test.txt 2}'': the text editor should display the text you just saved, and
+the cursor should be under the third character. Finally, reset the Arduino,
+which should restart with the memory editor.
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+  // F7 to run it (restarts with kernel)
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+
+  // TESTS OF TEXT EDITOR
+  context.run_until_get_char();
+  assert_eq!(display.borrow().get_text(), ">");
+  context.type_ascii("EDIT TEST.TXT\n");
+  assert_eq!(display.borrow().get_text(), "");
+  context.type_ascii("A TEST FILE");
+  assert_eq!(display.borrow().get_text(), "a test file");
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+  assert_eq!(display.borrow().get_text(), ">edit test.txt\n>");
+  context.type_ascii("EDIT TEST.TXT 11\n");
+  assert_eq!(display.borrow().get_text(), "a test file");
+  context.type_ascii(".");
+  assert_eq!(display.borrow().get_text(), "a test file.");
+}
+
+\section{Compiler}
+
+\subsection{Requirements}
+
+The shell and the text editor start with the same source code which is in fact
+useful for most programs (namely the {\tt entry} function, and the system call
+functions). To avoid duplicating it in each program we require the possibility
+to compile a program from several source files. We can then put the shared code
+in a separate file, implemented only once, and compile it together with a
+program specific file. The compiler should thus take as arguments the name of
+the compiled program to generate, followed by one or more source file name(s).
+In case of a compilation error it should write the error code, the error
+location, and the name of the source file to standard output. The goal is to be
+able to edit this file directly at the location of the error with the text
+editor.
+
+\subsection{Design}
+
+We meet the above requirements with a simple method requiring very few changes
+to our compiler, but which is not memory efficient (we improve it in
+\cref{chapter:utilities}). More precisely, we load all the input files in RAM,
+after the compiler's heap, which is itself only a part of the compiler
+process's heap (compare \cref{fig:toyc6-memory-map} with
+\cref{fig:toyc-memory-map,fig:process-ram-map}). And we compile each file with
+{\tt tc\_parse\_program}, one by one, into the same $\it{dst\_buffer}$ that we
+finally save into a file.
+
+\begin{Figure}
+  \input{figures/chapter5/toyc-memory-map.tex}
+
+  \caption{The compiler process's heap (bottom), between its compiled code
+  (red) and its stack (green), contains the generated code (yellow), the {\tt
+  Compiler} struct (dark blue), the compiler's heap (shades of blue), and the
+  input source code (white).}\label{fig:toyc6-memory-map}
+\end{Figure}
+
+\subsection{Implementation}\label{subsection:toyc-process}
+
+We implement the above design by editing the current compiler code as
+follows. We first replace the {\tt tc\_main} function declaration and the {\tt
+main} function with the same {\tt entry} function as in the shell and the text
+editor (we don't have a compiler able to compile several files yet, and thus
+need to duplicate it for now):
+
+\rust{
+  // Reset and go back in command editor.
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert!(display
+      .borrow()
+      .get_text()
+      .contains("Welcome to the command editor."));
+
+  let mut t = Transpiler5::new_str(&context.get_text(compiler_source));
+}
+
+\toy{
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32;
+fn exit(result: u32) -> u32;
+
+fn entry(heap: &u32, heap_limit: &u32) {
+  let args = heap + 4;
+  let args_end = args + *heap;
+  heap = (((args_end as u32 + 3) >> 2) << 2) as &u32;
+  exit(main(args, args_end, heap, heap_limit));
+}
+}%toy
+
+Then, after {\tt load8}, {\tt load16}, {\tt store8}, and {\tt store16}
+(unchanged), and for the same reason, we copy the following functions from the
+shell and the text editor:
+
+\rust{
+  t.add_unchanged("fn load8(", "fn panic_result(");
+}
+
+\toy{
+fn sh_read_token(src_p: &&u32, src_end: &u32, length: &u32) -> &u32 {
+  let src = *src_p;
+  while src < src_end && load8(src) == ' ' { src = src + 1; }
+  if src >= src_end { return null; }
+  let token = src;
+  while src < src_end && load8(src) != ' ' { src = src + 1; }
+  *length = src - token;
+  *src_p = src;
+  return token;
+}
+
+const OK: u32 = 0;
+const INVALID_ARGUMENT: u32 = 1;
+const INVALID_STATE: u32 = 2;
+const NOT_FOUND: u32 = 3;
+const ALREADY_EXISTS: u32 = 4;
+const OUT_OF_MEMORY: u32 = 5;
+const INTERNAL_ERROR: u32 = 6;
+
+fn status(result: u32) -> u32 { return result >> 24; }
+
+fn system_call(id: u32, args: &u32) -> u32 [
+  /*SVC*/ 57088;
+  /*MOV_PC_LR*/ 18167;
+]
+fn exit(result: u32) -> u32 {
+  return system_call(1, &result);
+}
+fn open(name: &u32, length: u32, mode: u32) -> u32 {
+  return system_call(4, &name as &u32);
+}
+const STANDARD_OUTPUT: u32 = 1;
+fn read(file_descriptor: u32, buffer: &u32, size: u32) -> u32 {
+  return system_call(5, &file_descriptor);
+}
+fn write(file_descriptor: u32, buffer: &u32, size: u32) -> u32 {
+  return system_call(6, &file_descriptor);
+}
+fn close(file_descriptor: u32) -> u32 {
+  return system_call(7, &file_descriptor);
+}
+}%toy
+
+We then keep all the existing code between {\tt panic\_result} and {\tt
+tc\_parse\_fn} unchanged, but we remove the call to {\tt tc\_check\_symbols} in
+{\tt tc\_parse\_program}. Otherwise a function declared in one file would need
+to be implemented in this same file, which is too restrictive (recall that {\tt
+tc\_check\_symbols} checks that all declared functions are effectively
+implemented).
+
+\rust{
+  t.add_unchanged("fn panic_result(", "fn tc_parse_program(");
+}
+
+\toy{
+@fn tc_parse_program(self: &Compiler) {
+@  loop {
+...@    if self.next_token == TC_FN {
+...@      tc_parse_fn(self);
+...@    } else if self.next_token == TC_STRUCT {
+...@      tc_parse_struct(self);
+...@    } else if self.next_token == TC_STATIC {
+...@      tc_parse_static(self);
+...@    } else if self.next_token == TC_CONST {
+...@      tc_parse_const(self);
+...@    } else {
+@      if self.next_token != 0 { panic(23); }
+      return;
+@    }
+@  }
+@}
+}%toy
+
+The following code is new. It replaces the {\tt tc\_main} function and
+implements the above requirements. We start with a function to write a decimal
+number $x$ to standard output, which is needed to write an error code or its
+location. This function writes $x$ divided by 10 by calling itself recursively,
+followed by the remainder of this division. The next function is similar to the
+one with the same name in the text editor:
+
+\toy{
+fn write_integer(x: u32) {
+  let quotient = x / 10;
+  x = x - 10 * quotient + '0';
+  if quotient > 0 { write_integer(quotient); }
+  write(STANDARD_OUTPUT, &x, 1);
+}
+
+fn write_error(src1: &u32, length1: u32, src2: &u32, length2: u32, \
+error: u32) -> u32 {
+  write(STANDARD_OUTPUT, src1, length1);
+  write(STANDARD_OUTPUT, src2, length2);
+  return error;
+}
+}%toy
+
+The {\tt main} function starts by reading the command line arguments. If there
+are less than two it prints a message explaining their expected format and
+returns an error. It then increases the stack area, by decreasing the process's
+heap limit, and checks that this heap is large enough to compile a small
+program (see \cref{fig:toyc6-memory-map}).
+
+\toy{
+static USAGE = ['U','s','a','g','e',':',' ',
+  't','o','y','c',' ','o','u','t','p','u','t',' ',
+  'i','n','p','u','t','1',' ','i','n','p','u','t','2',' ',
+  '.','.','.'];
+
+static CANT_OPEN = ['C','a','n',''','t',' ','o','p','e','n',' '];
+static CANT_READ = ['C','a','n',''','t',' ','r','e','a','d',' '];
+static CANT_WRITE = ['C','a','n',''','t',' ','w','r','i','t','e',' '];
+static ERROR = ['E','r','r','o','r',' '];
+static AT = [' ','a','t',  ' '];
+static IN = [' ','i','n',  ' '];
+
+fn main(args: &u32, args_end: &u32, heap: &u32, heap_limit: &u32) -> u32 \{
+  let out_length = 0;
+  let in_length = 0;
+  let out = sh_read_token(&args, args_end, &out_length);
+  let in = sh_read_token(&args, args_end, &in_length);
+  if out == null || in == null {
+    write(STANDARD_OUTPUT, USAGE, 36);
+    return INVALID_ARGUMENT;
+  }
+  const MAX_CODE_SIZE: u32 = 12288;
+  const MAX_HEAP_SIZE: u32 = 18432;
+  const MIN_SRC_SIZE: u32 = 256;
+  heap_limit = heap_limit - 512;
+  if heap_limit < heap + MAX_CODE_SIZE + sizeof(Compiler) + \
+MAX_HEAP_SIZE + MIN_SRC_SIZE {
+    return OUT_OF_MEMORY;
+  }
+}%toy
+
+The main function continues by creating and initializing the {\tt compiler}
+struct. Note that $\it{dst}$ is a multiple of 4, as required (see
+\cref{section:toyc5-implementation}), thanks to the rounding done in the {\tt
+entry} function. It also implements a ``panic handler'' writing the error code,
+offset and source file name to standard output, as required ($\it{src}$ points
+to the beginning of the source code loaded from the file whose name starts at
+$\it{in}$).
+
+\toy{
+  let error = 0;
+  let dst = heap;
+  let compiler = (dst + MAX_CODE_SIZE) as &Compiler;
+  compiler.dst = dst;
+  compiler.dst_limit = compiler as &u32;
+  compiler.heap = compiler.dst_limit + sizeof(Compiler);
+  compiler.heap_limit = compiler.heap + MAX_HEAP_SIZE;
+  compiler.symbols = null;
+  let src = compiler.heap_limit;
+  error = panic_result();
+  if error != 0 {
+    write(STANDARD_OUTPUT, ERROR, 6);
+    write_integer(error);
+    if in == null { return error; }
+    write(STANDARD_OUTPUT, AT, 4);
+    write_integer(compiler.src - src);
+    return write_error(IN, 4, in, in_length, error);
+  }
+}%toy
+
+This handler is followed by a loop which reads each input source file and
+compiles it. Each file is loaded at $\it{src}$, which is then incremented by
+the file size. If the file can be read successfully and if there is enough
+memory to load its content, it is compiled with {\tt tc\_parse\_program}. This
+requires initializing the scanner first, with {\tt tc\_read\_char} and {\tt
+tc\_read\_token}, which in turn requires initializing the compiler's $\it{src}$
+and $\it{src\_end}$ fields.
+
+\toy{
+  let stream = 0;
+  let src_size = 0;
+  while in != null {
+    stream = open(in, in_length, 'r');
+    if status(stream) != OK {
+      return write_error(CANT_OPEN, 11, in, in_length, status(stream));
+    }
+    src_size = read(stream, src, heap_limit - src);
+    close(stream);
+    if status(src_size) != OK || src_size == heap_limit - src {
+      return write_error(CANT_READ, 11, in, in_length, status(src_size));
+    }
+    compiler.src = src - 1;
+    compiler.src_end = src + src_size;
+    tc_read_char(compiler);
+    tc_read_token(compiler);
+    tc_parse_program(compiler);
+    in = sh_read_token(&args, args_end, &in_length);
+    src = src + src_size;
+  }
+}%toy
+
+The {\tt main} function ends by checking that all declared functions, in all
+files, are effectively implemented, and by writing the compiled code to disk:
+
+\toy{
+  tc_check_symbols(compiler.symbols, null);
+  stream = open(out, out_length, 'w');
+  if status(stream) != OK {
+    return write_error(CANT_OPEN, 11, out, out_length, status(stream));
+  }
+  let n = write(stream, dst, compiler.dst - dst);
+  if status(n) != OK {
+    return write_error(CANT_WRITE, 12, out, out_length, status(n));
+  }
+  return OK;
+\}
+}%toy
+
+\subsection{Compilation and tests}
+
+To update the compiler as described above we first need some commands to load
+and save its source code, at address \rs{hex_dec(compiler_source)} = page
+\rs{dec(page_number(compiler_source))} (see \cref{fig:shell-memory-map}). For
+this type ``F11''+``e'' in the command editor, update this command to:
+
+\rust{
+  let commands = context.memory_region("command_editor_commands").start;
+
+  // Edit 'Load' (F11) command to load source code of compiler.
+  context.type_keys(vec!["F11"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("load_compiler_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(compiler_source);
+  c.cst(ram_source);
+  c.call("buffer_copy");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let original = context.get_text(commands + 10 * 256);
+  let c_source = format!("{}\nd LOAD_COMPILER_SOURCE_CODE",
+  c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code_changes(&c_source, &original, &[1, 3])}
+
+\noindent and type ``s'' to save it. With the same method, update the F12
+command to:
+
+\rust{
+  // Edit 'Save' (F12) command to save source code of compiler.
+  context.type_keys(vec!["F12"]);
+  context.type_ascii("S");
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("save_compiler_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(ram_source);
+  c.cst(page_number(compiler_source));
+  c.call("buffer_flash");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let original = context.get_text(commands + 11 * 256);
+  let c_source = format!("{}\nd SAVE_COMPILER_SOURCE_CODE",
+  c.get_toy0_source_code());
+  context.store_text(ram_command_source, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code_changes(&c_source, &original, &[1, 3])}
+
+Then use F11 and F4 to load and edit the current compiler source code, and
+update it as described above. For reference, we also provide this code in the
+{\tt toyc\_v0.txt} file in \toypcurl{sources.zip}. When done, use F12 and F9 to
+save it and to compile it. If necessary, repeat these steps until the
+compilation is successful. To copy the new compiler source code and compiled
+code in files use F3 to load the builder source code, and F4 to edit it. Then
+change its main function to the following:
+
+\rust{
+  t.write_toy5("website/sources/toyc_v0.txt")?;
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F12"]);
+  context.type_ascii("R\n");
+  // F9 to compile it and save it
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  let builder_source =
+      context.get_text(context.memory_region("builder_source").start);
+  let mut t = Transpiler5::new_str(&builder_source);
+  t.add_unchanged("fn main() -> u32;", "static NAME = [");
+  t.add_placeholder("#CODE", &format!("{}", kernel_code));
+  t.add_placeholder("#SOURCE", &format!("{}", compiler_source));
+}
+
+\toy{
+static NAME = ['t','o','y','c'];
+static SOURCE = ['t','o','y','c','.','t','o','y'];
+@fn main() -> u32 {
+@  const COMPILED_CODE: &u32 = #CODE;
+  const SOURCE_CODE: &u32 = #SOURCE;
+@  let result = buffer_write(COMPILED_CODE, NAME, 4);
+@  if result == OK { result = buffer_write(SOURCE_CODE, SOURCE, 8); }
+@  if result == OK { flash_boot_loader_and_reset(); }
+@  return result;
+@}
+}%toy
+
+Finally, save the builder with F5, compile it with F6, and run it with F7. If
+all goes well this should launch the kernel and the shell. To test our new
+compiler, first create a ``{\tt hello.toy}'' file containing the following
+program (\ie, type ``{\tt edit hello.toy}'' in the shell, enter this code, and
+finally type Escape and ``{\tt y}'' to save it):
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // F7 to run it (restarts with kernel)
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  context.run_until_get_char();
+  assert_eq!(display.borrow().get_text(), ">");
+
+  context.type_ascii("EDIT HELLO.TOY\n");
+  assert_eq!(display.borrow().get_text(), "");
+  let mut t = Transpiler5::default();
+}
+
+\toy{
+fn main();
+fn entry(heap: &u32, heap_limit: &u32) { main(); }
+
+fn system_call(id: u32, args: &u32) -> u32 [
+  /*SVC*/ 57088;
+  /*MOV_PC_LR*/ 18167;
+]
+fn exit(result: u32) -> u32 {
+  return system_call(1, &result);
+}
+fn write(stream_id: u32, buffer: &u32, size: u32) -> u32 {
+  return system_call(6, &stream_id);
+}
+
+static HELLO = ['H','e','l','l','o',',',' ','W','o','r','l','d','!'];
+fn main() {
+  write(1 /*standard output*/, HELLO, 13);
+  exit(0);
+}
+}%toy
+
+\rust{
+  context.enter_text_editor_text(&t.get_toy5());
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "Save (y/n)?");
+  context.type_ascii("Y");
+}
+
+Then compile it with ``{\tt toyc hello hello.toy}''. If there is a compilation
+error, edit the source code at the location indicated by the compiler. Once the
+compilation is successful, run the compiled program with the ''{\tt hello}''
+command line, which should print the ``Hello, World!'' message. You can then
+reset the Arduino, which should restart with the memory editor.
+
+\rust{
+  // Step 2: compile it
+  context.type_ascii("TOYC HELLO HELLO.TOY\n");
+  assert_eq!(display.borrow().get_text(), ">toyc hello hello.toy\n>");
+  // Step 3: run it
+  context.type_ascii("HELLO\n");
+  assert_eq!(display.borrow().get_text(), ">hello\nHello, World!\n>");
+}
+
+\section{Self hosting}
+
+We now have everything we need to edit, compile and run new programs from our
+operating system alone. Moreover, the file system contains the source code of
+the shell, the text editor, and the compiler (and of the boot loader). We can
+thus update them and recompile them from the operating alone too. In other
+words, we no longer need our bytecode interpreter, the basic input output
+system, the command editor, or anything else we built in the Flash1 memory
+bank. In particular, we no longer need to restore the BIOS Vector Table in our
+kernel to restart the basic input output system after a reset of the operating
+system. To remove it, type ``F8''+``r'' in the command editor to load the
+kernel source code, and ``F4''+``r'' to edit it. Then delete the {\tt
+restore\_bios\_vector\_table} function, and remove the call to this function in
+{\tt os\_init}. Use F10 to save these changes and F9 to compile them.
+
+\rust{
+  // Reset and go back in command editor.
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert!(display
+    .borrow()
+    .get_text()
+    .contains("Welcome to the command editor."));
+
+  // Recompile kernel to remove 'restore_bios_vector_table'.
+  let mut t = Transpiler5::new_str(&context.get_text(kernel_source));
+  t.add_unchanged("fn os_init(", "fn restore_bios_vector_table(");
+  t.add_unchanged("fn os_init(code: &u32, heap: &u32, stack: &u32) ",
+      "\trestore_bios_vector_table();");
+  t.add_unchanged("\tconst MAX_KERNEL_HEAP_SIZE:", "EOF");
+
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F10"]);
+  context.type_ascii("R\n");
+  // F9 to compile it and save it
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+To copy this new kernel, and its source code (so that we can update it from the
+operating system alone), use F3 to load the builder source code,
+and F4 to edit it. Then change its main function, one last time, to the
+following (the kernel source code is at address \rs{hex_dec(kernel_source)} --
+see \cref{fig:shell-memory-map}):
+
+\rust{
+  let builder_source =
+      context.get_text(context.memory_region("builder_source").start);
+  let mut t = Transpiler5::new_str(&builder_source);
+  t.add_unchanged("fn main() -> u32;", "static NAME = [");
+  t.add_placeholder("#CODE", &format!("{}", kernel_code));
+  t.add_placeholder("#SOURCE", &format!("{}", kernel_source));
+}
+
+\toy{
+static NAME = ['t','o','y','s'];
+static SOURCE = ['t','o','y','s','.','t','o','y'];
+@fn main() -> u32 {
+@  const COMPILED_CODE: &u32 = #CODE;
+  const SOURCE_CODE: &u32 = #SOURCE;
+@  let result = buffer_write(COMPILED_CODE, NAME, 4);
+@  if result == OK { result = buffer_write(SOURCE_CODE, SOURCE, 8); }
+@  if result == OK { flash_boot_loader_and_reset(); }
+@  return result;
+@}
+}%toy
+
+Finally, save the builder with F5, compile it with F6, and run it with F7. If
+all goes well this should launch the kernel and the shell. Then reset the
+Arduino. This should relaunch the kernel and the shell again.
+
+\rust{
+  context.store_text(ram_source, &t.get_toy5());
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  // F6 to compile it
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+  // F7 to run it (restarts with kernel)
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), ">");
+
+  // Check reset starts kernel again.
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  assert_eq!(display.borrow().get_text(), ">");
+}

@@ -1,0 +1,20 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <text x="13" y="37" text-anchor="end">clock</text>
+    <text x="125" y="39" text-anchor="end">time</text>
+    <path d="m 15,39 5,0 v -6 h 5 v 6 h 5 l 0,-6 h 5 l 0,6 h 5 v -6 h 5 v 6 h 5 v -6 h 5 v 6 h 5 l 0,-6 h 5 l 0,6 h 5 l 0,-6 h 5 l 0,6 h 5 v -6 h 5 v 6 h 5 v -6 h 5 l 0,6 h 5 v -6 h 5 l 0,6 h 5 v -6 h 5 v 6" fill="none" stroke="#0e6e8e"/>
+    <path d="m 15,40 110,0" stroke="#000000" stroke-linejoin="bevel" marker-end="url(#arrow)"/>
+    <text x="41" y="36" font-size="2.8px">period</text>
+    <path d="M 40,37 H 50" stroke="#000000" stroke-linejoin="bevel" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  </g>
+</svg>

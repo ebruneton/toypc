@@ -1,0 +1,110 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="10" height="16" x="110" y="25" fill="#41a1c1"/>
+    <path d="m 118,39 h -11 l 0,-23 h 13 l 0,-3" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 118,31 5,0 v 13 H 52 L 52,13" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <rect width="2" height="2" x="106" y="21" fill="#ffffff"/>
+    <rect width="2" height="2" x="106" y="26" fill="#ffffff"/>
+    <path d="M 110,29 120,29" stroke="#000000"/>
+    <path d="M 110,33 120,33" stroke="#000000"/>
+    <path d="M 110,37 120,37" stroke="#000000"/>
+    <rect width="10" height="16" x="110" y="25" fill="none" stroke="#000000"/>
+    <circle cx="118" cy="27" r="1" fill="#bf3959"/>
+    <rect width="2" height="2" x="51" y="18" fill="#ffffff"/>
+    <rect width="2" height="2" x="51" y="21" fill="#ffffff"/>
+    <path d="m 35,35 h 11 l 0,-13 h 84 l 0,-9" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 18,12 9,13" stroke="#cccccc" stroke-dasharray="0.2 0.6"/>
+    <path d="M 20,12 37,25" stroke="#cccccc" stroke-dasharray="0.2 0.6"/>
+    <rect width="36" height="7" x="79" y="5" fill="#ebebeb"/>
+    <rect width="8" height="7" x="130" y="5" fill="#ebebeb"/>
+    <rect width="1" height="7" x="120" y="5" fill="#ebebeb"/>
+    <rect width="6" height="7" x="24" y="5" fill="#ebebeb"/>
+    <rect width="1" height="7" x="51" y="5" fill="#ebebeb"/>
+    <rect width="10" height="16" x="27" y="25" fill="#0e6e8e"/>
+    <rect width="10" height="16" x="80" y="25" fill="#118ab2"/>
+    <rect width="2" height="7" x="18" y="5" fill="#0e6e8e"/>
+    <rect width="2" height="7" x="20" y="5" fill="#118ab2"/>
+    <rect width="2" height="7" x="22" y="5" fill="#41a1c1"/>
+    <rect width="12" height="7" x="67" y="5" fill="#ffda85"/>
+    <rect width="15" height="7" x="52" y="5" fill="#f26c8c"/>
+    <path d="M 67,5 V 12" stroke="#000000"/>
+    <path d="M 79,5 V 12" stroke="#000000"/>
+    <text x="53" y="10" font-size="3.5px">P</text>
+    <rect width="9" height="7" x="42" y="5" fill="#ffd166"/>
+    <rect width="2" height="2" x="92" y="21" fill="#ffffff"/>
+    <rect width="2" height="2" x="98" y="21" fill="#ffffff"/>
+    <rect width="2" height="2" x="106" y="18" fill="#ffffff"/>
+    <circle cx="118" cy="39" r="1"/>
+    <rect width="12" height="7" x="30" y="5" fill="#ef476f"/>
+    <path d="M 42,5 V 12" stroke="#000000"/>
+    <path d="M 51,5 V 12" stroke="#000000"/>
+    <path d="M 52,5 V 12" stroke="#000000"/>
+    <text x="31" y="10" font-size="3.5px">Shell</text>
+    <rect width="5" height="7" x="115" y="5" fill="#06d6a0"/>
+    <path d="M 115,5 V 12" stroke="#000000"/>
+    <path d="m 120,5 v 7" stroke="#000000"/>
+    <rect width="9" height="7" x="121" y="5" fill="#05ab80"/>
+    <path d="M 121,5 V 12" stroke="#000000"/>
+    <rect width="1" height="7" x="1" y="5" fill="#cca752"/>
+    <rect width="16" height="7" x="2" y="5" fill="#bf3959"/>
+    <path d="M 18,5 V 12" stroke="#000000"/>
+    <path d="M 24,5 V 12" stroke="#000000"/>
+    <path d="M 20,5 V 12" stroke="#000000"/>
+    <path d="M 22,5 V 12" stroke="#000000"/>
+    <path d="M 2,5 V 12" stroke="#000000"/>
+    <path d="M 30,5 V 12" stroke="#000000"/>
+    <path d="M 130,5 V 12" stroke="#000000"/>
+    <rect width="142" height="7" x="1" y="5" fill="none" stroke="#000000"/>
+    <text x="3" y="10" font-size="3.5px">Kernel</text>
+    <path d="m 115,8.5 h -4" stroke="#000000" stroke-dasharray="0.2, 0.2" marker-end="url(#arrow)"/>
+    <path d="M 138,5 V 12" stroke="#000000"/>
+    <path d="m 138,8.5 h -4" stroke="#000000" stroke-dasharray="0.2, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 83,8.5 h -4" stroke="#000000" stroke-dasharray="0.2, 0.2" marker-start="url(#arrow)"/>
+    <path d="M 28,8.5 H 24" stroke="#000000" stroke-dasharray="0.2, 0.2" marker-start="url(#arrow)"/>
+    <text x="26" y="28" font-size="3.5px" text-anchor="end" fill="#9a9a9a">heap</text>
+    <text x="26" y="32" font-size="3.5px" text-anchor="end" fill="#9a9a9a">heap\_limit</text>
+    <text x="26" y="36" font-size="3.5px" text-anchor="end" fill="#9a9a9a">stack\_limit</text>
+    <text x="26" y="40" font-size="3.5px" text-anchor="end" fill="#9a9a9a">current\_process</text>
+    <path d="m 27,29 10,0" stroke="#000000"/>
+    <path d="m 27,33 10,0" stroke="#000000"/>
+    <path d="m 27,37 10,0" stroke="#000000"/>
+    <rect width="10" height="16" x="27" y="25" fill="none" stroke="#000000"/>
+    <text x="79" y="28" font-size="3.5px" text-anchor="end" fill="#9a9a9a">parent</text>
+    <text x="79" y="32" font-size="3.5px" text-anchor="end" fill="#9a9a9a">begin</text>
+    <text x="79" y="36" font-size="3.5px" text-anchor="end" fill="#9a9a9a">saved\_context</text>
+    <text x="79" y="40" font-size="3.5px" text-anchor="end" fill="#9a9a9a">end</text>
+    <path d="m 80,29 10,0" stroke="#000000"/>
+    <path d="m 80,33 10,0" stroke="#000000"/>
+    <path d="m 80,37 10,0" stroke="#000000"/>
+    <rect width="10" height="16" x="80" y="25" fill="none" stroke="#000000"/>
+    <text x="89" y="28" font-size="3.5px" text-anchor="end" fill="#ffffff">null</text>
+    <circle cx="88" cy="31" r="1"/>
+    <circle cx="88" cy="35" r="1"/>
+    <circle cx="88" cy="39" r="1"/>
+    <circle cx="35" cy="39" r="1" fill="#bf3959"/>
+    <circle cx="35" cy="35" r="1"/>
+    <circle cx="35" cy="31" r="1"/>
+    <circle cx="35" cy="27" r="1"/>
+    <path d="m 35,39 v 8 l 91,0 0,-20 -6,0" fill="none" stroke="#bf3959" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <circle cx="118" cy="31" r="1"/>
+    <path d="m 35,27 h 5 v -5 l -16,0 0,-9" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 35,31 8,0 L 43,19 30,19 v -6" fill="none" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="m 88,31 h 5 l 0,-12 -50,0" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2"/>
+    <path d="m 88,39 11,0 L 99,19 h 31" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2"/>
+    <rect width="2" height="2" x="98" y="26" fill="#ffffff"/>
+    <rect width="2" height="2" x="92" y="26" fill="#ffffff"/>
+    <path d="m 88,35 h 8 l 0,-18 h 25 l 0,-4" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <rect width="2" height="2" x="95" y="26" fill="#ffffff"/>
+    <path d="m 118,27 -28,0" stroke="#bf3959" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+  </g>
+</svg>

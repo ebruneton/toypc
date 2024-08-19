@@ -1,0 +1,133 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <text x="29" y="18" font-size="3.5px" text-anchor="end" fill="#9a9a9a">commands</text>
+    <text x="-31" y="50" font-size="3.5px" transform="rotate(-90)">Shell</text>
+    <text x="-43" y="80" font-size="3.5px" transform="rotate(-90)">Command</text>
+    <text x="29" y="22" font-size="3.5px" text-anchor="end" fill="#9a9a9a">output\_begin</text>
+    <text x="29" y="26" font-size="3.5px" text-anchor="end" fill="#9a9a9a">output\_end</text>
+    <text x="29" y="30" font-size="3.5px" text-anchor="end" fill="#9a9a9a">output\_limit</text>
+    <text x="132" y="22" font-size="3.5px" fill="#9a9a9a">next</text>
+    <text x="132" y="18" font-size="3.5px" fill="#9a9a9a">previous</text>
+    <text x="132" y="26" font-size="3.5px" fill="#9a9a9a">length</text>
+    <rect width="16" height="12" x="85" y="27" fill="#41a1c1"/>
+    <rect width="4" height="4" x="97" y="39" fill="#41a1c1"/>
+    <rect width="12" height="4" x="114" y="27" fill="#41a1c1"/>
+    <path d="M 99,17 H 76" stroke="#bf3959" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="M 74,17 H 55 v 31 h 76 V 17 h -5" fill="none" stroke="#bf3959" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <rect width="2" height="2" x="78" y="16" fill="#ffffff"/>
+    <rect width="2" height="2" x="56" y="16" fill="#ffffff"/>
+    <path d="M 124,17 H 101" stroke="#bf3959" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <rect width="2" height="2" x="103" y="16" fill="#ffffff"/>
+    <rect width="16" height="4" x="60" y="27" fill="#41a1c1"/>
+    <rect width="4" height="4" x="72" y="31" fill="#41a1c1"/>
+    <rect width="16" height="8" x="60" y="35" fill="#ebebeb"/>
+    <rect width="12" height="4" x="60" y="31" fill="#ebebeb"/>
+    <rect width="16" height="12" x="110" y="31" fill="#ebebeb"/>
+    <rect width="4" height="4" x="110" y="27" fill="#ebebeb"/>
+    <rect width="12" height="4" x="85" y="39" fill="#ebebeb"/>
+    <rect width="40" height="4" x="82" y="57" fill="#ebebeb"/>
+    <path d="m 110,19 h 16" stroke="#000000"/>
+    <path d="m 110,23 h 16" stroke="#000000"/>
+    <path d="m 110,27 h 16" stroke="#000000"/>
+    <path d="m 110,31 h 16" stroke="#000000"/>
+    <text x="125" y="26" font-size="3.5px" text-anchor="end">3</text>
+    <rect width="16" height="28" x="110" y="15" fill="none" stroke="#000000"/>
+    <path d="m 44,17 h 5 v -7 l 26,0 v 5" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="M 44,21 H 32 v 36" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="M 44,25 H 34 v 29 h 50 v 3" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 44,29 h -8 v 23 h 88 v 5" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 74,21 h 5 v -9 l 20,0 v 3" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 99,21 h 5 v -9 l 20,0 0,3" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 124,21 h 5 V 46 H 57 V 12 h 17 v 3" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 85,19 h 16" stroke="#000000"/>
+    <path d="m 85,23 h 16" stroke="#000000"/>
+    <path d="m 85,27 h 16" stroke="#000000"/>
+    <path d="m 85,31 h 16" stroke="#000000"/>
+    <path d="m 85,35 h 16" stroke="#000000"/>
+    <path d="m 85,39 h 16" stroke="#000000"/>
+    <text x="100" y="26" font-size="3.5px" text-anchor="end">13</text>
+    <rect width="16" height="28" x="85" y="15" fill="none" stroke="#000000"/>
+    <path d="M 60,19 H 76" stroke="#000000"/>
+    <path d="M 60,23 H 76" stroke="#000000"/>
+    <path d="m 72,31 v 4" stroke="#000000"/>
+    <path d="m 34,61 v -4" stroke="#000000"/>
+    <path d="m 38,61 v -4" stroke="#000000"/>
+    <path d="m 42,61 v -4" stroke="#000000"/>
+    <path d="m 46,61 v -4" stroke="#000000"/>
+    <path d="m 50,61 v -4" stroke="#000000"/>
+    <path d="m 54,61 v -4" stroke="#000000"/>
+    <path d="m 58,61 v -4" stroke="#000000"/>
+    <path d="m 62,61 v -4" stroke="#000000"/>
+    <path d="m 66,61 v -4" stroke="#000000"/>
+    <path d="m 70,61 v -4" stroke="#000000"/>
+    <path d="m 74,61 v -4" stroke="#000000"/>
+    <path d="m 78,61 v -4" stroke="#000000"/>
+    <path d="m 82,61 v -4" stroke="#000000"/>
+    <path d="m 86,61 v -4" stroke="#000000"/>
+    <path d="m 122,61 v -4" stroke="#000000"/>
+    <path d="M 60,27 H 76" stroke="#000000"/>
+    <path d="M 60,31 H 76" stroke="#000000"/>
+    <path d="M 60,35 H 76" stroke="#000000"/>
+    <text x="75" y="26" font-size="3.5px" text-anchor="end">5</text>
+    <text x="70" y="30" font-size="3.5px" text-anchor="middle">e</text>
+    <text x="62" y="30" font-size="3.5px" text-anchor="middle">l</text>
+    <text x="66" y="30" font-size="3.5px" text-anchor="middle">l</text>
+    <text x="74" y="34" font-size="3.5px" text-anchor="middle">o</text>
+    <text x="74" y="30" font-size="3.5px" text-anchor="middle">h</text>
+    <rect width="16" height="28" x="60" y="15" fill="none" stroke="#000000"/>
+    <rect width="96" height="4" x="30" y="57" fill="none" stroke="#000000"/>
+    <path d="M 30,19 H 46" stroke="#000000"/>
+    <path d="M 30,27 H 46" stroke="#000000"/>
+    <path d="M 30,23 H 46" stroke="#000000"/>
+    <rect width="16" height="16" x="30" y="15" fill="none" stroke="#000000" stroke-width="0.4"/>
+    <circle cx="74" cy="21" r="1" fill="#048966"/>
+    <circle cx="74" cy="17" r="1" fill="#bf3959"/>
+    <text x="99" y="30" font-size="3.5px" text-anchor="middle">e</text>
+    <text x="32" y="60" font-size="3.5px" text-anchor="middle">H</text>
+    <text x="36" y="60" font-size="3.5px" text-anchor="middle">e</text>
+    <text x="40" y="60" font-size="3.5px" text-anchor="middle">l</text>
+    <text x="44" y="60" font-size="3.5px" text-anchor="middle">l</text>
+    <text x="48" y="60" font-size="3.5px" text-anchor="middle">o</text>
+    <text x="52" y="60" font-size="3.5px" text-anchor="middle">,</text>
+    <text x="60" y="60" font-size="3.5px" text-anchor="middle">W</text>
+    <text x="64" y="60" font-size="3.5px" text-anchor="middle">o</text>
+    <text x="80" y="60" font-size="3.5px" text-anchor="middle">!</text>
+    <text x="68" y="60" font-size="3.5px" text-anchor="middle">r</text>
+    <text x="72" y="60" font-size="3.5px" text-anchor="middle">l</text>
+    <text x="76" y="60" font-size="3.5px" text-anchor="middle">d</text>
+    <text x="95" y="30" font-size="3.5px" text-anchor="middle">d</text>
+    <text x="87" y="30" font-size="3.5px" text-anchor="middle">t</text>
+    <text x="91" y="30" font-size="3.5px" text-anchor="middle">i</text>
+    <text x="99" y="38" font-size="3.5px" text-anchor="middle">l</text>
+    <text x="95" y="34" font-size="3.5px" text-anchor="middle">h</text>
+    <text x="91" y="34" font-size="3.5px" text-anchor="middle">e</text>
+    <text x="87" y="34" font-size="3.5px" text-anchor="middle">l</text>
+    <text x="99" y="42" font-size="3.5px" text-anchor="middle">o</text>
+    <text x="95" y="38" font-size="3.5px" text-anchor="middle">o</text>
+    <text x="87" y="38" font-size="3.5px" text-anchor="middle">t</text>
+    <text x="91" y="38" font-size="3.5px" text-anchor="middle">.</text>
+    <path d="m 97,39 v 4" stroke="#000000"/>
+    <path d="m 114,27 v 4" stroke="#000000"/>
+    <circle cx="44" cy="17" r="1"/>
+    <circle cx="44" cy="21" r="1"/>
+    <circle cx="44" cy="25" r="1"/>
+    <circle cx="44" cy="29" r="1"/>
+    <circle cx="99" cy="17" r="1" fill="#bf3959"/>
+    <circle cx="99" cy="21" r="1" fill="#048966"/>
+    <circle cx="124" cy="17" r="1" fill="#bf3959"/>
+    <circle cx="124" cy="21" r="1" fill="#048966"/>
+    <text x="124" y="30" font-size="3.5px" text-anchor="middle">f</text>
+    <text x="120" y="30" font-size="3.5px" text-anchor="middle">o</text>
+    <text x="116" y="30" font-size="3.5px" text-anchor="middle">o</text>
+  </g>
+</svg>

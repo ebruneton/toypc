@@ -1,0 +1,70 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="4" height="7" x="6" y="20" fill="#ebebeb" stroke-dasharray="0.8 0.2"/>
+    <text x="8" y="24" text-anchor="middle" fill="#cca752">...</text>
+    <text x="60" y="50" font-size="3.5px">Graphics Card Driver</text>
+    <text x="100" y="42" font-size="3.5px">Memory Editor</text>
+    <path d="m 40,39 0,-4" stroke="#000000" stroke-dasharray="0.4 0.4"/>
+    <path d="m 61,47 v -19" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <path d="M 77,43 V 28" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <path d="M 101,39 V 28" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <text x="39" y="42" font-size="3.5px">USART handler</text>
+    <path d="m 10.5,27 v 8 l 29.5,0 0,-8" fill="none" stroke="#cca752" marker-end="url(#arrow)"/>
+    <text x="76" y="46" font-size="3.5px">Keyboard Driver</text>
+    <path d="m 11,20 4,0 -1,4 1,0 -1,3 h -3" fill="#ebebeb"/>
+    <path d="m 130,20 h 7 l -1,4 H 137 l -1,3 -6,0" fill="#ebebeb"/>
+    <rect width="6" height="7" x="42" y="20" fill="#ebebeb"/>
+    <path d="m 20,20 -4,0 -1,3 h 1 l -1,4 5,0" fill="#ebebeb"/>
+    <rect width="82" height="7" x="48" y="20" fill="#0e6e8e"/>
+    <rect width="22" height="7" x="20" y="20" fill="#bf3959"/>
+    <path d="m 137,20 -121,0 -1,3 h 1 L 15,27 136,27 137,24 h -1 z" fill="none" stroke="#000000"/>
+    <path d="m 34,20 v 7" stroke="#000000"/>
+    <path d="m 32,20 v 7" stroke="#000000"/>
+    <path d="m 20,20 v 7" stroke="#000000"/>
+    <path d="m 6,20 v 7" stroke="#000000"/>
+    <path d="m 40,20 v 7" stroke="#000000"/>
+    <path d="m 42,20 v 7" stroke="#000000"/>
+    <path d="m 48,20 v 7" stroke="#000000"/>
+    <path d="m 61,20 v 7" stroke="#000000"/>
+    <path d="m 77,20 v 7" stroke="#000000"/>
+    <path d="m 101,20 v 7" stroke="#000000"/>
+    <path d="m 138,20 -1,3 h 1 l -1,4 7,0 V 20 Z" fill="#ebebeb" stroke="#000000"/>
+    <text x="-12.020815" y="14.849244" transform="rotate(-45)" font-size="3.5px">80000$_{16}$</text>
+    <text x="8.485281" y="35.355339" transform="rotate(-45)" font-size="3.5px">\mmapb</text>
+    <text x="11.313707" y="38.183765" transform="rotate(-45)" font-size="3.5px">\mmapc</text>
+    <text x="14.849242" y="41.719299" transform="rotate(-45)" font-size="3.5px">\mmapd</text>
+    <text x="0.70710558" y="27.577166" transform="rotate(-45)" font-size="3.5px">\mmapa</text>
+    <text x="20.506096" y="47.376156" transform="rotate(-45)" font-size="3.5px">\mmape</text>
+    <text x="21" y="50" font-size="3.5px" text-anchor="end">Interpreter</text>
+    <text x="47" y="35" font-size="3.5px">Clock Driver</text>
+    <path d="m 2,39 v -11" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <path d="M 32,47 32,31" stroke="#000000" stroke-dasharray="0.4 0.4"/>
+    <path d="M 34,43 V 33" stroke="#000000" stroke-dasharray="0.4 0.4"/>
+    <path d="M 20,47 20,37" stroke="#000000" stroke-dasharray="0.4 0.4"/>
+    <path d="m 48,32 v -4" stroke="#000000" stroke-dasharray="0.4 0.4" marker-end="url(#arrow)"/>
+    <text x="1" y="42" font-size="3.5px">Vector Table</text>
+    <text x="31" y="50" font-size="3.5px">Reset handler</text>
+    <text x="33" y="46" font-size="3.5px">Hard Fault handler</text>
+    <path d="m 3,20 v 7" stroke="#cca752"/>
+    <path d="m 4,20 v 7" stroke="#cca752"/>
+    <path d="m 5,20 v 7" stroke="#cca752"/>
+    <path d="m 33,27 0,10 H 20 l 0,-10" fill="none" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 33,37 95,0 0,-10" fill="none" stroke="#0e6e8e" marker-end="url(#arrow)"/>
+    <path d="M 3.5,27 V 31 l 28.5,0 V 27" fill="none" stroke="#cca752" marker-end="url(#arrow)"/>
+    <path d="m 5.5,27 v 6 l 28.5,0 v -6" fill="none" stroke="#cca752" marker-end="url(#arrow)"/>
+    <path d="m 10,20 v 7" stroke="#cca752"/>
+    <path d="m 11,20 v 7" stroke="#cca752"/>
+    <path d="m 130,20 v 7" stroke="#000000"/>
+    <path d="m 2,20 h 13 l -1,4 h 1 l -1,3 -12,0 z" fill="none" stroke="#000000"/>
+  </g>
+</svg>

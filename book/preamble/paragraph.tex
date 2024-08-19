@@ -1,0 +1,30 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\newenvironment{Paragraph}[1][\bigskip]%
+  {#1\noindent\ignorespaces}%
+  {\unskip\bigskip}
+
+\usepackage{enumitem}
+\setlist{noitemsep}
+\setlist[itemize]{leftmargin=*,label={$\bullet$}}
+\setlist[enumerate]{leftmargin=*}
+
+\usepackage{multicol}
+\setlength{\columnsep}{4.5mm}
+\newlength{\defaultcolumnsep}
+\setlength{\defaultcolumnsep}{\columnsep}
+
+\newenvironment{TwoColumns}
+  {\setlength{\columnsep}{0.8cm}%
+   \setlength{\columnseprule}{0.4pt}%
+   \begin{multicols}{2}}
+  {\end{multicols}%
+   \setlength{\columnsep}{\defaultcolumnsep}%
+   \setlength{\columnseprule}{0pt}}
+
+\usepackage{paracol}
+\setcolumnwidth{,5.5cm}
+
+

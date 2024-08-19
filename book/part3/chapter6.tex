@@ -1,0 +1,1801 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter6}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "statements_compiler.txt")?;
+}
+
+\chapter{Statements Compiler}\label{chapter:statements-compiler}
+
+We now have a compiler for a toy programming language which no longer requires
+us to manually compute function addresses, instruction offsets or stack frame
+slot indices. We also have a natural syntax for expressions. However, writing
+conditional instructions or loops is still not very easy. The main reason is
+that one must still use raw bytecode instructions for that, which have two main
+drawbacks. The first is an unnatural syntax. For instance, one must write
+``{\tt x, y ifgt greater};'' to implement ``if $x > y$ jump to the {\tt
+greater} label''. The second drawback is the use of labels. Although they are
+much better than instruction offsets, their use is still not very natural. For
+instance, to implement ``if $x \le y$ call $f(x)$'', one must put a label after
+the call to jump to it if the condition is {\em not} true: ``{\tt x, y if{\bf
+gt} greater; f(x); :greater}''. This chapter extends our toy programming
+language and its compiler in order to solve these issues.
+
+\section{Requirements}
+
+This section introduces new grammar rules to replace the remaining bytecode
+instructions in our current programming language, namely \insn{iflt},
+\insn{ifeq}, \insn{ifgt}, \insn{ifle}, \insn{ifne}, \insn{ifge}, \insn{goto},
+\insn{store}, \insn{set}, \insn{pop}, \insn{ret}, and \insn{retv}.
+
+\subsection{Assignment and return}
+
+To replace \insn{ret} and \insn{retv} we introduce the new ``{\tt return}''
+keyword. We then use ``{\tt return};'' instead of ``{\tt ret};'', and ``{\tt
+return} $e$;'' instead of ``$e$ {\tt retv};'' (where $e$ is an expression). To
+replace \insn{set} we introduce the {\em assignment} syntax ``{\tt $x$ =
+$e$;}'', where $x$ is a function parameter or local variable name, and $e$ an
+expression. ``{\tt $x$ = $e$;}'' is equivalent to ``{\tt $e$ set $x$};''
+(sometimes noted $x \leftarrow e$). Similarly, to replace \insn{store}, we use
+the assignment syntax ``{\tt *$a$ = $e$};'', where $a$ and $e$ are expressions.
+``{\tt *$a$ = $e$};'' is equivalent to ``{\tt $a$, $e$ store};'' and means
+``store $e$ at address $a$''.
+
+\subsection{Expression statements}\label{subsection:toyc3-expr-stmt}
+
+To remove the \insn{pop} instruction we make it implicit in all {\em expression
+statements} ``{\tt $e$;}''. This syntax was already used in the previous
+chapter, but it now means ``{\tt $e$ pop;}''. Note that {\em this requires all
+functions to return a value}. We remove this restriction in
+\cref{chapter:types-compiler}. In the mean time, we redefine ``{\tt return};''
+as a shorthand for ``{\tt return 0};''.
+
+\subsection{Conditional statements}
+
+To implement cases such as ``if $x < y$ call $f(x)$'' in a natural way we
+require our programming language to support this kind of syntax directly. More
+precisely it should be possible to write ``{\tt if x < y \{ f(x); \}}'' for
+this. The curly braces are mandatory and allow several statements to be
+executed if the condition is true (as in a function's body). To call $f(y)$ if
+the condition is false, it should be possible to write ``{\tt if x < y \{ f(x);
+\} else \{ f(y); \}}''. We also require the possibility to chain {\tt if}
+statements, as in, for instance ``{\tt if x == 0 \{$\ldots$\} else if x == 1
+\{$\ldots$\} else if x == 2 \{$\ldots$\} $\ldots$}''.
+
+Besides the new ``{\tt <}'' operator, we also introduce ``{\tt ==}'', ``{\tt
+>}'', ``{\tt <=}'', ``{\tt !=}'', and ``{\tt >=}'', to implement $x=y$, $x>y$,
+$x\le y$, $x\ne y$, and $x\ge y$ (respectively). Conditions can be more complex
+than a single comparison. Calling $f(x)$ if $x\ge 0$ {\em and} $x<10$ could be
+done with ``{\tt if x >= 0 \{ if x < 10 \{ f(x); \} \}}'', but it is more
+natural to use an explicit ``and'' operator, noted ``{\tt \&\&}'': ``{\tt if x
+>= 0 \&\& x < 10 \{ f(x); \}}''. Similarly, calling $f(x)$ if $x<5$ {\em or}
+$x=7$ could be done with ``{\tt if x < 5 \{ f(x); \} else if x == 7 \{ f(x);
+\}}'' but it is better to use an explicit ``or'' operator, noted ``{\tt ||}'':
+``{\tt if x < 5 || x == 7 \{ f(x); \}}''. It should also be possible to combine
+these operators, as in the following example (which tests if $x$ is a digit or
+a lowercase letter): ``{\tt if x >= '0' \&\& x <= '9' || x >= 'a' \&\& x <= 'z'
+\{ ... \}}''.
+
+\subsection{Loops}
+
+Executing several instructions repeatedly currently requires a \insn{goto}
+after the last instruction to go back at the beginning. To avoid this we
+introduce the new ``{\tt loop}'' keyword and the ``{\tt loop \{ ... \}}''
+syntax. By definition, this executes the statements inside the mandatory curly
+braces repeatedly, forever. To stop the loop one could use a \insn{return}
+statement, but this would return from the whole function. To avoid this we
+introduce a ``{\tt break}'' statement. By definition, it jumps to the next
+statement after the ``{\tt loop}'' block. For instance, in ``{\tt loop \{ if x
+== 0 \{ break; \} ... \} f(y);}'', the {\tt break} exits the loop and jumps to
+the {\tt f(y);} statement. This pattern is actually quite frequent. To make it
+easier to use, we introduce the new ``{\tt while}'' keyword and the ``{\tt
+while $b$ \{ ... \}}'' syntax (where $b$ is a {\em boolean} expression using
+the ``{\tt <}'', ``{\tt ==}'', ``{\tt >}'', ``{\tt <=}'', ``{\tt !=}'', ``{\tt
+>=}'', ``{\tt \&\&}'', and ``{\tt ||}'' operators defined above). By
+definition, this executes the statements inside the curly braces while $b$ is
+true. The above {\tt break} example can then by rewritten into the simpler
+form ``{\tt while x != 0 \{ ... \} f(y);}''.
+
+\subsection{Grammar}
+
+In order to support the above requirements we extend the grammar of our
+programming language as follows (unchanged parts are in gray):
+
+\begin{Paragraph}
+\unchanged{program: (fn | static | const)* END}\\
+\unchanged{fn: ``{\tt fn}'' fn\_name fn\_parameters fn\_body}\\
+\unchanged{fn\_name: IDENTIFIER}\\
+\unchanged{fn\_parameters: ``{\tt (}'' (IDENTIFIER (``{\tt ,}'' IDENTIFIER)*)?
+``{\tt )}''}\\
+\unchanged{fn\_body: ``{\tt \{}''} (let\_stmt | stmt)* \unchanged{``{\tt \}}''
+| ``{\tt ;}''}\\
+\unchanged{let\_stmt: ``{\tt let}'' IDENTIFIER} ``{\tt =}'' \unchanged{expr
+``{\tt ;}''}\\
+stmt: if\_stmt | while\_or\_loop\_stmt | break\_stmt | return\_stmt |
+expr\_or\_assign\_stmt\\
+if\_stmt: ``{\tt if}'' boolean\_expr block\_stmt (``{\tt else}'' (block\_stmt |
+if\_stmt))?\\
+while\_or\_loop\_stmt: (``{\tt while}'' boolean\_expr | ``{\tt loop}'')
+block\_stmt\\
+break\_stmt: ``{\tt break}'' ``{\tt ;}''\\
+return\_stmt: ``{\tt return}'' expr? ``{\tt ;}''\\
+expr\_or\_assign\_stmt: expression assigment? ``{\tt ;}''\\
+assignment: ``{\tt =}'' expr\\
+block\_stmt: ``{\tt \{}'' stmt* ``{\tt \}}''\\
+boolean\_expr: and\_expr (``{\tt ||}'' and\_expr)*\\
+and\_expr: comparison\_expr (``{\tt \&\&}'' comparison\_expr)*\\
+comparison\_expr: expr (``{\tt <}'' | ``{\tt ==}'' | ``{\tt >}'' | ``{\tt
+<=}'' | ``{\tt !=}'' | ``{\tt >=}'') expr\\
+\unchanged{expr: bit\_and\_expr (``{\tt |}'' bit\_and\_expr)*}\\
+\unchanged{bit\_and\_expr:} shift\_expr \unchanged{(``{\tt \&}''}
+shift\_expr\unchanged{)*}\\
+shift\_expr: add\_expr ((``\verb!<<!'' | ``\verb!>>!'') add\_expr)*\\
+\unchanged{add\_expr: mult\_expr ((``{\tt +}'' | ``{\tt -}'') mult\_expr)*}\\
+\unchanged{mult\_expr: pointer\_expr ((``{\tt *}'' | ``{\tt /}'')
+pointer\_expr)*}\\
+\unchanged{pointer\_expr: ``{\tt *}'' pointer\_expr | ``{\tt \&}'' IDENTIFIER |
+primitive\_expr}\\
+\unchanged{primitive\_expr:  INTEGER | IDENTIFIER fn\_arguments? | ``{\tt (}''
+expr ``{\tt )}''}\\
+\unchanged{fn\_arguments: ``{\tt (}'' (expr (``{\tt ,}'' expr)*)? ``{\tt )}''}\\
+\unchanged{static: ``{\tt static}'' IDENTIFIER} ``{\tt =}'' ``{\tt [}''
+INTEGER (``{\tt ,}'' INTEGER)* ``{\tt ]}'' ``{\tt ;}''\\
+\unchanged{const: ``{\tt const}'' IDENTIFIER} ``{\tt =}'' \unchanged{INTEGER}
+''{\tt ;}''
+\end{Paragraph}
+
+This grammar no longer uses any bytecode instruction. Indeed the
+``instruction'' rule has been removed, and replaced with several rules for
+statements. These new rules should be self-explanatory, but two points should
+be noted:
+\begin{itemize}
+  \item ``{\tt let}'' statements cannot be used in conditional or loop
+  statements. This is done on purpose, so that they are executed in the same
+  order as in the source code, and exactly once (unless the function returns
+  before). We assumed this without verification in the previous chapter, but
+  this is now enforced automatically.
+
+  \item the assignment statement rule is merged with the expression statement
+  rule and allows invalid assignments such as ``{\tt 2 = 3;}'' (2 cannot be
+  changed to be equal to 3!). This is because using separate rules would lead
+  to an ambiguous grammar. Indeed, after a ``{\tt *}'' token, there would be no
+  way to decide whether to parse an expression statement or an assignment
+  statement (this depends on the presence or not of a ``{\tt =}'' token, which
+  could be arbitrarily far after the ``{\tt *}''). Invalid assignments must
+  thus be detected by using another method than grammar rules.
+\end{itemize}
+
+This grammar also introduces a new expression rule for the \insn{lsl} and
+\insn{lsr} instructions, which were not taken into account in the previous
+chapter. ``{\tt $e$ \verb!<<! $n$}'' (resp. ``{\tt $e$ \verb!>>! $n$}'') means
+$e$ shifted to the left (resp. right) by $n$ bits. These new operators have an
+intermediate precedence between the bit and ``{\tt \&}'' and the plus and minus
+operators. Finally, for consistency with assignment statements, the ``const'',
+``static'' and ``let\_stmt'' rules are updated to use the assignment notation
+``{\tt =}''.
+
+\section{Algorithms}
+
+\subsection{Scanner}\label{subsection:toyc3-scanner}
+
+The above grammar adds several new keywords. We associate them with
+$\it{token}$ values starting at $128$, in alphabetical order (values $128+x$
+for opcode $x$ are no longer used since we removed the opcode keywords). It
+also adds the ``{\tt =}'', ``{\tt [}'', and ``{\tt ]}'' punctuation tokens, as
+well as the  ``\verb!<<!'', ``\verb!>>!'', ``{\tt <}'', ``{\tt ==}'', ``{\tt
+>}'', ``{\tt <=}'', ``{\tt !=}'', ``{\tt >=}'', ``{\tt \&\&}'', and ``{\tt
+||}'' operator tokens. We associate the former with their ASCII code (61, 91,
+and 93, respectively), and the latter with values from 10 to 19, respectively
+(the first 8 are the \insn{lsl}, \insn{lsr}, \insn{iflt}, \insn{ifeq},
+\insn{ifgt}, \insn{ifle}, \insn{ifne}, and \insn{ifge} opcodes, respectively).
+
+The new operator tokens require a new algorithm to read them. Indeed, if the
+next character is a ``{\tt <}'', for instance, the second next character must
+be inspected to know if this is a ``{\tt <}'', ``\verb!<<!'', or ``{\tt <=}''
+token. The following table gives the $\it{token}$ value depending on these two
+characters, and defines new {\tt CHAR\_TYPES} for the first ones:
+
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|r|r|}\hline
+\makecell{$1^{st}$ character} & {\tt !} & {\tt \&} & {\tt <} & {\tt =} &
+{\tt >} & {\tt |}\\
+\makecell{\tt CHAR\_TYPES} & 10 & 11 & 12 & 13 & 14 & 15\\ \hline
+\makecell{any other case} & 1 & \insn{and} & \insn{iflt} & {\tt '='} &
+\insn{ifgt} & \insn{or}\\
+\makecell{$2^{nd}$ character = $1^{st}$} & 1 & 18 & \insn{lsl} & \insn{ifeq} &
+\insn{lsr} & 19\\
+\makecell{$2^{nd}$ character = {\tt =}} & \insn{ifne} & 1 & \insn{ifle} &
+\insn{ifeq} & \insn{ifge} & 1\\ \hline
+\end{tabular}
+\end{center}
+
+We can then support the operator tokens by extending the algorithm to read a
+token as follows (where $(\it{column},\it{row})$ table cell coordinates are
+counted from 0):
+
+\begin{algorithmic}[1]
+\Begin if the next character's {\tt CHAR\_TYPES} $t$ is between 10 and 15
+  \State read this character $c$
+  \Begin if the next character is equal to $c$
+    \State read it and set the $token$ value to the $(t-10, 1)$ cell's content
+  \End
+  \Begin if the next character is equal to {\tt =}
+    \State read it and set the $token$ value to the $(t-10, 2)$ cell's content
+  \End
+  \State in any other case, set the $token$ value to the $(t-10, 0)$ cell's
+  content
+\End
+\State otherwise continue with the current algorithm
+\end{algorithmic}
+
+\subsection{Parser}
+
+Parsing the new grammar rules can be done with the recursive descent method,
+and is not difficult. However, producing the corresponding compiled code is not
+as easy as for expressions. This section presents the main algorithms for doing
+this.
+
+\subsubsection{Assignments}\label{subsubsection:toyc3-assign}
+
+Because the expression and assignment statements rules are merged, when a
+``{\tt =}'' token is found after an expression $e$, $e$ has already been parsed
+and compiled. Hence for instance, for ``{\tt x = 1;}'', ``{\tt \insn{get} 0}''
+has already been written in the $\it{dst}$ buffer (assuming that $x$ is in the
+$0^{th}$ stack frame slot). But this not what we want, since ``{\tt x = 1;}''
+should produce ``{\tt \insn{cst\_1} \insn{set} 0}''. Similarly, for ``{\tt *x =
+1;}'', ``{\tt \insn{get} 0 \insn{load}}'' has already been written, but this
+statement should produce ``{\tt \insn{get} 0 \insn{cst\_1} \insn{store}}''.
+
+To solve these issues, and to detect invalid assignments such as ``{\tt 2 =
+3;}'', we make each expression parsing function return the {\em origin} of the
+value of this expression. By definition, this origin is {\tt ADDRESS} for a
+dereference expression such as ``{\tt *x}'', {\tt VARIABLE} for an identifier
+expression referring to a function argument or a local variable, such as ``{\tt
+x}'', and {\tt OTHER} for any other case. Then, when a ``{\tt =}'' token is
+found after an expression $e$, there are 3 cases:
+\begin{itemize}
+  \item if $e$'s origin is {\tt ADDRESS} we decrement $\it{dst}$ by 1 to remove
+  the ``\insn{load}'' which has already been written but is not wanted. We then
+  parse and compile the right hand side of the assignment, and finally write a
+  ``\insn{store}'' instruction.
+
+  \item if $e$'s origin is {\tt VARIABLE} we get the variable slot index $i$ by
+  reading the byte at $\it{dst}-1$, and decrement $\it{dst}$ by 2 to remove the
+  ``{\tt \insn{get} $i$}'' which has already been written but is not wanted. We
+  then parse and compile the right hand side of the assignment, and finally
+  write a ``{\tt \insn{set} $i$}'' instruction.
+
+  \item any other case is an invalid assignment.
+\end{itemize}
+
+\subsubsection{Conditional statements and
+loops}\label{subsubsection:toyc3-if-loop}
+
+Comparison expressions such as ``{\tt $e_1$ < $e_2$}'' are compiled into the
+code for $e_1$, followed by the code for $e_2$, followed by some {\tt
+if$\ldots$} instruction to conditionally jump somewhere. However, the precise
+instruction to use and its target depend on the context. Consider for instance
+the example in \cref{fig:conditionals}, where each $c_i$ is a comparison
+expression. If $c_1$ is false there is no need to compute $c_2$ and $c_3$ to
+know that their {\em conjunction} ``$c_1$ and $c_2$ and $c_3$'' is false. We
+thus want to jump to the next comparison which could impact the end result,
+namely $c_4$. The same reasoning applies to $c_2$, $c_4$, and $c_5$. If $c_3$
+is true, we know at this point that $c_1$ and $c_2$ are true as well, and thus
+that the {\em disjunction} of the 3 conjunctions is true. We thus want to jump
+directly to ``{\tt f(x)}''. The same reasoning applies to $c_6$. Finally, if
+any of $c_7$, $c_8$, or $c_9$ is false, the whole condition is false and we
+want to jump to ``{\tt g(y)}''.
+
+In this example, $c_1$ jumps to $c_4$ when it is {\em false}, but $c_3$, in a
+very similar context, jumps to ``{\tt f(x)}'' if it is {\em true}. In order to
+generate the correct jump instruction and jump target for each comparison
+expression we use the following method:
+\begin{itemize}
+  \item The function compiling a comparison expression only produces the code
+  for its two subexpressions. It does {\em not} generate a jump instruction,
+  and returns instead the $\it{token}$ value corresponding to the comparison
+  operator.
+
+  \item The function compiling conjunctions ``$c_1$ {\tt \&\&} $c_2$ {\tt \&\&}
+  $\ldots$ $c_n$'' takes as parameter a label $l$ where to jump if the
+  conjunction is false, and generates after each $c_i$ {\em except the last} an
+  {\tt if$\ldots$} instruction jumping to $l$ if $c_i$ is false. It returns the
+  $\it{token}$ value corresponding to the comparison operator of $c_n$.
+
+  \item The function compiling disjunctions ``$c_1$ {\tt ||} $c_2$ {\tt ||}
+  $\ldots$ $c_n$'' takes as parameter a label $l$ where to jump if the
+  disjunction is true. It compiles each conjunction $c_i$ {\em except the last}
+  by 1) creating a label $l_i$, 2) passing it to the above function, 3)
+  generating an {\tt if$\ldots$} instruction jumping to $l$ if $c_i$ is true,
+  4) placing $l_i$ just after. It compiles the last conjunction $c_n$ with
+  steps 1) and 2), then generates an {\tt if$\ldots$} instruction jumping to
+  $l_n$ if $c_n$ is {\em false}, and finally returns the $l_n$ label to the
+  caller.
+\end{itemize}
+
+\noindent A whole ``{\tt if $e$ \{$\ldots$\} else \{$\ldots$\}}'' statement can
+then be compiled as follows:
+
+\begin{itemize}
+  \item create a $l_{\it{then}}$ label and pass it to the above function to
+  parse and compile $e$. Store the resulting label in an $l_{\it{else}}$
+  variable.
+
+  \item place the $l_{\it{then}}$ label just before parsing and compiling the
+  first block statement.
+
+  \item create a $l_{\it{end}}$ label and generate a \insn{goto}
+  $l_{\it{end}}$ instruction.
+
+  \item place the $l_{\it{else}}$ label just before parsing and compiling the
+  second block statement.
+
+  \item place the $l_{\it{end}}$ label.
+\end{itemize}
+
+\noindent Similarly, a ``{\tt while $e$ \{$\ldots$\}}'' statement can then be
+compiled as follows:
+
+\begin{itemize}
+  \item create an $l_{\it{body}}$ label and pass it to the above function to
+  parse and compile $e$. Store the resulting label in an $l_{\it{end}}$
+  variable.
+
+  \item place the $l_{\it{body}}$ label just before parsing and compiling the
+  block statement.
+
+  \item generate a \insn{goto} instruction going back just before $e$'s code.
+
+  \item place the $l_{\it{end}}$ label.
+\end{itemize}
+
+\begin{Figure}
+  \input{figures/chapter6/conditionals.tex}
+
+  \caption{The jump target of each comparison expression $c_i$ in a general
+  {\tt if} statement, and whether to jump if the comparison is true or
+  false.}\label{fig:conditionals}
+\end{Figure}
+
+\noindent These algorithms generate code of the following form:
+\begin{Paragraph}
+\begin{paracol}{2}
+\noindent \phantom{{\tt :then}} {\tt code[$e$]}, jumps to {\tt :then} or
+{:else}\\
+{\tt :then} {\tt code[$then\_block$]} {\tt goto end;}\\
+{\tt :else} {\tt code[$else\_block$]}\\
+{\tt :end}
+
+\switchcolumn
+
+\noindent {\tt :loop} {\tt code[$e$]}, jumps to {\tt :body} or {:end}\\
+{\tt :body} {\tt code[$loop\_block$]}\\
+{\phantom {\tt :body}} {\tt goto loop;}\\
+{\tt :end}
+\end{paracol}
+\end{Paragraph}
+
+To conclude this section, it should be noted that we no longer need to use
+symbols for labels. Indeed, we used symbols so far because we needed to find
+labels from their name in the program, and to keep track of their resolved or
+unresolved status. Here we no longer have label names, and we know for each
+label above when it is resolved or not (each label is initially unresolved, and
+becomes resolved when it is ``placed''). The only remaining piece of data which
+is needed for each label is its placeholders list. And this boils down to a
+single address, the one of the last placeholder (since each placeholder
+contains the offset of the previous one -- see
+\cref{fig:toyc1-placeholders-list}). Hence, in the above algorithms, ``creating
+a label $l$'' simply means initializing a local variable ``{\tt l}'' to 0,
+representing an empty list of placeholders. And ``passing $l$'' to a function
+means passing ``{\tt \&l}'', the local variable's address, so that the callee
+can add placeholders for $l$. Finally, ``returning $l$'' means returning ``{\tt
+l}'' and ``placing $l$'' means filling the placeholders starting at address
+``{\tt l}'' with $l$'s instruction offset.
+
+\subsubsection{Reachability analysis}\label{subsubsection:toyc3-reachability}
+
+The above algorithms are sufficient to compile statements, but we add one more
+in order to detect more errors. One error in particular is a missing ``{\tt
+return}'' at the end of a function, \eg, ``{\tt f(a) \{ *a = 0; \} g(b)
+\{$\ldots$\}}''. In such cases execution ``falls through'' the end of ``{\tt
+f}'' and continues in ``{\tt g}'', which is wrong. To solve this we could
+require a ``{\tt return}'' at the end of every function, but this would be too
+strict, for instance, for ``{\tt h(x) \{ loop \{ if x == 0 \{ return; \} x =
+x-1; \} \}}''. Indeed, execution cannot fall through the end of this function
+even if it does not end with a ``{\tt return}''. This is because the end of its
+``{\tt loop}'' statement is not {\em reachable}, meaning that a statement put
+immediately after its closing brace could never be executed. On the other hand,
+the end of the above ``{\tt *a = 0;}'' assignment {\em is} reachable. Hence, a
+more precise test to detect a missing return is to check if the end of the
+function's body {\em might be} reachable. Computing this for a statement $s$
+can be done as follows:
+\begin{itemize}
+  \item if $s$ is an expression or assignment statement we conservatively
+  assume that its end might be reachable (this is not always the case: a
+  function call may never return).
+
+  \item if $s$ is a ``{\tt break}'' or ``{\tt return}'' statement its end is
+  never reachable.
+
+  \item if $s$ is a block statement ``{\tt \{ $s_1$; $\ldots$ $s_n$; \}}'' its
+  end might be reachable if $s_n$'s end might be. If the end of $s_i$ for $i<n$
+  is unreachable this probably means that $s$ is not doing what the user
+  wants, and we thus raise an error (although $s$ would execute without any
+  issue, unlike a function without return).
+
+  \item if $s$ is an ``{\tt if}'' statement we conservatively assume that its
+  end might be reachable if the end of at least one of its branches might be
+  reachable. Note that a missing ``{\tt else}'' branch is equivalent to ``{\tt
+  else \{\}}'', whose end is reachable.
+
+  \item if $s$ is a ``{\tt while}'' statement we conservatively assume that its
+  condition might be false at least once, and thus that its end might be
+  reachable (this is not always the case: ``{\tt while 0 == 0 \{\}}'' never
+  ends).
+
+  \item finally, if $s$ is a ``{\tt loop}'' statement its end might be
+  reachable only if it contains a ``{\tt break}'' statement.
+\end{itemize}
+
+To compute this we make each statement parsing function return whether the
+statement's end might be reachable or not. We then use this to detect missing
+returns, but also, as a small code size optimization in conditional statements,
+to avoid generating a ``{\tt goto}'' after a block whose end is not reachable
+(see \cref{subsubsection:toyc3-if-loop}).
+
+\section{Implementation}
+
+\rust{
+  let mut t = Transpiler3::new();
+}
+
+We can now extend the expressions compiler in order to support statements. As
+before, we need to write it in two steps, first without using statements, then
+with them. To save space, we give the two compiler versions at the same time
+(without statements in red, with in green). The start of the compiler does not
+change in the $1^{st}$ version, but can be rewritten in a clearer way in the
+$2^{nd}$:
+
+\toy{
+@fn tc_main(src_buffer, dst_buffer, flash_buffer);
+@fn main(src_buffer, dst_buffer, flash_buffer) {
+@  return tc_main(src_buffer, dst_buffer, flash_buffer);
+@}
+
+@fn load8(ptr) { return (*ptr) & 255; }
+@fn load16(ptr) { return (*ptr) & 65535; }
+@voidfn store8(ptr, value) { *ptr = (*ptr) & 4294967040 | value; return; }
+@voidfn store16(ptr, value) { *ptr = (*ptr) & 4294901760 | value; return; }
+
+@const PANIC_BUFFER = 1074666152;
+@voidfn panic_copy(src, dst) {
+@  *dst = *src;
+@  *(dst + 4) = *(src + 4);
+@  *(dst + 8) = *(src + 8);
+@  *(dst + 12) = *(src + 12);
+@  return;
+@}
+@fn panic_result(ptr) {
+@  panic_copy(&ptr - 16, ptr);
+@  *PANIC_BUFFER = ptr;
+@  return 0;
+@}
+@voidfn panic(error) {
+@  panic_copy(*PANIC_BUFFER, &error - 16);
+@  return error;
+@}
+}%toy
+
+\subsection{Shared constants}
+
+Here we add new constants for the new $\it{token}$ values (changes are
+indicated with a vertical bar in the margin). We rename {\tt SYM\_RESOLVED} to
+{\tt SYM\_FN} and {\tt SYM\_UNRESOLVED} to {\tt SYM\_FORWARD\_FN} since these
+values are now only used for functions -- labels no longer use symbols.
+Finally, we add two new symbol $\it{kind}$ values, {\tt SYM\_CONST} and {\tt
+SYM\_STATIC}, for the symbols defined with the {\tt const $X \ldots$} and {\tt
+static $X \ldots$} syntax. The value of a symbol is now defined as follows:
+\begin{itemize}
+  \item for {\tt SYM\_FN} symbols: the \insn{call} instruction argument to call
+  the function.
+
+  \item for {\tt SYM\_FORWARD\_FN} symbols: the address of the last placeholder.
+
+  \item for {\tt SYM\_VARIABLE} symbols: the stack frame slot index of the
+  argument or variable.
+
+  \item for {\tt SYM\_CONST} symbols: the numeric value of the constant.
+
+  \item for {\tt SYM\_STATIC} symbols: the $\it{dst}$ address of the first byte
+  of data.
+\end{itemize}
+
+\toy{
+@const TC_INTEGER = 2;
+@const TC_IDENTIFIER = 3;
+@const TC_ADD = 4;
+@const TC_SUB = 5;
+@const TC_MUL = 6;
+@const TC_DIV = 7;
+@const TC_BIT_AND = 8;
+@const TC_BIT_OR = 9;
+const TC_SHIFT_LEFT = 10;
+const TC_SHIFT_RIGHT = 11;
+const TC_LT = 12;
+const TC_GE = 17;
+const TC_AND = 18;
+const TC_OR = 19;
+const TC_BREAK = 128;
+const TC_CONST = 129;
+const TC_ELSE = 130;
+const TC_FN = 131;
+const TC_IF = 132;
+const TC_LET = 133;
+const TC_LOOP = 134;
+const TC_RETURN = 135;
+const TC_STATIC = 136;
+const TC_WHILE = 137;
+
+const SYM_FN = 0;
+const SYM_FORWARD_FN = 1;
+const SYM_VARIABLE = 2;
+const SYM_CONST = 3;
+const SYM_STATIC = 4;
+
+@const sym_name = 0;
+@const sym_length = 4;
+@const sym_kind = 8;
+@const sym_value = 12;
+@const sym_next = 16;
+@const sizeof_symbol = 20;
+
+@const tc_src = 0;
+@const tc_src_end = 4;
+@const tc_next_char = 8;
+@const tc_next_char_type = 12;
+@const tc_next_token = 16;
+@const tc_next_token_data = 20;
+@const tc_next_token_length = 24;
+@const tc_dst = 28;
+@const tc_heap = 32;
+@const tc_symbols = 36;
+@const tc_flash_offset = 40;
+@const tc_fn_dst = 44;
+const sizeof_compiler = 48;
+}%toy
+
+\subsection{Scanner}
+
+The {\tt CHAR\_TYPES} and {\tt KEYWORDS} tables are updated to take the new
+tokens into account, and a new {\tt OPERATOR} table is introduced,
+corresponding to the one in \cref{subsection:toyc3-scanner} (each column is
+stored one after the other). Note that the new grammar now requires commas
+between each value.
+
+\toy{
+@static TC_CHAR_TYPES = [
+  1,1,1,1,1,1,1,1,1,32,32,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  32,10,1,1,1,1,11,39,40,41,6,4,44,5,1,7,2,2,2,2,2,2,2,2,2,2,58,59,12,13,
+  14,1,1,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,91,1,93,1,3,
+  1,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,123,15,125,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+static TC_OPERATORS = [1,1,16,8,18,1,12,10,15,61,13,13,14,11,17,9,19,1];
+static TC_KEYWORDS = [
+  5,'b','r','e','a','k',128,
+  5,'c','o','n','s','t',129,
+  4,'e','l','s','e',130,
+  2,'f','n',131,
+  2,'i','f',132,
+  3,'l','e','t',133,
+  4,'l','o','o','p',134,
+  6,'r','e','t','u','r','n',135,
+  6,'s','t','a','t','i','c',136,
+  5,'w','h','i','l','e',137,
+  0];
+}%toy
+
+The first scanner functions are unchanged compared with the expressions
+compiler:
+
+\toy{
+@fn mem_compare(ptr1, ptr2, size) {
+@  let i = 0;
+@  :step2:while i < size && load8(ptr1 + i) == load8(ptr2 + i) {
+@    i = i + 1;
+@  }
+@  :step4:return size - i;
+@}
+
+@fn tc_get_keyword(start, length) {
+@  let len = 0;
+@  let ptr = TC_KEYWORDS;
+@  :step2:loop {
+@    len = load8(ptr);
+@    if len == 0 { return TC_IDENTIFIER; }
+@    :step4:if length == len && mem_compare(start, ptr + 1, length) == 0 {
+@      return load8(ptr + len + 1);
+@    }
+@    :step7:ptr = ptr + len + 2;
+@  }
+@}
+
+@fn tc_read_char(self) {
+@  let src = *(self+tc_src);
+@  let src_end = *(self+tc_src_end);
+@  if src >= src_end { panic(10); }
+@  :step2:src = src + 1;
+@  let c = 0;
+@  let type = 0;
+@  if src < src_end {
+@    c = load8(src);
+@    type = load8(TC_CHAR_TYPES + c);
+@  }
+@  :end:*(self+tc_src) = src;
+@  *(self+tc_next_char) = c;
+@  *(self+tc_next_char_type) = type;
+@  return type;
+@}
+
+@fn tc_read_integer(self) {
+@  let type = *(self+tc_next_char_type);
+@  let v = 0;
+@  :step2:while type == TC_INTEGER {
+@    v = v * 10 + (*(self+tc_next_char) - '0');
+@    type = tc_read_char(self);
+@  }
+@  :step5:*(self+tc_next_token_data) = v;
+@  return TC_INTEGER;
+@}
+
+@fn tc_read_quoted_char(self) {
+@  tc_read_char(self);
+@  let value = *(self+tc_next_char);
+@  if value < 32 || value >= 127 { :not_printable:panic(11); }
+@  :printable:if tc_read_char(self) != ''' { panic(12); }
+@  :ok:tc_read_char(self);
+@  *(self+tc_next_token_data) = value;
+@  return TC_INTEGER;
+@}
+
+@fn tc_read_identifier(self) {
+@  let start = *(self+tc_src);
+@  let type = *(self+tc_next_char_type);
+@  :step2:while type == TC_IDENTIFIER || type == TC_INTEGER {
+@    :step3:type = tc_read_char(self);
+@  }
+@  :step4:let length = *(self+tc_src) - start;
+@  *(self+tc_next_token_data) = start;
+@  *(self+tc_next_token_length) = length;
+@  return tc_get_keyword(start, length);
+@}
+}%toy
+
+The next function implements the algorithm in \cref{subsection:toyc3-scanner}.
+Note that, since the {\tt OPERATORS} table is stored one column after the other,
+the value of its $(\it{column}, \it{row})$ cell is the byte at address {\tt
+OPERATORS}$+3.\it{column}+\it{row}$. We then call this function in {\tt
+tc\_read\_token}, if the character type is between 10 and 20 (we only use types
+10 to 15, but reserve 5 more for future use):
+
+\toy{
+fn tc_read_operator(self, first_char_type) {
+  let second_char_type = tc_read_char(self);
+  let index = 3 * (first_char_type - 10);
+  if second_char_type == first_char_type {
+    tc_read_char(self);
+    index = index + 1;
+  } else :step1:if *(self+tc_next_char) == '=' {
+    tc_read_char(self);
+    index = index + 2;
+  }
+  :end:return load8(TC_OPERATORS + index);
+}
+
+@voidfn tc_read_token(self) {
+@  let type = *(self+tc_next_char_type);
+@  :step1:while type == ' ' {
+@    type = tc_read_char(self);
+@  }
+@  :step3:let token = type;
+@  if type == TC_INTEGER {
+@    token = tc_read_integer(self);
+@  } else :step4:if type == ''' {
+@    token = tc_read_quoted_char(self);
+@  } else :step5:if type == TC_IDENTIFIER {
+@    token = tc_read_identifier(self);
+  } else :step6:if type >= 10 && type < 20 {
+    token = tc_read_operator(self, type);
+  } else :step7:if type != 0 {
+@    tc_read_char(self);
+@  }
+@  :end:*(self+tc_next_token) = token;
+@  return;
+@}
+}%toy
+
+\subsection{Backend}
+
+The backend is extended with new functions to write the new opcode instructions
+needed by the parser. Its first functions are the same as in the expressions
+compiler:
+
+\toy{
+@fn mem_allocate(size, ptr_p) {
+@  let ptr = *ptr_p;
+@  *ptr_p = ptr + size;
+@  return ptr;
+@}
+@voidfn tc_write8(self, value) {
+@  store8(mem_allocate(1, self+tc_dst), value);
+@  return;
+@}
+@voidfn tc_write16(self, value) {
+@  store16(mem_allocate(2, self+tc_dst), value);
+@  return;
+@}
+@voidfn tc_write32(self, value) {
+@  *mem_allocate(4, self+tc_dst) = value;
+@  return;
+@}
+@voidfn tc_write_insn(self, opcode, argument) {
+@  tc_write8(self, opcode);
+@  tc_write8(self, argument);
+@  return;
+@}
+}%toy
+
+The {\tt tc\_add\_placeholder} function is updated to write the placeholder
+instead of just returning its value, and is renamed accordingly. The next
+function is unchanged. A new {\tt tc\_fill\_label\_placeholders} function
+fills the placeholders in the list starting at $\it{placeholder}$, with the
+current instruction offset $\it{dst}-\it{fn\_dst}$ as value:
+
+\toy{
+voidfn tc_write_placeholder(self, placeholder_p) {
+@  let new_placeholder = *(self+tc_dst);
+@  let last_placeholder = *placeholder_p;
+@  *placeholder_p = new_placeholder;
+@  if last_placeholder == 0 { last_placeholder = new_placeholder; }
+  :step4:tc_write16(self, new_placeholder - last_placeholder);
+  return;
+@}
+@voidfn tc_fill_placeholders(placeholder, value) {
+@  let offset = 0;
+@  :step2:while placeholder != 0 {
+@    :step3:offset = load16(placeholder);
+@    store16(placeholder, value);
+@    if offset == 0 { break; }
+@    :step6:placeholder = placeholder - offset;
+@  }
+@  :end:return;
+@}
+voidfn tc_fill_label_placeholders(self, placeholder) {
+  tc_fill_placeholders(placeholder, *(self+tc_dst) - *(self+tc_fn_dst));
+  return;
+}
+}%toy
+
+The remaining functions write bytecode instructions and encapsulate the details
+of their encoding. We only comment the new ones which are not completely
+trivial.
+
+\toy{
+@voidfn tc_write_cst_insn(self, value) {
+@  if value <= 1 {
+@    tc_write8(self, value);
+@  } else :not0_or_1:if value < 256 {
+@    tc_write_insn(self, 2, value);
+@  } else :not_byte:{
+@    tc_write8(self, 3);
+@    tc_write32(self, value);
+@  }
+@  return;
+@}
+}%toy
+
+The next function writes the instruction to push on the stack the final address
+of some {\tt static} data. This is its $\it{dst}$ address minus
+$\it{flash\_offset}$.
+
+\toy{
+voidfn tc_write_static_insn(self, dst) {
+  tc_write_cst_insn(self, dst - *(self+tc_flash_offset));
+  return;
+}
+@voidfn tc_write_binary_insn(self, token) {
+@  tc_write8(self, token);
+@  return;
+@}
+}%toy
+
+In the following function, $\it{token}$ must be between {\tt TC\_LT} and {\tt
+TC\_GE} (included). The next two functions write a goto instruction for a
+forward or backward jump.
+
+\toy{
+voidfn tc_write_jump_insn(self, token, placeholder_p) {
+  tc_write8(self, token);
+  tc_write_placeholder(self, placeholder_p);
+  return;
+}
+voidfn tc_write_goto_insn(self, placeholder_p) {
+  tc_write_jump_insn(self, 18, placeholder_p);
+  return;
+}
+voidfn tc_write_loop_insn(self, loop_dst) {
+  tc_write8(self, 18);
+  tc_write16(self, loop_dst - *(self+tc_fn_dst));
+  return;
+}
+@voidfn tc_write_load_insn(self) {
+@  tc_write8(self, 19);
+@  return;
+@}
+}%toy
+
+The next function erases the last written instruction, supposed to be a
+\insn{load}. It is used for the algorithm in
+\cref{subsubsection:toyc3-assign}.
+
+\toy{
+voidfn tc_erase_load_insn(self) {
+  *(self+tc_dst) = *(self+tc_dst) - 1;
+  return;
+}
+voidfn tc_write_store_insn(self) {
+  tc_write8(self, 20);
+  return;
+}
+@voidfn tc_write_ptr_insn(self, variable) {
+@  tc_write_insn(self, 21, variable);
+@  return;
+@}
+@voidfn tc_write_get_insn(self, variable) {
+@  tc_write_insn(self, 22, variable);
+@  return;
+@}
+}%toy
+
+Similarly, the following function erases the last written instruction, supposed
+to be a \insn{get}. It returns the argument of this instruction.
+
+\toy{
+fn tc_erase_get_insn(self) {
+  let dst = *(self+tc_dst);
+  *(self+tc_dst) = dst - 2;
+  return load8(dst - 1);
+}
+voidfn tc_write_set_insn(self, variable) {
+  tc_write_insn(self, 23, variable);
+  return;
+}
+voidfn tc_write_pop_insn(self) {
+  tc_write8(self, 24);
+  return;
+}
+@voidfn tc_write_fn_insn(self, arity) {
+@  tc_write_insn(self, 25, arity);
+@  return;
+@}
+@fn tc_get_fn_value(self, fn_dst) {
+@  return fn_dst - *(self+tc_flash_offset) - 786432;
+@}
+@voidfn tc_write_call_insn(self, function) {
+@  tc_write8(self, 26);
+  if *(function+sym_kind) == SYM_FORWARD_FN {
+    tc_write_placeholder(self, function+sym_value);
+@  } else :resolved:{
+@    tc_write16(self, *(function+sym_value));
+@  }
+@  return;
+@}
+voidfn tc_write_return_insn(self) {
+  tc_write8(self, 30);
+  return;
+}
+}%toy
+
+\subsection{Parser}
+
+The parser starts with the same utility functions as before, mostly unchanged
+(we rename {\tt tc\_add\_or\_resolve\_symbol} to {\tt
+tc\_add\_or\_resolve\_fn\_symbol} since it is now only used for functions).
+
+\toy{
+@fn sym_lookup(symbol, name, length) {
+@  :step2:while symbol != 0 {
+@    if *(symbol+sym_length) == length &&
+@        mem_compare(*(symbol+sym_name), name, length) == 0 {
+@      return symbol;
+@    }
+@    :step6:symbol = *(symbol+sym_next);
+@  }
+@  :step7:return 0;
+@}
+
+@fn tc_add_symbol(self, name, length, kind, value) {
+@  let symbol = mem_allocate(sizeof_symbol, self+tc_heap);
+@  if sym_lookup(*(self+tc_symbols), name, length) != 0 { panic(30); }
+@  :ok:*(symbol+sym_name) = name;
+@  *(symbol+sym_length) = length;
+@  *(symbol+sym_kind) = kind;
+@  *(symbol+sym_value) = value;
+@  *(symbol+sym_next) = *(self+tc_symbols);
+@  *(self+tc_symbols) = symbol;
+@  return symbol;
+@}
+
+fn tc_add_or_resolve_fn_symbol(self, name, length, value) {
+@  let symbol = sym_lookup(*(self+tc_symbols), name, length);
+@  if symbol == 0 {
+    return tc_add_symbol(self, name, length, SYM_FN, value);
+@  }
+  :found:if *(symbol+sym_kind) != SYM_FORWARD_FN { panic(31); }
+@  :ok:tc_fill_placeholders(*(symbol+sym_value), value);
+  *(symbol+sym_kind) = SYM_FN;
+@  *(symbol+sym_value) = value;
+@  return symbol;
+@}
+
+@voidfn tc_parse_token(self, token) {
+@  if *(self+tc_next_token) != token { panic(20); }
+@  :ok:tc_read_token(self);
+@  return;
+@}
+
+@fn tc_parse_integer(self) {
+@  if *(self+tc_next_token) != TC_INTEGER { panic(21); }
+@  :ok:let value = *(self+tc_next_token_data);
+@  tc_read_token(self);
+@  return value;
+@}
+
+@fn tc_parse_identifier(self, length_p) {
+@  if *(self+tc_next_token) != TC_IDENTIFIER { panic(22); }
+@  :ok:let name = *(self+tc_next_token_data);
+@  *length_p = *(self+tc_next_token_length);
+@  tc_read_token(self);
+@  return name;
+@}
+
+@fn tc_parse_symbol(self, symbol) {
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+@  symbol = sym_lookup(symbol, name, length);
+@  if symbol == 0 { panic(33); }
+@  :ok:return symbol;
+@}
+}%toy
+
+The {\tt tc\_parse\_const} and {\tt tc\_parse\_static} functions are updated in
+a trivial way to match the new ``const'' and ``static'' rules (and to use the
+new {\tt CONST} and {\tt STATIC} symbol kinds).
+
+\toy{
+@voidfn tc_parse_const(self) {
+@  tc_parse_token(self, TC_CONST);
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+  tc_parse_token(self, '=');
+  tc_add_symbol(self, name, length, SYM_CONST, tc_parse_integer(self));
+  tc_parse_token(self, ';');
+@  return;
+@}
+@voidfn tc_parse_static(self) {
+@  tc_parse_token(self, TC_STATIC);
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+  tc_add_symbol(self, name, length, SYM_STATIC, *(self+tc_dst));
+  tc_parse_token(self, '=');
+  tc_parse_token(self, '[');
+  tc_write8(self, tc_parse_integer(self));
+  :loop:while *(self+tc_next_token) == ',' {
+    tc_read_token(self);
+    tc_write8(self, tc_parse_integer(self));
+  }
+  :end:tc_parse_token(self, ']');
+  tc_parse_token(self, ';');
+@  return;
+@}
+}%toy
+
+Here we delete the old {\tt tc\_parse\_argument} and {\tt tc\_parse\_label}
+functions, and add constants for the possible origin of the value of an
+expression (see \cref{subsubsection:toyc3-assign}). We update the next function
+to test the symbol kind in a better way, and to return {\tt OTHER} (note also
+the \insn{pop} instructions, since {\tt tc\_parse\_expr} now returns an origin):
+
+\toy{
+const FROM_ADDRESS = 0;
+const FROM_VARIABLE = 1;
+const FROM_OTHER = 255;
+
+@fn tc_parse_expr(self);
+
+@fn tc_parse_fn_arguments(self, function) {
+  if *(function+sym_kind) != SYM_FN && *(function+sym_kind) != SYM_FORWARD_FN {
+@    panic(34);
+@  }
+@  :ok:tc_parse_token(self, '(');
+@  if *(self+tc_next_token) != ')' {
+    tc_parse_expr(self);
+@    :loop:while *(self+tc_next_token) == ',' {
+@      tc_read_token(self);
+      tc_parse_expr(self);
+@    }
+@  }
+@  :end:tc_parse_token(self, ')');
+@  tc_write_call_insn(self, function);
+  return FROM_OTHER;
+@}
+}%toy
+
+Parsing a primitive expression is done as before, but we must now return the
+origin of the expression value. This is {\tt VARIABLE} for symbols referring to
+function parameter or local variable names, {\tt OTHER} for {\tt const} and
+{\tt static} symbols or integer constants, or the origin returned by the
+function called to handle the other cases.
+
+\toy{
+@fn tc_parse_primitive_expr(self) {
+  let origin = FROM_OTHER;
+@  let symbol = 0;
+@  if *(self+tc_next_token) == TC_INTEGER {
+@    tc_write_cst_insn(self, tc_parse_integer(self));
+  } else :not_integer:if *(self+tc_next_token) == TC_IDENTIFIER {
+@    symbol = tc_parse_symbol(self, *(self+tc_symbols));
+@    if *(self+tc_next_token) == '(' {
+      origin = tc_parse_fn_arguments(self, symbol);
+    } else :identifier:{
+@      if *(symbol+sym_kind) == SYM_VARIABLE {
+@        tc_write_get_insn(self, *(symbol+sym_value));
+        origin = FROM_VARIABLE;
+      } else :not_variable:if *(symbol+sym_kind) == SYM_CONST {
+@        tc_write_cst_insn(self, *(symbol+sym_value));
+      } else :not_const:if *(symbol+sym_kind) == SYM_STATIC {
+        tc_write_static_insn(self, *(symbol+sym_value));
+      } else :error:{
+@        panic(35);
+@      }
+@    }
+  } else :parentheses:{
+@    tc_parse_token(self, '(');
+    origin = tc_parse_expr(self);
+@    tc_parse_token(self, ')');
+@  }
+  :end:return origin;
+@}
+}%toy
+
+Similarly, parsing a pointer expression is unchanged, but we must now return
+{\tt ADDRESS} for dereference expressions ``{\tt *$e$}'' and {\tt OTHER} for
+address-of expressions ``{\tt \&$x$}'':
+
+\toy{
+@fn tc_parse_pointer_expr(self) {
+@  let symbol = 0;
+@  if *(self+tc_next_token) == TC_MUL {
+@    tc_read_token(self);
+    tc_parse_pointer_expr(self);
+@    tc_write_load_insn(self);
+    return FROM_ADDRESS;
+@  } else :not_mul:if *(self+tc_next_token) == TC_BIT_AND {
+@    tc_read_token(self);
+@    symbol = tc_parse_symbol(self, *(self+tc_symbols));
+@    if *(symbol+sym_kind) == SYM_VARIABLE {
+@      tc_write_ptr_insn(self, *(symbol+sym_value));
+    } else :error:{
+@      panic(36);
+@    }
+@  } else :not_bit_and:{
+    return tc_parse_primitive_expr(self);
+  }
+  :end:return FROM_OTHER;
+@}
+}%toy
+
+The remaining expression parsing functions are also updated to return the
+correct origin. This is done with the same method for all of them: the origin
+of an expression $e_1\ op\ e_2\ op\ \ldots\ e_n$ is the origin of $e_1$ if
+$n=1$, and {\tt OTHER} otherwise. We also add a new function to parse shift
+expressions, very similar to the others:
+
+\toy{
+@fn tc_parse_mult_expr(self) {
+  let origin = tc_parse_pointer_expr(self);
+@  let next_token = *(self+tc_next_token);
+@  :loop:while next_token == TC_MUL || next_token == TC_DIV {
+@    :mul_or_div:tc_read_token(self);
+    tc_parse_pointer_expr(self);
+    origin = FROM_OTHER;
+@    tc_write_binary_insn(self, next_token);
+@    next_token = *(self+tc_next_token);
+@  }
+  :end:return origin;
+@}
+
+@fn tc_parse_add_expr(self) {
+  let origin = tc_parse_mult_expr(self);
+@  let next_token = *(self+tc_next_token);
+@  :loop:while next_token == TC_ADD || next_token == TC_SUB {
+@    :add_or_sub:tc_read_token(self);
+    tc_parse_mult_expr(self);
+    origin = FROM_OTHER;
+@    tc_write_binary_insn(self, next_token);
+@    next_token = *(self+tc_next_token);
+@  }
+  :end:return origin;
+@}
+
+fn tc_parse_shift_expr(self) {
+  let origin = tc_parse_add_expr(self);
+  let next_token = *(self+tc_next_token);
+  if next_token == TC_SHIFT_LEFT || next_token == TC_SHIFT_RIGHT {
+    :shift:tc_read_token(self);
+    tc_parse_add_expr(self);
+    origin = FROM_OTHER;
+    tc_write_binary_insn(self, next_token);
+  }
+  :end:return origin;
+}
+
+@fn tc_parse_bit_and_expr(self) {
+  let origin = tc_parse_shift_expr(self);
+@  :loop:while *(self+tc_next_token) == TC_BIT_AND {
+@    tc_read_token(self);
+    tc_parse_shift_expr(self);
+    origin = FROM_OTHER;
+@    tc_write_binary_insn(self, TC_BIT_AND);
+@  }
+  :end:return origin;
+@}
+
+@fn tc_parse_expr(self) {
+  let origin = tc_parse_bit_and_expr(self);
+@  :loop:while *(self+tc_next_token) == TC_BIT_OR {
+@    tc_read_token(self);
+    tc_parse_bit_and_expr(self);
+    origin = FROM_OTHER;
+@    tc_write_binary_insn(self, TC_BIT_OR);
+@  }
+  :end:return origin;
+@}
+}%toy
+
+The following functions are the main new part of the compiler. They implement
+the grammar rules for statements and for the new boolean expressions, as
+described in \cref{subsubsection:toyc3-if-loop}. Parsing a comparison
+expression is simple: we just need to parse the two subexpressions, check that
+the token in between is actually a comparison operator, and return it:
+
+\toy{
+fn tc_parse_comparison_expr(self) {
+  tc_parse_expr(self);
+  let token = *(self+tc_next_token);
+  if token < TC_LT || token > TC_GE { :error:panic(25); }
+  :ok:tc_read_token(self);
+  tc_parse_expr(self);
+  return token;
+}
+}%toy
+\rust{
+  context.add_error_code(25, "Comparison operator expected");
+}
+
+As explained in \cref{subsubsection:toyc3-if-loop}, the function parsing a
+conjunction {\tt $c_1$ \&\& $c_2$ \&\& $\ldots$ $c_n$} takes as parameter the
+label where to jump if this expression is false. This parameter is actually the
+address of some local variable containing the label's list of placeholders. It
+is named {\tt else\_refs\_p} for brevity (for ``{\em p}ointer to a list of
+placeholders for forward {\em ref}erences to an {\em else} label''). In order
+to generate a jump to this label when each $c_i$ except the last is false, we
+write a jump instruction for the {\em opposite} operator of $c_i$ when a ``{\tt
+\&\&}'' token is read. Note that the opposite operators of ''{\tt <}'', ''{\tt
+==}'', ''{\tt >}'', ''{\tt <=}'', ''{\tt !=}'', and ''{\tt >=}'' are the same
+operators in reverse order. Since their $\it{token}$ value, equal to their
+opcode, are $12$, $13$, $14$, $15$, $16$, and $17$, respectively, the opposite
+of $\it{token}$ is simply $12+17-\it{token}$. This gives the following
+function, returning $c_n$'s $\it{token}$:
+
+\toy{
+fn tc_parse_and_expr(self, else_refs_p) {
+  let token = tc_parse_comparison_expr(self);
+  :loop:while *(self+tc_next_token) == TC_AND {
+    tc_read_token(self);
+    tc_write_jump_insn(self, TC_LT + TC_GE - token, else_refs_p);
+    token = tc_parse_comparison_expr(self);
+  }
+  :end:return token;
+}
+}%toy
+
+The function parsing a disjunction {\tt $c_1$ || $c_2$ || $\ldots$ $c_n$} works
+in a similar way. It is a bit longer because it creates a label $l_i$ where
+each $c_i$ should jump if false, in the {\tt else\_refs} local variable.
+Resetting this variable to 0 in the loop effectively discards $l_i$, no longer
+needed, and ``creates'' $l_{i+1}$. Returning this variable at the end returns
+$l_n$, as described in \cref{subsubsection:toyc3-if-loop}:
+
+\toy{
+fn tc_parse_boolean_expr(self, then_refs_p) {
+  let else_refs = 0;
+  let token = tc_parse_and_expr(self, &else_refs);
+  :loop:while *(self+tc_next_token) == TC_OR {
+    tc_read_token(self);
+    tc_write_jump_insn(self, token, then_refs_p);
+    tc_fill_label_placeholders(self, else_refs);
+    else_refs = 0;
+    token = tc_parse_and_expr(self, &else_refs);
+  }
+  :end:tc_write_jump_insn(self, TC_LT + TC_GE - token, &else_refs);
+  return else_refs;
+}
+}%toy
+
+We can now implement the functions parsing statements, one for each grammar
+rule. We implement them in reverse order, starting with ``block\_stmt''. This
+rule uses ``stmt'' but since {\tt tc\_parse\_stmt} is implemented last, we need
+to declare it first. The {\tt tc\_parse\_stmt} function takes as parameter the
+label where any nested ``{\tt break}'' statement should jump. It is equal to 0
+when parsing a statement which is not inside a loop. Like all the statement
+parsing functions, it returns one of the following constants:
+
+\toy{
+const END_UNREACHABLE = 0;
+const END_REACHABLE = 1;
+
+fn tc_parse_stmt(self, break_refs_p);
+}%toy
+
+Parsing a ``{\tt \{ $s_1$; $\ldots$ $s_n$; \}}'' block is very simple. As
+described in \cref{subsubsection:toyc3-reachability}, we return an error if any
+$s_i$ is unreachable, and return the reachability of $s_n$'s end:
+
+\toy{
+fn tc_parse_block_stmt(self, break_refs_p) {
+  let state = END_REACHABLE;
+  tc_parse_token(self, '\{');
+  :loop:while *(self+tc_next_token) != '\}' {
+    if state == END_UNREACHABLE { panic(37); }
+    :ok:state = tc_parse_stmt(self, break_refs_p);
+  }
+  :end:tc_read_token(self);
+  return state;
+}
+}%toy
+\rust{
+  context.add_error_code(37, "Unreachable statement");
+}
+
+The following function parses and compiles the right hand side of an assignment
+statement. As described in \cref{subsubsection:toyc3-assign}, it detects
+invalid assignments, erases the unwanted code written while compiling the
+left hand side, compiles the right hand side, and finally writes the correct
+assignment instruction:
+
+\toy{
+fn tc_parse_assignment(self, origin) {
+  let location = 0;
+  if origin == FROM_ADDRESS {
+    tc_erase_load_insn(self);
+  } else :not_address:if origin == FROM_VARIABLE {
+    location = tc_erase_get_insn(self);
+  } else :error:{
+    panic(38);
+  }
+  :ok:tc_parse_token(self, '=');
+  tc_parse_expr(self);
+  if origin == FROM_ADDRESS {
+    tc_write_store_insn(self);
+  } else :variable:{
+    tc_write_set_insn(self, location);
+  }
+  :end:return END_REACHABLE;
+}
+}%toy
+\rust{
+  context.add_error_code(38, "Illegal left hand side assignment expression");
+}
+
+With this function, parsing an expression or assignment statement is simple.
+Parsing a return or a break statement is simple too. As explained in
+\cref{subsection:toyc3-expr-stmt}, a ``{\tt return;}'' is actually compiled as
+a ``{\tt return 0;}'' so that all expressions return a value (the \insn{pop}
+instruction written below with {\tt tc\_write\_pop\_insn} requires this):
+
+\toy{
+fn tc_parse_expr_or_assign_stmt(self) {
+  let origin = tc_parse_expr(self);
+  if *(self+tc_next_token) == '=' {
+    tc_parse_assignment(self, origin);
+  } else :not_assign:{
+    tc_write_pop_insn(self);
+  }
+  :end:tc_parse_token(self, ';');
+  return END_REACHABLE;
+}
+
+fn tc_parse_return_stmt(self) {
+  tc_parse_token(self, TC_RETURN);
+  if *(self+tc_next_token) == ';' {
+    tc_write_cst_insn(self, 0);
+  } else :not_semicolon:{
+    tc_parse_expr(self);
+  }
+  :end:tc_parse_token(self, ';');
+  tc_write_return_insn(self);
+  return END_UNREACHABLE;
+}
+
+fn tc_parse_break_stmt(self, break_refs_p) {
+  tc_parse_token(self, TC_BREAK);
+  tc_parse_token(self, ';');
+  tc_write_goto_insn(self, break_refs_p);
+  return END_UNREACHABLE;
+}
+}%toy
+
+The next function parses a ``{\tt while}'' or ``{\tt loop}'' statement (the
+caller must make sure that the next token is either ``{\tt while}'' or ``{\tt
+loop}''). It does this with two $\it{body}$ and $\it{end}$ labels managed as
+described in \cref{subsubsection:toyc3-if-loop}. Note that the $\it{end}$ label
+is passed as a {\tt breaks\_refs} argument to parse the loop's body, since this
+is where ``{\tt break}'' statement inside this loop should jump. The end of a
+``{\tt loop}'' is unreachable if its body does not contain a ``{\tt break}'',
+which is the case if the $\it{end}$ label has no placeholder.
+
+\toy{
+fn tc_parse_while_or_loop_stmt(self) {
+  let loop_dst = *(self+tc_dst);
+  let body_refs = 0;
+  let end_refs = 0;
+  let token = *(self+tc_next_token);
+  tc_read_token(self);
+  if token == TC_WHILE {
+    end_refs = tc_parse_boolean_expr(self, &body_refs);
+  }
+  :body:tc_fill_label_placeholders(self, body_refs);
+  tc_parse_block_stmt(self, &end_refs);
+  tc_write_loop_insn(self, loop_dst);
+  :end_if:tc_fill_label_placeholders(self, end_refs);
+  if token == TC_LOOP && end_refs == 0 { return END_UNREACHABLE; }
+  :end:return END_REACHABLE;
+}
+}%toy
+
+Similary, parsing an ``{\tt if}'' statement is done with 3 $\it{then}$,
+$\it{else}$, and $\it{end}$ labels managed as described in
+\cref{subsubsection:toyc3-if-loop}. The ``{\tt state = state | $\ldots$}''
+pattern ensures the reachability rule for ``{\tt if}'' statements (\cf
+\cref{subsubsection:toyc3-reachability}) because {\tt END\_UNREACHABLE} and
+{\tt END\_REACHABLE} are 0 and 1, respectively.
+
+\toy{
+fn tc_parse_if_stmt(self, break_refs_p) {
+  tc_parse_token(self, TC_IF);
+  let then_refs = 0;
+  let else_refs = tc_parse_boolean_expr(self, &then_refs);
+  tc_fill_label_placeholders(self, then_refs);
+  let state = tc_parse_block_stmt(self, break_refs_p);
+  let end_if_refs = 0;
+  if *(self+tc_next_token) == TC_ELSE {
+    tc_read_token(self);
+    if state == END_REACHABLE {
+      tc_write_goto_insn(self, &end_if_refs);
+    }
+    :else:tc_fill_label_placeholders(self, else_refs);
+    if *(self+tc_next_token) == '\{' {
+      state = state | tc_parse_block_stmt(self, break_refs_p);
+    } else :not_block:{
+      state = state | tc_parse_if_stmt(self, break_refs_p);
+    }
+    :end_if:tc_fill_label_placeholders(self, end_if_refs);
+  } else :not_else:{
+    tc_fill_label_placeholders(self, else_refs);
+    state = END_REACHABLE;
+  }
+  :end:return state;
+}
+}%toy
+
+Finally, parsing an arbitrary statement is done by calling one of the above
+functions, depending on the next token value:
+
+\toy{
+fn tc_parse_stmt(self, break_refs_p) {
+  if *(self+tc_next_token) == TC_IF {
+    return tc_parse_if_stmt(self, break_refs_p);
+  } else :step2:if *(self+tc_next_token) == TC_WHILE {
+    return tc_parse_while_or_loop_stmt(self);
+  } else :step3:if *(self+tc_next_token) == TC_LOOP {
+    return tc_parse_while_or_loop_stmt(self);
+  } else :step4:if *(self+tc_next_token) == TC_BREAK {
+    if break_refs_p == 0 { panic(39); }
+    :ok:return tc_parse_break_stmt(self, break_refs_p);
+  } else :step6:if *(self+tc_next_token) == TC_RETURN {
+    return tc_parse_return_stmt(self);
+  }
+  :end:return tc_parse_expr_or_assign_stmt(self);
+}
+}%toy
+\rust{
+  context.add_error_code(39, "Break statement outside of a loop");
+}
+
+The next 3 functions are essentially unchanged compared with the expressions
+compiler, besides an additional call in {\tt tc\_parse\_let\_stmt} to parse the
+``{\tt =}'' token now required after the identifier:
+
+\toy{
+@fn tc_parse_let_stmt(self, variable) {
+@  tc_parse_token(self, TC_LET);
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+  tc_parse_token(self, '=');
+  tc_parse_expr(self);
+@  tc_parse_token(self, ';');
+@  tc_add_symbol(self, name, length, SYM_VARIABLE, variable);
+@  return variable + 1;
+@}
+
+@fn tc_parse_fn_name(self) {
+@  let length = 0;
+@  let name = tc_parse_identifier(self, &length);
+@  let fn_dst = *(self+tc_dst);
+@  *(self+tc_fn_dst) = fn_dst;
+@  let value = tc_get_fn_value(self, fn_dst);
+  return tc_add_or_resolve_fn_symbol(self, name, length, value);
+@}
+
+@fn tc_parse_fn_parameters(self) {
+@  let i = 0;
+@  let name = 0;
+@  let length = 0;
+@  tc_parse_token(self, '(');
+@  :loop:while *(self+tc_next_token) != ')' {
+@    if i > 0 { tc_parse_token(self, ','); }
+@    :identifier:name = tc_parse_identifier(self, &length);
+@    tc_add_symbol(self, name, length, SYM_VARIABLE, i);
+@    i = i + 1;
+@  }
+@  :end:tc_read_token(self);
+@  return i;
+@}
+}%toy
+
+The function to parse a function body is extended to allow ``{\tt let}''
+statements, as defined by the new ``fn\_body'' rule. It is also updated to
+check that all the statements are reachable, and to return an error if the end
+of the last one might be reachable.
+
+\toy{
+@voidfn tc_parse_fn_body(self, function, arity) {
+@  if *(self+tc_next_token) == ';' {
+@    tc_read_token(self);
+    *(function+sym_kind) = SYM_FORWARD_FN;
+@    *(function+sym_value) = 0;
+@    return;
+@  }
+@  :body:tc_parse_token(self, '\{');
+@  tc_write_fn_insn(self, arity);
+@  let next_variable = arity + 4;
+  let state = END_REACHABLE;
+@  :loop:while *(self+tc_next_token) != '\}' {
+    if state == END_UNREACHABLE { panic(40); }
+    :ok:if *(self+tc_next_token) == TC_LET {
+      next_variable = tc_parse_let_stmt(self, next_variable);
+    } else :stmt:{
+      state = tc_parse_stmt(self, 0);
+    }
+@  }
+  :end:if state == END_REACHABLE { panic(41); }
+  :valid:tc_read_token(self);
+@  return;
+@}
+}%toy
+\rust{
+  context.add_error_code(40, "Unreachable statement");
+  context.add_error_code(41, "Missing return");
+}
+
+The next function is unchanged, but is no longer called from {\tt
+tc\_parse\_fn}, otherwise unchanged too, since programs no longer use labels.
+{\tt tc\_parse\_program} is also unchanged.
+
+\toy{
+@voidfn tc_check_symbols(symbol, end_symbol) {
+@  :loop:while symbol != end_symbol {
+    if *(symbol+sym_kind) == SYM_FORWARD_FN { panic(32); }
+@    :next:symbol = *(symbol+sym_next);
+@  }
+@  :end:return;
+@}
+
+@voidfn tc_parse_fn(self) {
+@  tc_parse_token(self, TC_FN);
+@  let function = tc_parse_fn_name(self);
+@  let heap = *(self+tc_heap);
+@  let symbols = *(self+tc_symbols);
+@  let arity = tc_parse_fn_parameters(self);
+@  tc_parse_fn_body(self, function, arity);
+  *(self+tc_symbols) = symbols;
+@  *(self+tc_heap) = heap;
+@  return;
+@}
+
+@voidfn tc_parse_program(self) {
+@  :loop:loop {
+@    if *(self+tc_next_token) == TC_FN {
+@      tc_parse_fn(self);
+@    } else :not_fn:if *(self+tc_next_token) == TC_STATIC {
+@      tc_parse_static(self);
+@    } else :not_static:if *(self+tc_next_token) == TC_CONST {
+@      tc_parse_const(self);
+@    } else :end:{
+@      if *(self+tc_next_token) != 0 { panic(23); }
+@      :ok:tc_check_symbols(*(self+tc_symbols), 0);
+@      return;
+@    }
+@  }
+@}
+}%toy
+
+Finally, the {\tt tc\_main} function is refactored to store the compiler
+variables between the $\it{dst}$ buffer and the $\it{heap}$ (instead of on the
+stack). The advantage of this method is that we can skip the initialization of
+the variables which don't need to be.
+
+\toy{
+@fn tc_main(src_buffer, dst_buffer, flash_buffer) {
+  let error = 0;
+  let compiler = dst_buffer + 12288;
+  *(compiler+tc_src) = src_buffer + 3;
+  *(compiler+tc_src_end) = src_buffer + 4 + *src_buffer;
+  *(compiler+tc_dst) = dst_buffer + 4;
+  *(compiler+tc_heap) = compiler + sizeof_compiler;
+  *(compiler+tc_symbols) = 0;
+  *(compiler+tc_flash_offset) = dst_buffer - flash_buffer;
+@  let panic3 = 0;
+@  let panic2 = 0;
+@  let panic1 = 0;
+@  let panic0 = 0;
+  error = panic_result(&panic0);
+  if error != 0 {
+    *dst_buffer = *(compiler+tc_src) - src_buffer - 4;
+    return error;
+  }
+  :ok:tc_read_char(compiler);
+  tc_read_token(compiler);
+  tc_parse_program(compiler);
+  *dst_buffer = *(compiler+tc_dst) - dst_buffer - 4;
+@  return 0;
+@}
+}%toy
+
+\rust{
+  t.write_toy2("website/sources/statements_compiler_v1.txt")?;
+  t.write_toy3("website/sources/statements_compiler_v2.txt")?;
+  t.check_changes("website/sources/expressions_compiler_v2.txt")?;
+}
+
+\section{Compilation and tests}\label{section:toyc3-compilation}
+
+\rust{
+  let boot_mode_address = context.memory_region("foundations")
+      .label_address("boot_mode_select_rom");
+
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+
+  let mut context1 = context.clone();
+
+  // Launch the command editor
+  let command_editor_main =
+      context.memory_region("command_editor").label_address("command_editor");
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+}
+
+To compile the above source code proceed as follows (see also
+\cref{fig:compilation-and-test}).
+
+\medskip \paragraph*{Edit v1} In the command editor, type ``F3''+``r'' and
+``F4''+``r'' to load and edit the current compiler version. Then update it to
+the $1^{st}$ version of the statements compiler. For convenience, we also
+provide this code in the {\tt statements\_compiler\_v1.txt} file in
+\toypcurl{sources.zip}. When you are done, exit the text editor and type
+``F5''+``r'' to save your work. Alternatively, you can ``cheat'' by running the
+following command on an external computer (see \cref{section:toyc1-compilation}
+for more details):
+
+\rust{
+  // Enter source code in RAM, as if edited with F4 command.
+  let ram_compiler_source = context.memory_region("command_editor_source")
+      .label_address("ram_compiler_source");
+  let toyc3_dot_toy2 = std::fs::read_to_string(
+      "website/sources/statements_compiler_v1.txt")?;
+  context.store_text(ram_compiler_source, toyc3_dot_toy2.as_str());
+
+  // Save it in flash.
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Alternative method.
+  context1.micro_controller().borrow_mut().reset();
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  let compiler_source = context.memory_region("compiler_source").start;
+  write_lines("website/part3", "statements_compiler_v1.txt",
+      &flash_helper_commands(&toyc3_dot_toy2, compiler_source))?;
+  let mut flash_helper1 = FlashHelper::from_file(context1.micro_controller(),
+      "website/", "part3/statements_compiler_v1.txt")?;
+  let log = flash_helper1.read();
+
+  // Check that both methods give the same result.
+  context.check_equal_buffer(&mut context1, compiler_source);
+}
+\rs{host_log(log.lines().next().unwrap())}
+
+\medskip \paragraph{Compile v1} In the command editor, type ``F6''+``r'' to
+compile the code you typed. If all goes well, after about 3 seconds, you should
+get a result equal to 0 (meaning that no error was found). If this is not the
+case use \cref{appendix:compilercodes} to get the error code meaning, fix this
+error, save the program and compile it again. Repeat this process until the
+compilation is successful. Then type ``F7''+``r'' to save the result.
+
+\rust{
+  // Compile it with toyc2.
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Save it in flash memory.
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph{Test v1} Type ``F2''+``r'' to create a new program,
+``F4''+``r'' to edit it, and type the following small test program, which
+computes the factorial of 6:
+
+\rust{
+  let test_program = r"fn factorial(n);
+fn test() { return factorial(6); }
+fn factorial(n) {
+  if n == 0 { return 1; }
+  return factorial(n - 1) * n;
+}";
+  // Enter source code in RAM, as if edited with F4 command.
+  context.store_text(ram_compiler_source, test_program);
+}
+\rs{code(test_program)}
+
+\noindent Then type ``F9''+``r'' to run it. If the result is not
+\rs{dec_hex(720u32)} this means that the compiler is wrong. In this case, type
+``F8''+``r'' to restore the expressions compiler. Then repeat the previous
+steps and double check everything until this test passes.
+
+\rust{
+  context.type_keys(vec!["F9"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "000002D0");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph*{Edit v2} Type ``F3''+``r'' to load the $1^{st}$ version of
+the statements compiler and ``F4''+``r'' to edit it. Then update it to the
+$2^{nd}$ version. For convenience, we also provide this code in the {\tt
+  statements\_compiler\_v2.txt} file. Then save this new version with the F5
+command. Alternatively, run the following command on an external computer:
+
+\rust{
+  // Enter source code in RAM, as if edited with F4 command.
+  let toyc3_dot_toy3 = std::fs::read_to_string(
+      "website/sources/statements_compiler_v2.txt")?;
+  context.store_text(ram_compiler_source, toyc3_dot_toy3.as_str());
+
+  // Save it in flash.
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // Alternative method.
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+
+  write_lines("website/part3", "statements_compiler_v2.txt",
+      &flash_helper_commands(&toyc3_dot_toy3, compiler_source))?;
+  let mut flash_helper1 = FlashHelper::from_file(context1.micro_controller(),
+      "website/", "part3/statements_compiler_v2.txt")?;
+  let log = flash_helper1.read();
+
+  // Check that both methods give the same result.
+  context.check_equal_buffer(&mut context1, compiler_source);
+}
+\rs{host_log(log.lines().next().unwrap())}
+
+\medskip \paragraph*{Compile v2} Type``F6''+``r'' to compile this new code. The
+result should be 0, meaning ``no error''. If this is not the case, repeat the
+``Edit v2'' and ``Compile v2'' steps until all errors are fixed.
+
+\rust{
+  // Compile v2.
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+
+\medskip \paragraph*{Test v2} Unlike in the previous chapters, the compiled
+code of the $2^{nd}$ version of the statements compiler is not identical to
+that of the $1^{st}$ version. One reason, in particular, is that we used both
+\insn{ret} and \insn{retv} instructions in the $1^{st}$ version, but the
+statements compiler only produces \insn{retv} instructions for {\tt return}
+statements (see \cref{subsection:toyc3-expr-stmt}).
+
+However, the two versions should produce the same compiled code for the same
+input program, since they are supposed to be functionally equivalent. We can
+thus use this property to test the $2^{nd}$ version. For this we can use as
+input program the $2^{nd}$ version itself (see
+\cref{fig:compilation-and-test2}). We just compiled it with the $1^{st}$
+version in the previous step. Type ``F7''+``r'' to store the result in flash
+memory. Then type ``F6''+``r'' to compile the $2^{nd}$ version with itself. At
+this stage we have the code of our input program in flash memory (as compiled
+with the $1^{st}$ version), and in RAM (as compiled with the $2^{nd}$ version).
+Type ``F10''+``r'' to compare them. The result should be 0. If this is not the
+case, this means that the $2^{nd}$ version is wrong\footnote{It might also
+happen that the $1^{st}$ version is wrong despite the ``Test v1'' step. In this
+case we are in trouble because we no longer have any backup of the expressions
+compiler (which is necessary to retry the ``Compile v1'' step). To avoid this
+we would need to do a backup of the backup compiler before ``Test v2''.}. Type
+``F8''+``r'' to restore the $1^{st}$ version and repeat the steps from ``Edit
+v2'' until this test passes.
+
+\rust{
+  context.type_keys(vec!["F7"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  context.type_keys(vec!["F10"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  // return in memory editor
+  context.type_ascii("\n");
+}
+
+\begin{Figure}
+  \input{figures/chapter6/compilation-and-test.tex}
+
+  \caption{The memory content after each command in the ``Compile v2'' and
+  ``Test v2'' steps. White, blue and gray areas represent source code, bytecode
+  and unused memory, respectively (not to scale). See also
+  \cref{fig:compilation-and-test}.}\label{fig:compilation-and-test2}
+\end{Figure}

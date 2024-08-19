@@ -1,0 +1,90 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="16" height="4" x="20" y="40" fill="#cccccc"/>
+    <rect width="16" height="16" x="95" y="32" fill="#cccccc"/>
+    <path d="M 75,24 H 91" stroke="#000000"/>
+    <path d="M 75,28 H 91" stroke="#000000"/>
+    <path d="M 75,32 H 91" stroke="#000000"/>
+    <text x="90" y="23" font-size="3.5px" text-anchor="end">4</text>
+    <text x="90" y="19" font-size="3.5px" text-anchor="end">VARIABLE</text>
+    <text x="110" y="19" font-size="3.5px" text-anchor="end">VARIABLE</text>
+    <text x="90" y="27" font-size="3.5px" text-anchor="end">0</text>
+    <text x="90" y="31" font-size="3.5px" text-anchor="end">0</text>
+    <path d="M 95,24 H 111" stroke="#000000"/>
+    <path d="M 95,28 H 111" stroke="#000000"/>
+    <path d="M 95,32 H 111" stroke="#000000"/>
+    <path d="M 95,36 H 111" stroke="#000000"/>
+    <path d="M 95,40 H 111" stroke="#000000"/>
+    <path d="M 95,44 H 111" stroke="#000000"/>
+    <text x="110" y="23" font-size="3.5px" text-anchor="end">4</text>
+    <text x="110" y="27" font-size="3.5px" text-anchor="end">0</text>
+    <text x="110" y="31" font-size="3.5px" text-anchor="end">0</text>
+    <text x="110" y="35" font-size="3.5px" text-anchor="end">VARIABLE</text>
+    <text x="110" y="43" font-size="3.5px" text-anchor="end">0</text>
+    <path d="m 115,24 h 16" stroke="#000000"/>
+    <path d="m 115,28 h 16" stroke="#000000"/>
+    <path d="m 115,32 h 16" stroke="#000000"/>
+    <text x="130" y="23" font-size="3.5px" text-anchor="end">0</text>
+    <text x="130" y="27" font-size="3.5px" text-anchor="end">0</text>
+    <text x="130" y="31" font-size="3.5px" text-anchor="end">0</text>
+    <path d="M 0,44 H 16" stroke="#000000"/>
+    <text x="15" y="47" font-size="3.5px" text-anchor="end">6</text>
+    <text x="8" y="51" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="132" y="19" font-size="3.5px" fill="#9a9a9a">origin</text>
+    <text x="132" y="23" font-size="3.5px" fill="#9a9a9a">slot</text>
+    <text x="132" y="27" font-size="3.5px" fill="#9a9a9a">type</text>
+    <text x="132" y="31" font-size="3.5px" fill="#9a9a9a">dim</text>
+    <path d="m 16,52 v -20" stroke="#000000"/>
+    <path d="m 0,52 v -20" stroke="#000000"/>
+    <path d="M 0,48 H 16" stroke="#000000"/>
+    <path d="M 20,40 H 36" stroke="#000000"/>
+    <path d="M 20,44 H 36" stroke="#000000"/>
+    <text x="35" y="43" font-size="3.5px" text-anchor="end">2</text>
+    <text x="35" y="47" font-size="3.5px" text-anchor="end">6</text>
+    <text x="28" y="51" font-size="3.5px" text-anchor="middle">...</text>
+    <path d="m 36,52 v -20" stroke="#000000"/>
+    <path d="m 20,52 v -20" stroke="#000000"/>
+    <path d="m 20,48 h 16" stroke="#000000"/>
+    <path d="M 40,44 H 56" stroke="#000000"/>
+    <text x="55" y="47" font-size="3.5px" text-anchor="end">24</text>
+    <text x="63" y="47" font-size="3.5px">SP</text>
+    <text x="48" y="51" font-size="3.5px" text-anchor="middle">...</text>
+    <text x="83" y="15" font-size="3.5px" text-anchor="middle">...</text>
+    <path d="m 56,52 v -20" stroke="#000000"/>
+    <path d="m 40,52 v -20" stroke="#000000"/>
+    <path d="m 40,48 h 16" stroke="#000000"/>
+    <path d="M 62,46 H 56" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <text x="138" y="35" font-size="3.5px">$heap$</text>
+    <path d="m 137,34 h -6" stroke="#000000" stroke-dasharray="0.8 0.2" marker-end="url(#arrow)"/>
+    <path d="M 75,20 H 91" stroke="#000000"/>
+    <path d="M 75,16 H 91" stroke="#000000"/>
+    <path d="M 75,12 75,52" stroke="#000000"/>
+    <path d="m 91,12 v 40" stroke="#000000"/>
+    <text x="103" y="15" font-size="3.5px" text-anchor="middle">...</text>
+    <path d="M 95,16 H 111" stroke="#000000"/>
+    <path d="M 95,12 V 52" stroke="#000000"/>
+    <path d="M 111,12 V 52" stroke="#000000"/>
+    <path d="M 8,43 8,38" stroke="#000000" stroke-dasharray="0.2 0.2" marker-end="url(#arrow)"/>
+    <path d="m 83,33 v 5" stroke="#000000" stroke-dasharray="0.2 0.2" marker-end="url(#arrow)"/>
+    <text x="123" y="15" font-size="3.5px" text-anchor="middle">...</text>
+    <path d="m 115,16 h 16" stroke="#000000"/>
+    <path d="M 115,12 V 52" stroke="#000000"/>
+    <path d="M 131,12 V 52" stroke="#000000"/>
+    <path d="M 95,20 H 111" stroke="#000000"/>
+    <path d="m 115,20 h 16" stroke="#000000"/>
+    <text x="110" y="39" font-size="3.5px" text-anchor="end">5</text>
+    <text x="110" y="47" font-size="3.5px" text-anchor="end">0</text>
+    <text x="130" y="19" font-size="3.5px" text-anchor="end">OTHER</text>
+    <path d="M 95,48 H 111" stroke="#000000"/>
+  </g>
+</svg>

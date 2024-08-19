@@ -1,0 +1,33 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="m 43,44 7,0 v 7" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 10,51 v -7 l 7,0" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="M 32,54 H 16" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="M 53,43 H 43" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <text x="30" y="45" text-anchor="middle">edit hello.toy</text>
+    <text x="24" y="53" font-size="3.5px" text-anchor="middle">next</text>
+    <text x="54" y="44" font-size="3.5px">current</text>
+    <text x="75" y="46" font-size="3.5px" text-anchor="middle">run</text>
+    <path d="m 132,43 h -2 v 8" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <text x="133" y="44" font-size="3.5px">current</text>
+    <text x="50" y="55" text-anchor="middle">toyc hello hello.toy</text>
+    <text x="10" y="55" text-anchor="middle">hello</text>
+    <path d="m 122,44 h 7 v 7" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 89,51 v -7 h 7" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="M 126,54 H 95" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <text x="109" y="45" text-anchor="middle">edit hello.toy</text>
+    <text x="129" y="55" text-anchor="middle">$\emptyset$</text>
+    <text x="89" y="55" text-anchor="middle">hello</text>
+    <text x="75" y="49" text-anchor="middle">$\implies$</text>
+  </g>
+</svg>

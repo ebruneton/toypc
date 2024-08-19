@@ -1,0 +1,83 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="144" height="28" x="1" y="4" fill="#ebebeb" stroke-dasharray="0.2 0.4"/>
+    <text x="13" y="9" text-anchor="end">Vsync</text>
+    <text x="13" y="63" text-anchor="end">Clock</text>
+    <text x="13" y="19" text-anchor="end">Hsync</text>
+    <text x="13" y="43" text-anchor="end">Hsync</text>
+    <text x="26" y="43" font-size="2.8px">H pulse width</text>
+    <text x="31" y="51" font-size="2.8px" text-anchor="middle">H back porch</text>
+    <text x="13" y="51" text-anchor="end">Data</text>
+    <text x="13" y="73" text-anchor="end">Data</text>
+    <text x="13" y="55" text-anchor="end">Enable</text>
+    <text x="13" y="27" text-anchor="end">Data</text>
+    <text x="13" y="31" text-anchor="end">Enable</text>
+    <path d="m 15,5 h 4 l 0,6 h 10 l 0,-6 h 100 l 0,6 h 10 l 0,-6 h 5" fill="none" stroke="#0e6e8e"/>
+    <path d="m 15,39 h 4 v 6 h 4 v -6 H 135 v 6 h 4 v -6 h 5" fill="none" stroke="#0e6e8e"/>
+    <path d="m 15,55 h 28 v -6 H 115 v 6 L 144,55" fill="none" stroke="#0e6e8e"/>
+    <path d="m 57,15 h 5" stroke="#0e6e8e" stroke-dasharray="0.2 0.4"/>
+    <path d="M 73,65 H 91" stroke="#0e6e8e" stroke-dasharray="0.2 0.4"/>
+    <path d="m 71,72 h 20" stroke="#0e6e8e" stroke-dasharray="0.2 0.4"/>
+    <path d="m 97,15 h 5" stroke="#0e6e8e" stroke-dasharray="0.2 0.4"/>
+    <path d="m 95,31 h 9 m -49,0 h 9" fill="none" stroke="#0e6e8e" stroke-dasharray="0.2 0.4"/>
+    <path d="m 15,65 h 2 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 V 59 H 31 v 6 h 2 V 59 H 35 v 6 h 2 V 59 H 39 v 6 h 2 V 59 H 43 v 6 h 2 V 59 H 47 v 6 h 2 V 59 H 51 v 6 h 2 l 0,-6 H 55 v 6 h 2 l 0,-6 H 59 v 6 h 2 l 0,-6 H 63 v 6 h 2 l 0,-6 h 2 L 67,65 h 2 v -6 h 2 l 0,6 h 2 m 18,0 h 2 v -6 h 2 L 95,65 h 2 v -6 h 2 v 6 H 101 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 V 59 L 131,59 v 6 h 2 v -6 h 2 v 6 h 2 v -6 h 2 v 6 h 2 v -6 l 2,0 v 6 h 1" fill="none" stroke="#0e6e8e"/>
+    <path d="m 15,72 1,-3 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 H 62 l 2,-6 h 2 l 2,6 H 70 l 1,-3 m 20,0 1,3 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 2,0 2,-6" fill="none" stroke="#0e6e8e"/>
+    <path d="M 73,32 V 33 L 16,35 V 38" fill="none" stroke="#000000" stroke-dasharray="1.2 0.2" marker-end="url(#arrow)"/>
+    <path d="M 81,32 V 33 l 59,2 V 38" fill="none" stroke="#000000" stroke-dasharray="1.2 0.2" marker-end="url(#arrow)"/>
+    <path d="m 15,72 1,3 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 1,3 m 20,0 1,-3 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 h 2 l 2,6 h 2 l 2,-6 2,0 2,6" fill="none" stroke="#0e6e8e"/>
+    <text x="-72" y="114" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">799</text>
+    <text x="-72" y="46" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">0</text>
+    <text x="-72" y="50" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">1</text>
+    <text x="-72" y="54" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">2</text>
+    <text x="-72" y="58" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">3</text>
+    <text x="-72" y="62" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">4</text>
+    <text x="-72" y="66" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">5</text>
+    <text x="-72" y="70" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">6</text>
+    <text x="-72" y="110" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">798</text>
+    <text x="-72" y="106" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">797</text>
+    <text x="-72" y="102" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">796</text>
+    <text x="-72" y="98" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">795</text>
+    <text x="-72" y="94" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">794</text>
+    <text x="-18" y="43" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">0</text>
+    <text x="-18" y="48" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">1</text>
+    <text x="-18" y="53" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">2</text>
+    <text x="-18" y="68" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">238</text>
+    <text x="-18" y="73" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">239</text>
+    <text x="-18" y="78" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">240</text>
+    <text x="-18" y="83" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">241</text>
+    <text x="-18" y="88" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">242</text>
+    <text x="-18" y="93" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">243</text>
+    <text x="-18" y="108" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">477</text>
+    <text x="-18" y="113" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">478</text>
+    <text x="-18" y="118" transform="rotate(-90)" font-size="2.8px" text-anchor="middle">479</text>
+    <path d="m 19,52 h 24" stroke="#000000" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="m 17,42 h 2" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 25,42 H 23" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="30" y="9" font-size="2.8px">V pulse width</text>
+    <path d="M 19,46 V 53" stroke="#000000" stroke-dasharray="0.2 0.4"/>
+    <text x="40" y="13" font-size="2.8px">V back porch</text>
+    <path d="M 19,13 H 39" stroke="#000000" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="M 19,8 H 29" stroke="#000000" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="m 19,12 v 2" stroke="#000000" stroke-dasharray="0.2 0.4"/>
+    <path d="m 39,12 v 2" stroke="#000000" stroke-dasharray="0.2 0.4"/>
+    <text x="118" y="13" font-size="2.8px" text-anchor="end">V back porch</text>
+    <path d="m 119,13 h 10" stroke="#000000" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="m 119,12 v 2" stroke="#000000" stroke-dasharray="0.2 0.4"/>
+    <path d="m 129,12 v 2" stroke="#000000" stroke-dasharray="0.2 0.4"/>
+    <text x="125" y="51" font-size="2.8px" text-anchor="middle">H front porch</text>
+    <path d="m 115,52 h 20" stroke="#000000" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="m 135,46 v 7" stroke="#000000" stroke-dasharray="0.2 0.4"/>
+    <path d="m 15,15 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 L 45,15 h 4 l 0,6 h 1 L 50,15 h 4 l 0,6 h 1 L 55,15 h 2 m 5,0 h 2 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 2 m 5,0 h 2 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4 v 6 h 1 v -6 h 4" fill="none" stroke="#0e6e8e"/>
+    <path d="M 14,31 H 41 V 25 h 2 v 6 H 46 V 25 h 2 v 6 h 3 V 25 h 2 v 6 L 55,31 m 9,0 2,0 V 25 h 2 v 6 H 71 V 25 h 2 v 6 h 3 V 25 h 2 v 6 h 3 V 25 H 83 v 6 h 3 V 25 H 88 v 6 h 3 V 25 h 2 v 6 L 95,31 m 9,0 2,0 V 25 h 2 v 6 h 3 V 25 h 2 v 6 h 3 V 25 h 2 v 6 h 26" fill="none" fill-opacity="0.75" stroke="#0e6e8e"/>
+  </g>
+</svg>

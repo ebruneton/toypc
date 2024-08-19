@@ -1,0 +1,178 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="M 101,20 95,33" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="M 95,20 89,33" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="M 89,20 83,33" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="M 83,20 77,33" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="M 77,20 71,33" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="M 71,20 65,33" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="M 65,20 59,33" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 59,40 6,10" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 65,40 6,10" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 71,40 6,10" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 77,40 6,10" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 83,40 6,10" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 89,40 6,10" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <path d="m 95,40 6,10" stroke="#9a9a9a" stroke-dasharray="0.6 0.6" marker-end="url(#arrow)"/>
+    <rect width="72" height="7" x="32" y="13" fill="#0e6e8e" stroke-dasharray="0.6 0.6"/>
+    <rect width="66" height="7" x="32" y="33" fill="#0e6e8e" stroke-dasharray="0.6 0.6"/>
+    <rect width="72" height="7" x="32" y="50" fill="#0e6e8e" stroke-dasharray="0.6 0.6"/>
+    <path d="m 62,33 v 7" stroke="#000000"/>
+    <path d="m 68,50 v 7" stroke="#000000"/>
+    <path d="m 74,50 v 7" stroke="#000000"/>
+    <path d="m 80,50 v 7" stroke="#000000"/>
+    <path d="m 68,33 v 7" stroke="#000000"/>
+    <path d="m 74,33 v 7" stroke="#000000"/>
+    <path d="m 80,33 v 7" stroke="#000000"/>
+    <path d="m 68,13 v 7" stroke="#000000"/>
+    <path d="M 74,13 V 20" stroke="#000000"/>
+    <path d="M 80,13 V 20" stroke="#000000"/>
+    <path d="M 14,13 V 20" stroke="#000000"/>
+    <path d="M 20,13 V 20" stroke="#000000"/>
+    <path d="m 26,13 v 7" stroke="#000000"/>
+    <path d="m 32,13 v 7" stroke="#000000"/>
+    <path d="M 38,13 V 20" stroke="#000000"/>
+    <path d="M 44,13 V 20" stroke="#000000"/>
+    <path d="M 50,13 V 20" stroke="#000000"/>
+    <path d="M 56,13 V 20" stroke="#000000"/>
+    <path d="M 86,13 V 20" stroke="#000000"/>
+    <path d="m 92,13 v 7" stroke="#000000"/>
+    <path d="m 98,13 v 7" stroke="#000000"/>
+    <path d="M 104,13 V 20" stroke="#000000"/>
+    <path d="M 110,13 V 20" stroke="#000000"/>
+    <path d="M 116,13 V 20" stroke="#000000"/>
+    <path d="m 122,13 v 7" stroke="#000000"/>
+    <path d="m 128,13 v 7" stroke="#000000"/>
+    <path d="M 134,13 V 20" stroke="#000000"/>
+    <text x="35" y="18" text-anchor="middle" fill="#ffffff">H</text>
+    <text x="41" y="18" text-anchor="middle" fill="#ffffff">e</text>
+    <text x="1" y="29">Delete character</text>
+    <text x="1" y="9">Initial text</text>
+    <text x="32" y="9">$begin=4$</text>
+    <text x="62" y="9" fill="#bf3959">$cursor=9$</text>
+    <text x="104" y="9">$end=16$</text>
+    <text x="47" y="18" text-anchor="middle" fill="#ffffff">l</text>
+    <text x="59" y="18" text-anchor="middle" fill="#ffffff">a</text>
+    <text x="65" y="18" text-anchor="middle" fill="#ffffff">,</text>
+    <text x="71" y="18" text-anchor="middle" fill="#ffffff">W</text>
+    <text x="77" y="18" text-anchor="middle" fill="#ffffff">o</text>
+    <text x="83" y="18" text-anchor="middle" fill="#ffffff">r</text>
+    <text x="89" y="18" text-anchor="middle" fill="#ffffff">l</text>
+    <text x="95" y="18" text-anchor="middle" fill="#ffffff">d</text>
+    <text x="101" y="18" text-anchor="middle" fill="#ffffff">!</text>
+    <text x="35" y="24" font-size="3.5px" text-anchor="middle">4</text>
+    <text x="29" y="24" font-size="3.5px" text-anchor="middle">3</text>
+    <text x="23" y="24" font-size="3.5px" text-anchor="middle">2</text>
+    <text x="17" y="24" font-size="3.5px" text-anchor="middle">1</text>
+    <text x="11" y="24" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="41" y="24" font-size="3.5px" text-anchor="middle">5</text>
+    <text x="47" y="24" font-size="3.5px" text-anchor="middle">6</text>
+    <text x="53" y="24" font-size="3.5px" text-anchor="middle">7</text>
+    <text x="59" y="24" font-size="3.5px" text-anchor="middle">8</text>
+    <text x="65" y="24" font-size="3.5px" text-anchor="middle">9</text>
+    <text x="71" y="24" font-size="3.5px" text-anchor="middle">10</text>
+    <text x="77" y="24" font-size="3.5px" text-anchor="middle">11</text>
+    <text x="83" y="24" font-size="3.5px" text-anchor="middle">12</text>
+    <text x="89" y="24" font-size="3.5px" text-anchor="middle">13</text>
+    <text x="95" y="24" font-size="3.5px" text-anchor="middle">14</text>
+    <text x="101" y="24" font-size="3.5px" text-anchor="middle">15</text>
+    <text x="107" y="24" font-size="3.5px" text-anchor="middle">16</text>
+    <text x="113" y="24" font-size="3.5px" text-anchor="middle">17</text>
+    <text x="119" y="24" font-size="3.5px" text-anchor="middle">18</text>
+    <text x="125" y="24" font-size="3.5px" text-anchor="middle">19</text>
+    <text x="131" y="24" font-size="3.5px" text-anchor="middle">20</text>
+    <text x="137" y="24" font-size="3.5px" text-anchor="middle">21</text>
+    <text x="53" y="18" text-anchor="middle" fill="#ffffff">l</text>
+    <text x="1" y="46">Insert character</text>
+    <path d="M 35,10 V 13" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="M 65,10 V 13" stroke="#bf3959" marker-end="url(#arrow)"/>
+    <path d="m 107,10 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 14,33 v 7" stroke="#000000"/>
+    <path d="m 20,33 v 7" stroke="#000000"/>
+    <path d="m 26,33 v 7" stroke="#000000"/>
+    <path d="m 32,33 v 7" stroke="#000000"/>
+    <path d="m 38,33 v 7" stroke="#000000"/>
+    <path d="m 44,33 v 7" stroke="#000000"/>
+    <path d="m 50,33 v 7" stroke="#000000"/>
+    <path d="m 86,33 v 7" stroke="#000000"/>
+    <path d="m 92,33 v 7" stroke="#000000"/>
+    <path d="m 98,33 v 7" stroke="#000000"/>
+    <path d="m 104,33 v 7" stroke="#000000"/>
+    <path d="m 110,33 v 7" stroke="#000000"/>
+    <path d="m 116,33 v 7" stroke="#000000"/>
+    <path d="m 122,33 v 7" stroke="#000000"/>
+    <path d="m 128,33 v 7" stroke="#000000"/>
+    <path d="m 134,33 v 7" stroke="#000000"/>
+    <text x="35" y="38" text-anchor="middle" fill="#ffffff">H</text>
+    <text x="41" y="38" text-anchor="middle" fill="#ffffff">e</text>
+    <text x="32" y="29">$begin=4$</text>
+    <text x="56" y="29" fill="#bf3959">$cursor=8$</text>
+    <text x="98" y="29">$end=15$</text>
+    <text x="47" y="38" text-anchor="middle" fill="#ffffff">l</text>
+    <text x="59" y="38" text-anchor="middle" fill="#ffffff">,</text>
+    <text x="65" y="38" text-anchor="middle" fill="#ffffff">W</text>
+    <text x="71" y="38" text-anchor="middle" fill="#ffffff">o</text>
+    <text x="77" y="38" text-anchor="middle" fill="#ffffff">r</text>
+    <text x="83" y="38" text-anchor="middle" fill="#ffffff">l</text>
+    <text x="89" y="38" text-anchor="middle" fill="#ffffff">d</text>
+    <text x="95" y="38" text-anchor="middle" fill="#ffffff">!</text>
+    <text x="53" y="38" text-anchor="middle" fill="#ffffff">l</text>
+    <path d="m 35,30 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 59,30 v 3" stroke="#bf3959" marker-end="url(#arrow)"/>
+    <path d="m 101,30 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 14,50 v 7" stroke="#000000"/>
+    <path d="m 20,50 v 7" stroke="#000000"/>
+    <path d="m 26,50 v 7" stroke="#000000"/>
+    <path d="m 32,50 v 7" stroke="#000000"/>
+    <path d="m 38,50 v 7" stroke="#000000"/>
+    <path d="m 44,50 v 7" stroke="#000000"/>
+    <path d="m 50,50 v 7" stroke="#000000"/>
+    <path d="m 56,50 v 7" stroke="#000000"/>
+    <path d="m 86,50 v 7" stroke="#000000"/>
+    <path d="m 92,50 v 7" stroke="#000000"/>
+    <path d="m 98,50 v 7" stroke="#000000"/>
+    <path d="m 104,50 v 7" stroke="#000000"/>
+    <path d="m 110,50 v 7" stroke="#000000"/>
+    <path d="m 116,50 v 7" stroke="#000000"/>
+    <path d="m 122,50 v 7" stroke="#000000"/>
+    <path d="m 128,50 v 7" stroke="#000000"/>
+    <path d="m 134,50 v 7" stroke="#000000"/>
+    <text x="35" y="55" text-anchor="middle" fill="#ffffff">H</text>
+    <text x="41" y="55" text-anchor="middle" fill="#ffffff">e</text>
+    <text x="32" y="46">$begin=4$</text>
+    <text x="62" y="46" fill="#bf3959">$cursor=9$</text>
+    <text x="104" y="46">$end=16$</text>
+    <text x="47" y="55" text-anchor="middle" fill="#ffffff">l</text>
+    <text x="59" y="55" text-anchor="middle" fill="#ffffff">o</text>
+    <text x="65" y="55" text-anchor="middle" fill="#ffffff">,</text>
+    <text x="71" y="55" text-anchor="middle" fill="#ffffff">W</text>
+    <text x="77" y="55" text-anchor="middle" fill="#ffffff">o</text>
+    <text x="83" y="55" text-anchor="middle" fill="#ffffff">r</text>
+    <text x="89" y="55" text-anchor="middle" fill="#ffffff">l</text>
+    <text x="95" y="55" text-anchor="middle" fill="#ffffff">d</text>
+    <text x="101" y="55" text-anchor="middle" fill="#ffffff">!</text>
+    <text x="53" y="55" text-anchor="middle" fill="#ffffff">l</text>
+    <path d="m 35,47 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 65,47 v 3" stroke="#bf3959" marker-end="url(#arrow)"/>
+    <path d="m 107,47 v 3" stroke="#000000" marker-end="url(#arrow)"/>
+    <rect width="1" height="7" x="62" y="13" fill="#bf3959"/>
+    <rect width="1" height="7" x="56" y="33" fill="#bf3959"/>
+    <rect width="1" height="7" x="62" y="50" fill="#bf3959"/>
+    <rect width="132" height="7" x="8" y="13" fill="none" stroke="#000000"/>
+    <path d="M 62,13 V 20" stroke="#000000"/>
+    <rect width="132" height="7" x="8" y="33" fill="none" stroke="#000000"/>
+    <rect width="132" height="7" x="8" y="50" fill="none" stroke="#000000"/>
+    <path d="m 56,33 v 7" stroke="#000000"/>
+    <path d="m 62,50 v 7" stroke="#000000"/>
+  </g>
+</svg>

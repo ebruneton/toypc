@@ -1,0 +1,72 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="90mm" viewBox="0 0 145 90" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+    </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="m 66,70 h 1 l -2,1 L 63,70 h 1 v -1 l 2,0 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 36,70 h 1 l -2,1 -2,-1 h 1 l 0,-11 2,0 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 78,64 -7,0 v 1 l -1,-2 L 71,61 v 1 l 7,0 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 77,57 -1,2 v -1 L 54,58 54,56 h 22 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="M 78,54 H 55 v 1 L 54,53 55,51 v 1 h 23 z" fill="#cccccc" stroke-width="0.6"/>
+    <rect width="24" height="8" x="30" y="51" fill="#ebebeb" stroke="#000000"/>
+    <rect width="24" height="8" x="46" y="61" fill="#ebebeb" stroke="#000000"/>
+    <rect width="12" height="6" x="13" y="77" fill="#ebebeb" stroke="#000000"/>
+    <path d="m 46,24 -1,1.5 v -1 l -4,0 v -1 h 4 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="M 77,37 76,39 v -1 h -6 l 0,-2 h 6 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <rect width="2" height="77" x="77" y="12" fill="#cccccc" stroke-width="0"/>
+    <path d="m 78,25 -7,0 v 1 l -1,-2 L 71,22 v 1 l 7,0 z" fill="#cccccc" stroke-width="0.6"/>
+    <rect width="24" height="17" x="46" y="22" fill="#ebebeb" stroke="#000000"/>
+    <path d="M 77,16 76,18 76,17 h -6 v -2 h 6 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="M 77,85 76,87 v -1 h -6 l 0,-2 h 6 v -1 z" fill="#cccccc" stroke-width="0.6"/>
+    <path d="m 35,64 h -5 v 1 L 29,63 30,61 v 1 h 5 z" fill="#cccccc" stroke-width="0.6"/>
+    <text x="58" y="31" text-anchor="middle">RAM</text>
+    <text x="42" y="56" font-size="3.9px" text-anchor="middle">R0 register</text>
+    <text x="44" y="46" font-size="3.9px" text-anchor="middle">Bus controller</text>
+    <text x="19" y="81" font-size="3.9px" text-anchor="middle">Carry</text>
+    <text x="50" y="80" font-size="3.9px" text-anchor="middle">Arithmetic Unit</text>
+    <text x="24" y="74" font-size="3.5px" text-anchor="end">subtract</text>
+    <text x="80" y="52">Bus</text>
+    <rect width="28" height="8" x="30" y="41" fill="none" stroke="#000000"/>
+    <text x="58" y="66" font-size="3.9px" text-anchor="middle">R1 register</text>
+    <rect width="40" height="16" x="30" y="71" fill="none" stroke="#000000"/>
+    <path d="M 30,78 H 25" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 17,63 -4,0" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 25,73 h 5" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="23" y="64" font-size="3.9px" text-anchor="middle">$\ne 0$</text>
+    <rect width="12" height="6" x="17" y="60" fill="none" stroke="#000000"/>
+    <text x="58" y="17" font-size="3.9px" text-anchor="middle">Input</text>
+    <rect width="24" height="8" x="46" y="12" fill="none" stroke="#000000"/>
+    <text x="40" y="25" font-size="3.5px" text-anchor="end">address $a_1a_0$</text>
+    <text x="40" y="38" font-size="3.5px" text-anchor="end">$w$</text>
+    <path d="m 41,37 h 5" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 58,42 14,0 V 37.5" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 58,44 16,0 L 74,16" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 58,46 16,0 L 74,85.5" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="M 58,48 H 72 V 57.5" fill="none" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 73,15 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 71,36 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 71,56 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <path d="m 73,84 v 2 l 2,-1 z" fill="#ffffff" stroke="#000000" stroke-linejoin="bevel"/>
+    <text x="24" y="40" font-size="3.5px" text-anchor="end">selectRAM</text>
+    <path d="m 25,39 h 2 v 3 l 3,0" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 25,51 h 2 v -3 l 3,0" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 25,43 h 2 v 1 l 3,0" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <path d="m 25,47 h 2 v -1 l 3,0" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <text x="24" y="44" font-size="3.5px" text-anchor="end">selectINPUT</text>
+    <text x="24" y="48" font-size="3.5px" text-anchor="end">selectALU</text>
+    <text x="24" y="52" font-size="3.5px" text-anchor="end">selectR0</text>
+    <text x="24" y="59" font-size="3.5px" text-anchor="end">writeR0</text>
+    <path d="m 25,58 h 5" stroke="#000000" marker-end="url(#arrow)"/>
+    <text x="24" y="69" font-size="3.5px" text-anchor="end">writeR1</text>
+    <path d="m 25,68 21,0" stroke="#000000" marker-end="url(#arrow)"/>
+    <path d="m 25,86 h 3 v -4 h -3" stroke="#000000" marker-end="url(#arrow)" fill="none"/>
+    <text x="24" y="87" font-size="3.5px" text-anchor="end">writeCarry</text>
+  </g>
+</svg>

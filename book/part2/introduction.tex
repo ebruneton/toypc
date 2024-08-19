@@ -1,0 +1,131 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter*{Introduction}
+\addcontentsline{toc}{chapter}{Introduction}
+
+This part has two goals. The first one is to assemble the hardware components
+of our toy computer, mainly a keyboard, a screen, and an {\em Arduino Due}
+board. This board provides in a single chip a microprocessor, various memories,
+and integrated circuits to control external devices (such as light emitting
+diodes, motors, sensors, but also keyboards or displays). We present how these
+components work, how to connect them together, and how programs can use them.
+The second goal of this part is to install on this assembled computer a very
+basic input and output system, using the keyboard and the screen, in order to
+make it completely autonomous.
+
+Normally the Arduino Due is {\em not} autonomous: it requires an external
+computer to be used. The usual process is the following. Users write their
+application (\eg, a mobile robot controller) with a text editor in some
+programming language. They transform it with a program called a compiler into
+machine code that the Arduino can execute. Finally, they send this machine code
+with a third program to the Arduino, as a series of 0s and 1s (via a USB
+cable). All this happens on an existing computer, with already existing
+programs (operating system, text editor, compiler, etc).
+
+Since our goal in this book is to program a toy computer {\em from scratch}, we
+should in theory avoid using any existing computer, already programmed.
+Otherwise we would need to show how this existing computer was programmed in
+the first place (the answer is from yet another already programmed computer --
+and so on). To solve this chicken and egg problem, we should instead send 0s
+and 1s ``manually'' to the Arduino. Doing this completely by hand, with a
+switch, is not possible because the Arduino expects to receive these 0s and 1s
+by groups of 8 bits, each group being transmitted at 115,000 bits per second
+(\ie, in about 70$\mu s$). Of course, no one can operate a switch at this
+speed. Instead, we could build a small digital circuit, connected to a
+keyboard, which would send a specific group of 8 bits at 115,200 bits per
+second each time a key is pressed (for instance the group \bina{01000000} for
+'A', \bina{01000001} for 'B', etc). This circuit would not need to be
+programmed, which would avoid the above chicken and egg problem. However, doing
+this would be very impractical and error-prone (typos would be hard to detect
+without a visual feedback, \ie, some kind of display).
+
+In this part, we therefore use an external computer to program the Arduino.
+However, we try to use it in a minimal way to show convincingly that avoiding
+its use altogether would be possible. In particular, instead of using a text
+editor and a compiler to produce the 0s and 1s from a program written in some
+programming language, we compute these bits manually. The only program we use
+on the external computer is the one used to send these bits to the Arduino, at
+the expected speed. Moreover, we use this method only to install a small
+initial program on the Arduino, namely a very basic input and output system.
+Its goal is to read other programs (still in binary form at first) input on a
+keyboard connected to the Arduino, to output them on a screen also connected to
+the Arduino, and to execute them. In other words, its goal is to make our toy
+computer completely autonomous, \ie, to avoid any further need of an external
+computer (including in \cref{part:compiler,part:operating-system}).
+
+In order to do this, our basic input output system has the following components:
+\begin{itemize}
+	\item a keyboard driver. Connecting a keyboard to the Arduino does not ``just
+	work''. A small program is needed on the Arduino to decode the signals sent
+	by the keyboard and to interpret them as characters. This small program is
+	called a keyboard driver.
+
+	\item a ``graphics card'' driver. Similarly, connecting a display to the
+	Arduino does not ``just work''. For the display we want to use, things are
+	even worse: we can't even connect the display directly to the Arduino because
+	it does not have the necessary connector. To solve this we use an
+	intermediate board, which we call the graphics card. It can connect to the
+	display on one end, and to the Arduino on the other. But here again, a small
+	program is needed on the Arduino to send the correct signals to the graphics
+	card, in order to display the desired characters on the screen. This small
+	program is the graphics card driver.
+
+	\item a memory editor. This extremely basic editor uses the above drivers to
+	display the memory's content on the screen (in hexadecimal format), and to
+	allow the user to edit it, with the keyboard. It can also execute a program
+	at a given location in memory. These features allow users to store programs
+	in memory and to run them.
+
+	\item a virtual machine. Even if the above programs are small, they would
+	still require hundreds of machine code instructions, which use a complicated
+	binary format. Writing all these instructions manually is possible but
+	painful and error prone. In order to simplify this a bit, we use a tiny {\em
+	virtual machine}. This program simulates a virtual microprocessor using very
+	simple instructions called {\em bytecode instructions}. This small program
+	must be written in Arduino Due's machine code but, once this is done, all
+	other programs can be written in simpler bytecode instructions (simulated by
+	the virtual machine). This is what we do for the above drivers and the memory
+	editor.
+\end{itemize}
+
+The rest of this part presents the hardware components of our toy computer,
+shows how they are assembled, and explains how our input output system is built
+and installed on the Arduino. It is organized as follows:
+\begin{itemize}
+  \item \cref{chapter:arduino-due} gives an overview of the Arduino Due board
+  and of its main chip. We use this at the end to control a LED with commands
+  sent ``manually'' to the Arduino.
+
+  \item \cref{chapter:microprocessor} gives an overview of the microprocessor
+  inside the Arduino's main chip. It presents a subset of its registers and
+  instructions. We use this at the end to blink a LED, with a first program
+  made of a few machine code instructions.
+
+  \item \cref{chapter:virtual-machine} builds on this to implement our toy
+  virtual machine, written in Arduino's machine code, and to store it in flash
+  memory.
+
+  \item \cref{chapter:clock} presents the clock used by the Arduino, and
+  explains how to change its frequency. We then use this knowledge to implement
+  a small program, using bytecode instructions, to set the clock to its maximum
+  frequency.
+
+  \item \cref{chapter:screen} presents how Liquid
+  Crystal Displays work in general, how our specific Thin Film Transistor
+  display works, what the graphics card is doing, how to communicate with it
+  from the Arduino, and how to use it. It then provides the graphics card
+  driver implementation. We test it at the end to display the traditional
+  ``Hello, World!'' message.
+
+  \item \cref{chapter:keyboard} presents how keyboards work in general, and
+  PS/2 keyboards in particular. It then provides a small keyboard driver. We
+  test it at the end with a small ``echo'' program, which simply displays on
+  screen each key typed on the keyboard.
+
+  \item \cref{chapter:memory-editor} uses all the previous components to
+  implement a basic memory editor, finally making our toy computer completely
+  autonomous.
+\end{itemize}
+

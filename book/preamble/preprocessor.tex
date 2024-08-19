@@ -1,0 +1,48 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\newcommand{\rustfile}{}
+\newcounter{rustid}
+\globalcounter{rustid}
+
+% The preprocessor appends the content of this command to a generated Rust
+% source file 'book/src/part<x>/chapter<y>_generator.rs'.
+\newcommand{\rust}[1]{}
+
+% The preprocessor appends to the above generated Rust source file some
+% instructions to evaluate the content of this command, which must be a Rust
+% expression. These instructions then save the value of this expression in
+% 'book/part<x>/generated/chapter<y>_input<z>.tex', which is finally '\input'
+% in the Latex file using this command.
+\newcommand{\rs}[1]{%
+  \input{generated/\rustfile/input\therustid.tex}\unskip%
+  \addtocounter{rustid}{1}%
+}
+
+% The preprocessor appends the content of this command to the above generated
+% Rust source file. These must be instructions using a BytecodeAssembler
+% object. The result of these instructions is automatically saved in
+% 'book/part<x>/generated/chapter<y>_input<z>.tex', with the
+% BytecodeAssembler::write method, using as options the optional argument of
+% this command. This generated file is finally '\input' in the Latex file using
+% this command.
+\newcommand{\bytecode}[2][]{%
+  \input{generated/\rustfile/input\therustid.tex}\unskip%
+  \addtocounter{rustid}{1}%
+}
+
+% The preprocessor appends the content of this command to the above generated
+% Rust source file. This content must be source code which can be parsed by a
+% Transpiler object. It is added line by line with the Transpiler::add method.
+% The Transpiler pretty prints it and saves the corresponding Latex code in
+% 'book/part<x>/generated/chapter<y>_input<z>.tex', with the Transpiler::write
+% method. This generated file is finally '\input' in the Latex file using
+% this command.
+\newcommand{\toy}[1]{%
+  \vspace{-4pt}%
+  \input{generated/\rustfile/input\therustid.tex}%
+  \vspace{-4pt}%
+  \addtocounter{rustid}{1}%
+}
+

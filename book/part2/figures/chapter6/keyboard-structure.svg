@@ -1,0 +1,203 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs/>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="m 118,25 h -14 v 20 h 17 V 30 h 5" fill="none" stroke="#ef476f" stroke-dasharray="0.4 0.4"/>
+    <path d="m 60,9 h 66" fill-opacity="0.75" stroke="#ef476f" stroke-width="0.4"/>
+    <path d="m 60,29 h 66" fill-opacity="0.75" stroke="#000000" stroke-width="0.4"/>
+    <path d="m 26.5,24 c 0,0 2.5,-2 2.5,-4 0,-2 -5,-6 -5,-8 0,-2 2.5,-4 2.5,-4" fill="none" stroke="#062f3d" stroke-width="0.8"/>
+    <path d="M 66,24 H 63" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 72,22 h -6" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 69,20 v 2" fill-opacity="0.75" stroke="#000000"/>
+    <path d="M 75,24 H 72" fill-opacity="0.75" stroke="#000000"/>
+    <path d="M 80,9 80,24 H 78" fill="none" fill-opacity="0.75" stroke="#ef476f"/>
+    <rect width="1" height="2" x="62.5" y="8" fill="#ffffff" stroke-width="0.4"/>
+    <rect width="1" height="2" x="82.5" y="8" fill="#ffffff" stroke-width="0.4"/>
+    <rect width="1" height="2" x="102.5" y="8" fill="#ffffff" stroke-width="0.4"/>
+    <rect width="1" height="2" x="122.5" y="8" fill="#ffffff" stroke-width="0.4"/>
+    <rect width="1" height="1.5" x="122.5" y="28" fill="#ffffff" stroke-width="0.4"/>
+    <rect width="1" height="2" x="102.5" y="28" fill="#ffffff" stroke-width="0.4"/>
+    <rect width="1" height="2" x="82.5" y="28" fill="#ffffff" stroke-width="0.4"/>
+    <rect width="1" height="2" x="62.5" y="28" fill="#ffffff" stroke-width="0.4"/>
+    <text x="64" y="7">$x$</text>
+    <text x="62" y="7" text-anchor="end">Column</text>
+    <text x="84" y="7" fill="#ef476f">$x+1$</text>
+    <text x="104" y="7">$x+2$</text>
+    <text x="69" y="18" text-anchor="middle">Y</text>
+    <text x="25" y="19" text-anchor="end">6-pin cable</text>
+    <text x="125" y="14" fill="#ef476f">Row $y$</text>
+    <text x="125" y="34">Row $y+1$</text>
+    <rect width="49" height="18" x="2" y="24" fill="#ebebeb" stroke="#000000"/>
+    <rect width="2" height="1" x="3" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="6" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="9" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="12" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="15" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="18" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="21" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="24" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="27" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="30" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="33" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="36" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="39" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="42" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="45" y="25" fill="#062f3d"/>
+    <rect width="2" height="1" x="48" y="25" fill="#062f3d"/>
+    <rect width="2" height="2" x="3" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="6" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="9" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="12" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="15" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="18" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="21" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="24" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="27" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="30" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="33" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="36" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="39" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="42" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="45" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="48" y="27" fill="#062f3d"/>
+    <rect width="2" height="2" x="3" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="6" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="9" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="12" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="15" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="18" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="21" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="24" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="27" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="30" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="33" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="36" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="39" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="42" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="45" y="30" fill="#062f3d"/>
+    <rect width="2" height="2" x="48" y="30" fill="#062f3d"/>
+    <rect width="5" height="2" x="3" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="9" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="12" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="15" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="18" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="21" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="24" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="27" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="30" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="33" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="36" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="39" y="33" fill="#062f3d"/>
+    <rect width="2" height="2" x="42" y="33" fill="#062f3d"/>
+    <rect width="5" height="2" x="45" y="33" fill="#062f3d"/>
+    <rect width="5" height="2" x="3" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="9" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="12" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="15" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="18" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="21" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="24" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="27" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="30" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="33" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="36" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="39" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="42" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="45" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="48" y="36" fill="#062f3d"/>
+    <rect width="2" height="2" x="3" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="6" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="9" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="12" y="39" fill="#062f3d"/>
+    <rect width="17" height="2" x="15" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="33" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="36" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="39" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="42" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="45" y="39" fill="#062f3d"/>
+    <rect width="2" height="2" x="48" y="39" fill="#062f3d"/>
+    <rect width="9" height="6" x="29.5" y="29.5" fill="none" stroke="#bf3959" stroke-dasharray="0.6 0.2"/>
+    <path d="M 29.5,29.5 58,9" stroke="#bf3959" stroke-dasharray="0.6 0.2"/>
+    <path d="M 29.5,35.5 58,48" stroke="#bf3959" stroke-dasharray="0.6 0.2"/>
+    <path d="m 75,22 v 4 l 3,-2 z" fill="none" stroke="#000000"/>
+    <path d="m 78,22 v 4" stroke="#000000"/>
+    <circle cx="66" cy="24" r="0.5"/>
+    <circle cx="63" cy="24" r="0.5"/>
+    <circle cx="72" cy="24" r="0.5"/>
+    <rect width="8" height="7" x="65" y="13" fill="none" stroke="#000000"/>
+    <circle cx="80" cy="9" r="0.5"/>
+    <path d="M 86,24 H 83" fill-opacity="0.75" stroke="#ef476f"/>
+    <path d="m 92,24 h -6" fill-opacity="0.75" stroke="#ef476f"/>
+    <path d="m 89,22 v 2" fill-opacity="0.75" stroke="#000000"/>
+    <path d="M 95,24 H 92" fill-opacity="0.75" stroke="#ef476f"/>
+    <path d="M 100,9 V 24 h -2" fill="none" fill-opacity="0.75" stroke="#ef476f"/>
+    <rect width="8" height="7" x="85" y="15" fill="#cccccc" stroke="#000000"/>
+    <text x="89" y="20" text-anchor="middle">U</text>
+    <path d="m 95,22 v 4 l 3,-2 z" fill="none" stroke="#000000"/>
+    <path d="m 98,22 v 4" stroke="#000000"/>
+    <circle cx="86" cy="24" r="0.5"/>
+    <circle cx="92" cy="24" r="0.5"/>
+    <circle cx="100" cy="9" r="0.5"/>
+    <path d="m 106,24 h -3" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 112,22 h -6" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 109,20 v 2" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 115,24 h -3" fill-opacity="0.75" stroke="#000000"/>
+    <path d="M 120,9 V 24 h -2" fill="none" fill-opacity="0.75" stroke="#ef476f"/>
+    <text x="109" y="18" text-anchor="middle">I</text>
+    <path d="m 115,22 v 4 l 3,-2 z" fill="#ffffff" stroke="#000000"/>
+    <path d="m 118,22 v 4" stroke="#000000"/>
+    <circle cx="106" cy="24" r="0.5"/>
+    <circle cx="103" cy="24" r="0.5"/>
+    <circle cx="112" cy="24" r="0.5"/>
+    <rect width="8" height="7" x="105" y="13" fill="none" stroke="#000000"/>
+    <circle cx="120" cy="9" r="0.5"/>
+    <path d="m 66,44 h -3" fill-opacity="0.75" stroke="#000000"/>
+    <path d="M 72,42 H 66" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 69,40 v 2" fill-opacity="0.75" stroke="#000000"/>
+    <path d="M 75,44 H 72" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 80,29 v 15 h -2" fill="none" fill-opacity="0.75" stroke="#000000"/>
+    <text x="69" y="38" text-anchor="middle">H</text>
+    <path d="m 75,42 v 4 l 3,-2 z" fill="none" stroke="#000000"/>
+    <path d="m 78,42 v 4" stroke="#000000"/>
+    <circle cx="66" cy="44" r="0.5"/>
+    <circle cx="63" cy="44" r="0.5"/>
+    <circle cx="72" cy="44" r="0.5"/>
+    <rect width="8" height="7" x="65" y="33" fill="none" stroke="#000000"/>
+    <circle cx="80" cy="29" r="0.5"/>
+    <path d="M 86,44 H 83" fill-opacity="0.75" stroke="#ef476f"/>
+    <path d="M 92,42 H 86" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 89,40 v 2" fill-opacity="0.75" stroke="#000000"/>
+    <path d="M 95,44 H 92" fill-opacity="0.75" stroke="#000000"/>
+    <path d="M 100,29 V 44 H 98" fill="none" fill-opacity="0.75" stroke="#000000"/>
+    <text x="89" y="38" text-anchor="middle">J</text>
+    <path d="m 95,42 v 4 l 3,-2 z" fill="none" stroke="#000000"/>
+    <path d="m 98,42 v 4" stroke="#000000"/>
+    <circle cx="86" cy="44" r="0.5"/>
+    <circle cx="92" cy="44" r="0.5"/>
+    <rect width="8" height="7" x="85" y="33" fill="none" stroke="#000000"/>
+    <circle cx="100" cy="29" r="0.5"/>
+    <path d="m 106,44 h -3" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 112,44 h -6" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 109,42 v 2" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 115,44 h -3" fill-opacity="0.75" stroke="#000000"/>
+    <path d="m 120,29 v 15 h -2" fill="none" fill-opacity="0.75" stroke="#000000"/>
+    <rect width="8" height="7" x="105" y="35" fill="#cccccc" stroke="#000000"/>
+    <text x="109" y="40" text-anchor="middle">K</text>
+    <path d="m 115,42 v 4 l 3,-2 z" fill="#ffffff" stroke="#000000"/>
+    <path d="m 118,42 v 4" stroke="#000000"/>
+    <circle cx="106" cy="44" r="0.5"/>
+    <circle cx="103" cy="44" r="0.5"/>
+    <circle cx="112" cy="44" r="0.5"/>
+    <circle cx="120" cy="29" r="0.5"/>
+    <path d="M 83,50 83,6" fill-opacity="0.75" stroke="#ef476f" stroke-width="0.4"/>
+    <circle cx="83" cy="44" r="0.5"/>
+    <circle cx="83" cy="24" r="0.5"/>
+    <path d="M 103,50 V 6" fill-opacity="0.75" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 123,50 V 6" fill-opacity="0.75" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 63,50 V 6" fill-opacity="0.75" stroke="#000000" stroke-width="0.4"/>
+  </g>
+</svg>

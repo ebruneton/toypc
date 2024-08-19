@@ -1,0 +1,95 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="65mm" viewBox="0 0 145 65" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <rect width="64" height="4" x="1" y="54" fill="#cccccc"/>
+    <rect width="3" height="4" x="22" y="26" fill="#05ab80"/>
+    <rect width="3" height="4" x="137" y="26" fill="#05ab80"/>
+    <path d="m 140,26 h 5 l -1,2 1,0 -1,2 -4,0 z" fill="#cccccc"/>
+    <rect width="64" height="4" x="65" y="54" fill="#05ab80"/>
+    <rect width="40" height="4" x="25" y="40" fill="#05ab80"/>
+    <rect width="24" height="4" x="1" y="40" fill="#cccccc"/>
+    <rect width="5" height="4" x="17" y="26" fill="#cccccc"/>
+    <rect width="8" height="4" x="129" y="40" fill="#05ab80"/>
+    <path d="m 137,40 h 8 l -1,2 h 1 l -1,2 h -7 z" fill="#cccccc"/>
+    <path d="m 129,54 h 16 l -1,2 h 1 l -1,2 h -15 z" fill="#cccccc"/>
+    <path d="m 21,30 v -4" stroke="#000000"/>
+    <path d="m 22,30 v -4" stroke="#000000"/>
+    <path d="m 23,30 v -4" stroke="#000000"/>
+    <path d="m 24,30 v -4" stroke="#000000"/>
+    <path d="m 25,30 v -4" stroke="#000000"/>
+    <path d="m 9,44 v -4" stroke="#000000"/>
+    <path d="m 20,30 v -4" stroke="#000000"/>
+    <path d="m 19,30 v -4" stroke="#000000"/>
+    <path d="m 18,30 v -4" stroke="#000000"/>
+    <path d="m 22,26 v -10" stroke="#000000" stroke-dasharray="0.2, 0.6"/>
+    <path d="M 140,26 V 16.1" stroke="#000000" stroke-dasharray="0.2, 0.600001"/>
+    <path d="M 137,40 V 30" stroke="#000000" stroke-dasharray="0.2, 0.6"/>
+    <path d="m 17,30 v -4" stroke="#000000"/>
+    <path d="m 141,30 v -4" stroke="#000000"/>
+    <path d="m 142,30 v -4" stroke="#000000"/>
+    <path d="m 143,30 v -4" stroke="#000000"/>
+    <path d="m 144,30 v -4" stroke="#000000"/>
+    <path d="m 140,30 v -4" stroke="#000000"/>
+    <path d="m 139,30 v -4" stroke="#000000"/>
+    <path d="m 138,30 v -4" stroke="#000000"/>
+    <path d="m 137,30 v -4" stroke="#000000"/>
+    <path d="m 25,44 v -4" stroke="#000000"/>
+    <path d="m 17,44 v -4" stroke="#000000"/>
+    <path d="m 41,44 v -4" stroke="#000000"/>
+    <path d="m 33,44 v -4" stroke="#000000"/>
+    <path d="m 57,44 v -4" stroke="#000000"/>
+    <path d="m 65,44 v -4" stroke="#000000"/>
+    <path d="m 65,58 v -4" stroke="#000000"/>
+    <path d="m 129,58 v -4" stroke="#000000"/>
+    <path d="m 49,44 v -4" stroke="#000000"/>
+    <path d="m 129,44 v -4" stroke="#000000"/>
+    <path d="m 41,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 33,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 9,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 57,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 65,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 49,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 73,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 89,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 81,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 105,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 97,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 121,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 129,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 113,30 v -4" stroke="#000000" stroke-dasharray="0.8 0.2"/>
+    <path d="m 137,44 v -4" stroke="#000000"/>
+    <rect width="118" height="4" x="22" y="12" fill="#118ab2" stroke="#000000"/>
+    <path d="m 1,26 h 144 l -1,2 1,0 -1,2 L 1,30 Z" fill="none" stroke="#000000"/>
+    <path d="M 1,40 H 145 l -1,2 h 1 l -1,2 H 1 Z" fill="none" stroke="#000000"/>
+    <path d="M 1,54 H 145 l -1,2 h 1 l -1,2 H 1 Z" fill="none" stroke="#000000"/>
+    <text x="17" y="25" font-size="3.5px" text-anchor="middle">512</text>
+    <text x="25" y="25" font-size="3.5px" text-anchor="middle">768</text>
+    <text x="1" y="25" font-size="3.5px" text-anchor="middle">0</text>
+    <text x="137" y="25" font-size="3.5px" text-anchor="middle">4352</text>
+    <text x="22" y="11" font-size="3.5px" text-anchor="middle">672</text>
+    <text x="1" y="34" font-size="3.5px">level=8</text>
+    <text x="26" y="34" font-size="3.5px">$\it{gap\_begin}$</text>
+    <text x="23" y="20" font-size="3.5px">$\it{begin}$</text>
+    <text x="66" y="48" font-size="3.5px">$\it{gap\_begin}$</text>
+    <text x="136" y="34" font-size="3.5px" text-anchor="end">$\it{gap\_end}$</text>
+    <text x="139" y="20" font-size="3.5px" text-anchor="end">$\it{end}$</text>
+    <text x="128" y="48" font-size="3.49062px" text-anchor="end">$\it{gap\_end}$</text>
+    <text x="1" y="48" font-size="3.5px">level=11</text>
+    <text x="1" y="62" font-size="3.5px">level=14</text>
+    <text x="65" y="39" font-size="3.5px" text-anchor="middle">2048</text>
+    <text x="129" y="39" font-size="3.5px" text-anchor="middle">4096</text>
+    <text x="140" y="11" font-size="3.5px" text-anchor="middle">4448</text>
+    <path d="M 25,40 V 30" stroke="#000000" stroke-dasharray="0.2, 0.6"/>
+    <path d="M 65,54 V 44" stroke="#000000" stroke-dasharray="0.2, 0.6"/>
+    <path d="M 129,54 V 44" stroke="#000000" stroke-dasharray="0.2, 0.6"/>
+  </g>
+</svg>

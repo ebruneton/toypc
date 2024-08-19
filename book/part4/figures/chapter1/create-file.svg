@@ -1,0 +1,86 @@
+<!--
+This work is licensed under the Creative Commons Attribution NonCommercial
+ShareAlike 4.0 International License. To view a copy of the license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="145mm" height="55mm" viewBox="0 0 145 55" version="1.1">
+  <defs>
+    <marker id="arrow" orient="auto-start-reverse">
+      <path d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" fill="none" stroke="context-stroke"/>
+    </marker>
+  </defs>
+  <g font-family="'Fira Sans'" font-size="3.9px" stroke-width="0.2">
+    <path d="M 1,28 17,28 v 4 l -8,1 v -2 l -8,1 z" fill="#ebebeb"/>
+    <path d="m 26,45 h 16 l 0,8 -8,1 v -2 l -8,1 z" fill="#ebebeb"/>
+    <path d="m 51,45 h 16 l 0,8 -8,1 v -2 l -8,1 z" fill="#ebebeb"/>
+    <path d="m 15,26 h 5 v 10 h 20 v 5" fill="none" stroke="#9a9a9a" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 15,22 h 5 v -7 h 20 v 5" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 40,26 h 5 V 15 h 20 v 5" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 26,24 h 16" stroke="#000000"/>
+    <path d="m 26,28 h 16" stroke="#000000"/>
+    <text x="21" y="18.5" font-size="3.5px">first\_file</text>
+    <text x="77" y="52" font-size="3.5px" fill="#048966">After</text>
+    <text x="1" y="52" font-size="3.5px" fill="#bf3959">Before</text>
+    <text x="46" y="18.5" font-size="3.5px">next\_file</text>
+    <text x="114" y="48" font-size="3.5px" text-anchor="end" fill="#048966">(b)</text>
+    <text x="114" y="26" font-size="3.5px" text-anchor="end" fill="#048966">(a)</text>
+    <text x="89" y="26" font-size="3.5px" text-anchor="end" fill="#048966">(c)</text>
+    <text x="39" y="39.5" font-size="3.5px" fill="#9a9a9a" text-anchor="end">first\_free\_block</text>
+    <text x="41" y="31" font-size="3.5px" text-anchor="end">...</text>
+    <text x="41" y="23" font-size="3.5px" text-anchor="end">...</text>
+    <path d="M 1,24 H 17" stroke="#000000"/>
+    <path d="M 1,28 H 17" stroke="#000000"/>
+    <circle cx="15" cy="22" r="1"/>
+    <circle cx="40" cy="26" r="1"/>
+    <circle cx="15" cy="26" r="1" fill="#9a9a9a"/>
+    <path d="m 26,20 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000"/>
+    <path d="M 51,24 H 67" stroke="#000000"/>
+    <path d="M 51,28 H 67" stroke="#000000"/>
+    <text x="66" y="31" font-size="3.5px" text-anchor="end">...</text>
+    <text x="66" y="23" font-size="3.5px" text-anchor="end">...</text>
+    <path d="m 51,20 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000"/>
+    <path d="m 40,43 h 5 v -7 h 20 v 5" fill="none" stroke="#9a9a9a" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="M 26,45 H 42" stroke="#000000"/>
+    <text x="46" y="39.5" font-size="3.5px" fill="#9a9a9a">next\_block</text>
+    <circle cx="40" cy="43" r="1" fill="#9a9a9a"/>
+    <path d="m 26,41 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000"/>
+    <path d="M 51,45 H 67" stroke="#000000"/>
+    <text x="66" y="44" font-size="3.5px" text-anchor="end" fill="#9a9a9a">...</text>
+    <path d="m 51,41 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000"/>
+    <path d="m 1,20 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 77,27 93,27 v 4 l -8,1 v -2 l -8,1 z" fill="#ebebeb"/>
+    <path d="m 127,45 h 16 v 8 l -8,1 v -2 l -8,1 z" fill="#ebebeb"/>
+    <path d="m 91,25 h 5 l 0,11 h 45 v 5" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 91,21 h 5 l 0,-7 h 20 L 116,19" fill="none" stroke="#000000" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 116,25 h 5 v 18 h -3" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 116,47 h 8 V 14 h 17 v 5" fill="none" stroke="#048966" stroke-dasharray="0.8, 0.2" marker-end="url(#arrow)"/>
+    <path d="m 102,23 h 16" stroke="#000000"/>
+    <path d="m 102,27 h 16" stroke="#000000"/>
+    <text x="117" y="30" font-size="3.5px" text-anchor="end">...</text>
+    <text x="117" y="22" font-size="3.5px" text-anchor="end">...</text>
+    <text x="117" y="44" font-size="3.5px" text-anchor="end" fill="#048966">...</text>
+    <path d="M 77,23 H 93" stroke="#000000"/>
+    <path d="M 77,27 H 93" stroke="#000000"/>
+    <circle cx="91" cy="21" r="1"/>
+    <circle cx="116" cy="25" r="1" fill="#048966"/>
+    <path d="m 102,49 h 16" stroke="#048966"/>
+    <text x="117" y="52" font-size="3.5px" text-anchor="end" fill="#048966">...</text>
+    <circle cx="116" cy="47" r="1" fill="#048966"/>
+    <circle cx="91" cy="25" r="1" fill="#048966"/>
+    <path d="m 102,19 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000"/>
+    <path d="m 127,23 h 16" stroke="#000000"/>
+    <path d="m 127,27 h 16" stroke="#000000"/>
+    <text x="142" y="30" font-size="3.5px" text-anchor="end">...</text>
+    <text x="142" y="22" font-size="3.5px" text-anchor="end">...</text>
+    <path d="m 127,19 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000"/>
+    <path d="m 102,45 h 16" stroke="#048966"/>
+    <path d="m 102,41 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#048966"/>
+    <path d="m 127,45 h 16" stroke="#000000"/>
+    <text x="142" y="44" font-size="3.5px" text-anchor="end" fill="#9a9a9a">...</text>
+    <path d="m 127,41 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000"/>
+    <path d="m 77,19 h 16 v 12 l -8,1 v -2 l -8,1 z" fill="none" stroke="#000000" stroke-width="0.4"/>
+    <path d="M 72,15 V 53" stroke="#000000" stroke-dasharray="0.6 0.6"/>
+    <text x="66" y="27" font-size="3.5px" text-anchor="end">...</text>
+    <text x="142" y="26" font-size="3.5px" text-anchor="end">...</text>
+  </g>
+</svg>

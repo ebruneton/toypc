@@ -1,0 +1,2074 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter3}
+\setcounter{rustid}{0}
+
+\rust{
+  context.write_backup("website/backups", "opcodes_compiler.txt")?;
+}
+
+\chapter{Opcodes Compiler}\label{chapter:opcodes-compiler}
+
+We now have everything we need to implement our compiler. We start in this
+chapter with a very simple version, whose main role is to convert opcode names
+into their numerical value. Indeed, this initial compiler must be written in
+binary form, and should thus be as small as possible, in order to simplify our
+task. Hopefully, this is the last program we need to write in such form
+(besides a few small functions to launch programs with the memory editor). We
+use it at the end to write a command editor, namely a small program to make it
+easier to run other programs.
+
+\section{Requirements}\label{section:toyc0-requirements}
+
+The goal of our initial compiler is to convert opcode instructions from textual
+to binary form. For instance, given the text ``\insn{fn} \insn{1} \insn{get}
+\insn{0} \insn{cst\_0} \insn{ifne} \insn{10} $\ldots$'', it should produce, in
+increasing address order, \hexa{19} \hexa{01} \hexa{16} \hexa{00} \hexa{00}
+\hexa{10} \hexa{000A} $\ldots$ The programs that it should accept as input can
+be described as ``zero or more instructions, one after the other'', where each
+instruction is one of ``\insn{cst\_0}'', ``\insn{cst\_1}'', ``\insn{cst8}''
+followed by an 8-bit value, ``\insn{cst}'' followed by a 32-bit value, and so
+on for the remaining opcodes. These rules define the {\em grammar} of a {\em
+programming language}, that valid programs must follow. They can be summarized
+with:
+
+\begin{Paragraph}
+program: instruction*\\
+instruction: ``\insn{cst\_0}'' | ``\insn{cst\_1}'' | ``\insn{cst8}'' INTEGER |
+``\insn{cst32}'' INTEGER | $\ldots$
+\end{Paragraph}
+
+\noindent where ``*'' means ``zero or more times'' and ``|'' means ``or''. Text
+between quotes, as well as names in capital letters, refer to individual
+``words'' or ``punctuation signs'' of the program, called {\em tokens}. As in
+English, tokens are generally separated by spaces. Here INTEGER designates an
+integer value, \ie, a token made of one or more decimal digit characters. In
+this context, we define the precise requirements of our initial compiler as
+follows:
+\begin{itemize}
+  \item The compiler should take as input a source code address, noted
+  $\it{src\_buffer}$, and a destination address where to store the compiled
+  code, noted $\it{dst\_buffer}$.
+
+  \item The source code should be in a data buffer (see
+  \cref{subsection:data-buffer}), and should follow the above grammar.
+
+  \item The compiled code must be produced in a data buffer. It must be the
+  binary form of the bytecode instructions provided as input.
+
+  \item The compiler should return 0 if the compilation was successful, and a
+  non-zero value otherwise. In the latter case, the location of the error in
+  the source code should be stored at the $\it{dst\_buffer}$ address.
+\end{itemize}
+
+Many errors could occur in the source code, such as an undefined opcode name
+(``cst\_3''), an opcode without argument followed by integer value (``cst\_0
+10''), an opcode with argument not followed by an integer value (``cst8
+cst8''), an opcode with an 8-bit argument followed by an integer greater than
+255, a jump instruction opcode followed by an invalid instruction offset, etc.
+To simplify our task, in this chapter, we only require the detection of (most
+of the) undefined opcode names.
+
+\section{Algorithms}
+
+A compiler can generally be divided in at least 3 parts: a {\em scanner}, a {\em
+parser}, and a {\em backend} (see \cref{fig:compiler-parts}). The scanner reads
+the source code and extracts its individual tokens. The parser calls the scanner
+to read tokens, and checks that they follow the programming language's grammar.
+The backend provides functions to generate the compiled code. In very simple
+compilers such as ours, the parser uses the backend to directly produce the
+compile code, while analyzing the source code.
+
+Our compiler uses 5 main variables, shown in \cref{fig:compiler-parts}. Besides
+$\it{src\_buffer}$ and $\it{dst\_buffer}$, already defined, the most
+important ones are $src$ and $dst$. $src$ points to the next character to read.
+$dst$ points to the next byte where compiled code must be written. Finally,
+$src\_end$ points to the next byte after the end of the source code. When $src$
+reaches $src\_end$ the whole program has been read and the compiler returns.
+
+\begin{Figure}
+  \input{figures/chapter3/compiler-parts.tex}
+
+  \caption{The 3 parts of our compiler (top) and its 2 data structures
+  (bottom), here with 3 tokens of a 15 bytes program already read (left) and
+  compiled (right).}\label{fig:compiler-parts}
+\end{Figure}
+
+\bigskip \paragraph*{Scanner} The scanner splits the source code in tokens,
+detects invalid tokens, and returns some data about each token. For instance, it
+should detect that ``\insn{cst\_3}'' is invalid, and it could return 42 for the
+token ``\insn{42}'' (\hexa{34}\hexa{32} in ASCII). To simplify, in this chapter,
+we move the error detection in the backend. A token is then any sequence of
+characters which does not contain a space, a tabulation, or a ``new line''. To
+compute the numerical value $v$ of an integer token ``$c_{n-1}\ldots c_1c_0$'',
+we can initialize $v$ to 0 and update $v$ to $10v+(c_i-\hexa{30})$, for each
+character $c_i$ from left to right. In fact, to simplify the initial compiler,
+the scanner returns such a value for {\em all} tokens. For instance, for the
+``\insn{fn}'' token (\hexa{66}\hexa{6E} in ASCII), it returns
+$10(\hexa{66}-\hexa{30})+(\hexa{6E}-\hexa{30})=602$. In summary, a token is read
+as described in \cref{alg:scanner0}, which also corresponds to the finite state
+machine in \cref{fig:toyc0-automaton}.
+
+\begin{Algorithm}
+\caption{Reading a token and returning its value $v$.}\label{alg:scanner0}
+\begin{algorithmic}[1]
+\Begin while $src<src\_end$ and the character at $src$ is a space, tab or ``new
+line''
+  \State increment $src$ by 1 to skip this character
+\End
+\State if $src=src\_end$ return nothing
+\State initialize $v$ to 0
+\Begin while $src<src\_end$ and the character $c$ at $src$ is not a space, tab
+or ``new line''
+  \State update $v$ to $10v+(c-\hexa{30})$
+  \State increment $src$ by 1
+\End
+\State return $v$
+\end{algorithmic}
+\end{Algorithm}
+
+\begin{Figure}
+  \newcommand\vsp[1][.75em]{%
+    \makebox[#1]{%
+      \kern.07em
+      \vrule height.3ex
+      \hrulefill
+      \vrule height.3ex
+      \kern.07em
+    }%
+  }
+  \input{figures/chapter3/automaton.tex}
+
+  \caption{The scanner and parser can be modeled with Finite State Machines (see
+  \cref{subsection:keyboard-driver-design}) reading characters $c$ (left) and
+  token values $v$ (right), respectively. \vsp~represents a space, tab or ``new
+  line''. Many parser transitions are not shown.}\label{fig:toyc0-automaton}
+\end{Figure}
+
+\bigskip \paragraph*{Backend} The backend provides functions to write opcodes
+and their arguments in the output buffer. Here we mostly need functions to
+write 8-bit and 16-bit values in memory, plus some code to detect invalid
+opcodes. Valid opcodes are between 0 and 31 included, but we also add here a
+pseudo opcode \insn{d} (for ``data'', with value 32), with an 8-bit argument
+$x$. Once compiled, a \insn{d} $x$ instruction simply produces the byte $x$. It
+can be used to mix code and data (such as the transition table of our keyboard
+driver). In summary, a function to write an $opcode$ (without its argument)
+should return an error if $opcode>32$, do nothing if $opcode=32$, or write the
+$opcode$ byte otherwise.
+
+\bigskip \paragraph*{Parser} The parser calls the scanner to read the source
+code one token at a time, and generates the corresponding compiled code with the
+backend. For our very simple initial compiler, the parser can be modeled with a
+Finite State Machine, represented in \cref{fig:toyc0-automaton}. There are 4
+states, corresponding to the expected ``type'' of the next token returned by the
+scanner. State 0 corresponds to opcode tokens, such as \insn{add}. States 1, 2,
+and 4 correspond to 1, 2, and 4-byte opcode arguments, respectively (such as the
+argument of \insn{cst8}, \insn{iflt}, and \insn{cst}, respectively). In these 3
+states, any token value $v$ should simply be written at $dst$ in 1, 2, or 4
+bytes, and the next state is state 0. In state 0, the opcode corresponding to
+the token value $v$, noted $opcode(v)$, should be written at $dst$. And the next
+state, noted $S(v)$, should be either 0, 1, 2, or 4, depending on this opcode.
+By listing the opcode names and computing their token values $v$ with
+\cref{alg:scanner0}, we get $opcode(v)$ and $S(v)$, shown in
+\cref{table:parser0}.
+
+In order to implement this Finite State Machine we need functions to compute
+$opcode(v)$ and $S(v)$. For this, the easiest is to store \cref{table:parser0}
+in memory. $opcode(v)$ can then be computed by finding the row corresponding to
+$v$, and then returning the value in its $opcode$ column -- and similarly for
+$S(v)$. In fact, since the $opcode$ of the $i^{th}$ row is $i$, we don't need
+to store this column. Notice also that the least significant byte $lsb(v)$ of
+the token values $v$ are all unique. We can thus store only one byte per value
+in this column. In summary, $opcode(v)$ and $S(v)$ can be computed as described
+in \cref{alg:parser0-getopcode}, where {\tt LSB} and {\tt S} are the $lsb(v)$
+and $S(v)$ value lists.
+
+\rust{
+  let opcode_names = vec!["cst_0", "cst_1", "cst8", "cst", "add", "sub", "mul",
+  "div", "and", "or", "lsl", "lsr", "iflt", "ifeq", "ifgt", "ifle", "ifne",
+  "ifge", "goto", "load", "store", "ptr", "get", "set", "pop", "fn", "call",
+  "callr", "calld", "ret", "retv", "blx", "d"];
+  let opcode_args = [0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2,
+  2, 0, 0, 1, 1, 1, 0, 1, 2, 2, 0, 0, 0, 0, 1];
+  assert_eq!(opcode_args.len(), opcode_names.len());
+  let token_value = |opcode:&&str| {
+    let mut v = 0;
+    for c in opcode.chars() {
+      v = 10 * v + (c as u32 - '0' as u32);
+    }
+    v
+  };
+  let token_values : Vec<u32> =
+      opcode_names.iter().map(token_value).collect();
+  let table_row = |i: usize| {
+    format!("{{\\makecell\\tt {}}} & {:X} & {:02X} & {}",
+        opcode_names[i].replace('_', "\\_"), token_values[i], i, opcode_args[i])
+  };
+}
+
+\begin{Table}
+\begin{tabular}[t]{|l|r|r|c|} \hline
+  \makecell{\thead{token}} & $v$ & $opcode$ & $S$ \\ \hline
+  \rs{table_row(0)} \\
+  \rs{table_row(1)} \\
+  \rs{table_row(2)} \\
+  \rs{table_row(3)} \\
+  \rs{table_row(4)} \\
+  \rs{table_row(5)} \\
+  \rs{table_row(6)} \\
+  \rs{table_row(7)} \\
+  \rs{table_row(8)} \\
+  \rs{table_row(9)} \\
+  \rs{table_row(10)} \\
+  \rs{table_row(11)} \\
+  \rs{table_row(12)} \\
+  \rs{table_row(13)} \\
+  \rs{table_row(14)} \\
+  \rs{table_row(15)} \\
+  \rs{table_row(16)} \\ \hline
+\end{tabular}
+\hspace{1cm}
+\begin{tabular}[t]{|l|r|r|c|} \hline
+  \makecell{\thead{token}} & $v$ & $opcode$ & $S$ \\ \hline
+  \rs{table_row(17)} \\
+  \rs{table_row(18)} \\
+  \rs{table_row(19)} \\
+  \rs{table_row(20)} \\
+  \rs{table_row(21)} \\
+  \rs{table_row(22)} \\
+  \rs{table_row(23)} \\
+  \rs{table_row(24)} \\
+  \rs{table_row(25)} \\
+  \rs{table_row(26)} \\
+  \rs{table_row(27)} \\
+  \rs{table_row(28)} \\
+  \rs{table_row(29)} \\
+  \rs{table_row(30)} \\
+  \rs{table_row(31)} \\
+  \rs{table_row(32)} \\ \hline
+\end{tabular}
+  \caption{The token value $v$ and the corresponding compiled $opcode$ and next
+  state $S$ for each valid opcode token.}\label{table:parser0}
+\end{Table}
+
+\rust{
+  let lsb = |v:u32| { format!("{:02X}", v & 0xFF) };
+  let lsb_set : HashSet<u32> = token_values.iter().map(|v| v & 0xFF).collect();
+
+  assert_eq!(lsb_set.len(), token_values.len());
+  assert!(!lsb_set.contains(&(token_value(&"cst_3") & 0xFF)));
+  assert!(lsb_set.contains(&(token_value(&"cst_2") & 0xFF)));
+}
+
+\begin{Algorithm}
+\caption{Computing \{$opcode(v)$, $S(v)$\} for a token value
+$v$.}\label{alg:parser0-getopcode}
+\begin{algorithmic}[1]
+\Statex {\tt LSB} = [\rs{lsb(token_values[0])}, \rs{lsb(token_values[1])},
+\rs{lsb(token_values[2])}, \rs{lsb(token_values[3])}, $\ldots$], {\tt S} = [0,
+0, 1, 4, $\ldots$]
+\State initialize $i$ to 0
+\Begin while $i \le 32$ and the $i^{th}$ value in {\tt LSB} is not equal to $(v
+\wedge 255)$
+  \State increment $i$ by 1
+\End
+\State return \{$i$, $i^{th}$ value in {\tt S}\}
+\end{algorithmic}
+\end{Algorithm}
+
+Note that for the invalid token \insn{cst\_3}, $lsb(v)$ is equal to
+\rs{lsb(token_value(&"cst_3"))}, which is not in {\tt LSB}. In such cases,
+\cref{alg:parser0-getopcode} returns the invalid opcode 33. Hence, most invalid
+tokens can be detected by checking for invalid opcodes. However, some invalid
+tokens, such as \insn{cst\_2}, cannot be detected like this because the least
+significant byte of their token value {\em is} in {\tt LSB}. We fix this in
+\cref{chapter:labels-compiler}, at the price of a greater complexity.
+
+\section{Implementation}\label{section:toyc0-implementation}
+
+\rust{
+  let compiler_address = next_page_address(
+      context.memory_region("text_editor").end());
+  let mut b = BytecodeAssembler::new(RegionKind::DataBuffer, compiler_address);
+  b.import_labels(context.memory_region("graphics_card_driver"));
+  b.import_labels(context.memory_region("flash_driver"));
+}
+
+We can now implement this initial compiler. We do this in a new data buffer, in
+the next flash memory page after the text editor (\ie, at address
+\rs{hex(compiler_address)}). We start with the scanner, with a function
+returning 1 if a given character $c$ is a space, a tabulation, or a ``new line''
+(\hexa{20}, \hexa{09}, and \hexa{0A} in ASCII, respectively), and 0 otherwise:
+
+\begin{TwoColumns}
+\rs{b.func("tc_is_space", &["c"], "bool", &[])}\\
+\bytecode{
+  b.get("c");
+  b.cst8(32);
+  b.ifeq("is_space_true");
+  b.get("c");
+  b.cst8(9);
+  b.ifeq("is_space_true");
+  b.get("c");
+  b.cst8(10);
+  b.ifeq("is_space_true");
+  b.cst_0();
+  b.retv();
+  b.label("is_space_true");
+  b.cst_1();
+  b.retv();
+}
+\end{TwoColumns}
+
+We then implement \cref{alg:scanner0} in two parts. Steps 1 and 2 are
+implemented in the following function, which returns the new $src$ value:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("tc_skip_spaces", &["src", "src_end"], "src'", &[])}
+
+Initialize $src'$ to $src$.
+
+\bytecode[switchcolumn]{
+  b.get("src");
+  b.def("src'");
+}
+
+Step 1. If $src'$ (in the $6^{th}$ stack frame slot) is greater than or equal to
+$src\_end$, go to the last instruction.
+
+\bytecode[switchcolumn]{
+  b.label("tc_skip_spaces_loop");
+  // while src' < end && tc_is_space(load_byte(src')) == 1 :
+  b.get("src'");
+  b.get("src_end");
+  b.ifge("tc_skip_spaces_end");
+}
+
+If the character at $src'$ is not a spacing character, go to the last
+instruction.
+
+\bytecode[switchcolumn]{
+  b.get("src'");
+  b.call("load_byte");
+  b.call("tc_is_space");
+  b.cst_1();
+  b.ifne("tc_skip_spaces_end");
+}
+
+Step 2. Increment $src'$ (the top stack value) by 1 and go back to step 1.
+
+\bytecode[switchcolumn]{
+  // src' = src' + 1;
+  b.cst_1();
+  b.add();
+  b.goto("tc_skip_spaces_loop");
+}
+
+Return the top stack value $src'$.
+
+\bytecode[switchcolumn]{
+  b.label("tc_skip_spaces_end");
+  // return src';
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+Steps 5 to 7 are implemented in the next function, which also returns the new
+$src$ value (we assume that steps 3 and 4 are done by the caller). Since a
+function can't return several values, it can't return $v$ as described in
+\cref{alg:scanner0}. Instead, it takes as parameter a {\em pointer} $v^p$ to a
+memory word where $v$ can be read and modified:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("tc_read_token", &["src", "src_end", "v^p"], "src'", &[])}
+
+Initialize $src'$ to $src$.
+
+\bytecode[switchcolumn]{
+  b.get("src");
+  b.def("src'");
+}
+
+Step 5. If $src'$ (in the $7^{th}$ stack frame slot) is greater than or equal to
+$src\_end$, go to the last instruction.
+
+\bytecode[switchcolumn]{
+  b.label("tc_read_token_loop");
+  // while src' < src_end && tc_is_space(load_byte(src')) == 0 :
+  b.get("src'");
+  b.get("src_end");
+  b.ifge("tc_read_token_end");
+}
+
+If the character at $src'$ is a spacing character, go to the last instruction.
+
+\bytecode[switchcolumn]{
+  b.get("src'");
+  b.call("load_byte");
+  b.call("tc_is_space");
+  b.cst_1();
+  b.ifeq("tc_read_token_end");
+}
+
+Step 6. Update $v$, at address $v^p$, to $10v+(c-\hexa{30})$, where $c$ is the
+character at $src'$. To simplify, we do not check if this new value actually
+fits in a word.
+
+\bytecode[switchcolumn]{
+  // *v = *v * 10 + (load8(src') - '0');
+  b.get("v^p");
+  b.get("v^p");
+  b.load();
+  b.cst8(10);
+  b.mul();
+  b.get("src'");
+  b.call("load_byte");
+  b.cst8(48);
+  b.sub();
+  b.add();
+  b.store();
+}
+
+Step 7. Increment $src'$ (the top stack value) by 1 and go back to step 5.
+
+\bytecode[switchcolumn]{
+  // src' = src' + 1;
+  b.cst_1();
+  b.add();
+  b.goto("tc_read_token_loop");
+}
+
+Return the top stack value $src'$.
+
+\bytecode[switchcolumn]{
+  b.label("tc_read_token_end");
+  // return src';
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+This concludes the scanner part. We continue with the backend part. As said
+above, we mostly need here functions to store 8-bit and 16-bit values in memory.
+We already have a \verb!store_byte! function (see
+\cref{table:flash_driver_functions}), hence we only need a new \verb!store_half!
+function (very similar to \verb!store_byte!, already explained):
+
+\begin{TwoColumns}
+\rs{b.func("store_half", &["ptr", "value"], "", &[])}\\
+\bytecode{
+  b.get("ptr");
+  b.get("ptr");
+  b.load();
+  b.cst(0xFFFF0000);
+  b.and();
+  b.get("value");
+  b.or();
+  b.store();
+  b.ret();
+}
+\end{TwoColumns}
+
+We finish the backend part with a function to write an $opcode$ byte at $dst$,
+which returns the new $dst$ value, $dst'$. As described above, this function
+returns an error (represented with $dst=0$) if $opcode>32$, and does nothing if
+$opcode=32$:
+
+\bigskip \rs{b.func("tc_write_opcode", &["dst", "opcode"], "dst'", &[])}
+\vspace{-0.9\baselineskip}
+\begin{TwoColumns}
+\bytecode{
+  // if opcode == 33 { return 0; }
+  b.get("opcode");
+  b.cst8(33);
+  b.ifne("tc_write_opcode_valid");
+  b.cst_0();
+  b.retv();
+  b.label("tc_write_opcode_valid");
+  // if opcode == 32 { return dst; }
+  b.get("opcode");
+  b.cst8(32);
+  b.ifne("tc_write_opcode_end");
+  // return dst;
+  b.get("dst");
+  b.retv();
+  b.label("tc_write_opcode_end");
+  // store_byte(dst, opcode);
+  b.get("dst");
+  b.get("opcode");
+  b.call("store_byte");
+  // return dst + 1;
+  b.get("dst");
+  b.cst_1();
+  b.add();
+  b.retv();
+}
+\end{TwoColumns}
+
+\rust{
+  b.label("LSB");
+  for x in token_values {
+    b.u8_data(x as u8);
+  }
+  b.u8_data(0);
+  b.label("ARGUMENT");
+  for x in opcode_args {
+    b.u8_data(x);
+  }
+  b.u8_data(0);
+}
+
+We continue the implementation with the parser part, starting with
+\cref{alg:parser0-getopcode}. We first store the {\tt LSB} and {\tt S} tables,
+at addresses \rs{hex(b.label_address("LSB"))} and
+\rs{hex(b.label_address("ARGUMENT"))}, respectively (note that we end each
+table with a $33^{rd}$ 0 value, since $i$ can be equal to 33 at step 4 of
+\cref{alg:parser0-getopcode}):
+
+\bytecode[binary]{
+  b.label("print-the-above-data");
+}
+
+We then implement \cref{alg:parser0-getopcode} in the following function. Since
+a function can't return several values, it returns the $opcode$ only, and
+stores $S$ at an address $S^p$ passed as parameter. Note also that this
+function takes the least significant byte $lsb$ of $v$ as parameter (instead of
+$v$ in \cref{alg:parser0-getopcode}):
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("tc_get_opcode", &["lsb", "S^p"], "opcode", &[])}
+
+Step 1. Initialize $i$ to 0.
+
+\bytecode[switchcolumn]{
+  b.cst_0();
+  b.def("i");
+}
+
+Step 2. If $i$ (in the $6^{th}$ stack frame slot) is greater than 32, go to
+step 4.
+
+\bytecode[switchcolumn]{
+  // while i <= 32 && get8(LSB + i) != lsb
+  b.label("tc_get_opcode_loop");
+  b.get("i");
+  b.cst8(32);
+  b.ifgt("tc_get_opcode_loop_end");
+}
+
+If the $i^{th}$ value in {\tt LSB} is equal to $lsb$, go to step 4.
+
+\bytecode[switchcolumn]{
+  b.cst(b.label_address("LSB"));
+  b.get("i");
+  b.add();
+  b.call("load_byte");
+  b.get("lsb");
+  b.ifeq("tc_get_opcode_loop_end");
+}
+
+Step 3. Increment the top stack value $i$ by 1 and go back to step 2.
+
+\bytecode[switchcolumn]{
+  b.cst_1();
+  b.add();
+  b.goto("tc_get_opcode_loop");
+}
+
+Step 4. Store the $i^{th}$ value of {\tt S} at $S^p$ and return the top stack
+value $i$.
+
+\bytecode[switchcolumn]{
+  b.label("tc_get_opcode_loop_end");
+  // *S^p = get8(ARGUMENT + i);
+  b.get("S^p");
+  b.cst(b.label_address("ARGUMENT"));
+  b.get("i");
+  b.add();
+  b.call("load_byte");
+  b.store();
+  // return opcode;
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+With this we can now implement a function to perform a transition of the
+parser's Finite State Machine. The following function takes a pointer $S^p$ to
+the current state $S$ as parameter, as well as a token value $v$ and the
+current value of $dst$. It performs the corresponding action, updates the value
+at $S^p$ to the next state, and returns the new $dst$ value. It has 4 main
+parts, corresponding to the 4 possible values of the current state, plus a
+shared $5^{th}$ part:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("tc_parse_token", &["dst", "v", "S^p"], "dst'", &[])}
+
+Get the value $S$ at address $S^p$.
+
+\bytecode[switchcolumn]{
+  // let S = *S^p;
+  b.get("S^p");
+  b.load();
+  b.def("S");
+}
+
+Part 1. If $S$ (in the $7^{th}$ stack frame slot) is not 0, go to part 2.
+
+\bytecode[switchcolumn]{
+  // if S == OPCODE:
+  b.get("S");
+  b.cst_0();
+  b.ifne("tc_parse_token_not_opcode");
+}
+
+Otherwise, compute $opcode(v)$ and store $S(v)$ at $S^p$ by calling
+\verb!tc_get_opcode! on the least significant byte of $v$, $v \wedge 255$.
+Write this opcode at $dst$ by calling \verb!tc_write_opcode!, and return the
+result.
+
+\bytecode[switchcolumn]{
+  // return tc_write_opcode(dst, tc_get_opcode(v & 255, S^p));
+  b.get("dst");
+  b.get("v");
+  b.cst8(255);
+  b.and();
+  b.get("S^p");
+  b.call("tc_get_opcode");
+  b.call("tc_write_opcode");
+  b.retv();
+}
+
+Part 2. If $S$ is not 1, go to part 3.
+
+\bytecode[switchcolumn]{
+  b.label("tc_parse_token_not_opcode");
+  // if S == DATA8:
+  b.get("S");
+  b.cst_1();
+  b.ifne("tc_parse_token_not_data8");
+}
+
+Otherwise, store the byte $v$ at $dst$ and go to part 5 (to simplify we do
+not check if $v$ actually fits in a byte).
+
+\bytecode[switchcolumn]{
+  // store_byte(dst, v);
+  b.get("dst");
+  b.get("v");
+  b.call("store_byte");
+  b.goto("tc_parse_token_end");
+}
+
+Part 3. If $S$ is not 2, go to part 4.
+
+\bytecode[switchcolumn]{
+  b.label("tc_parse_token_not_data8");
+  // else if S == DATA16:
+  b.get("S");
+  b.cst8(2);
+  b.ifne("tc_parse_token_not_data16");
+}
+
+Otherwise, store the half word $v$ at $dst$ and go to part 5 (to simplify we
+do not check if $v$ actually fits in a half word).
+
+\bytecode[switchcolumn]{
+  // store_half(dst, v);
+  b.get("dst");
+  b.get("v");
+  b.call("store_half");
+  b.goto("tc_parse_token_end");
+}
+
+Part 4. $S$ is necessarily equal to 4. Store the word $v$ at $dst$ and continue
+to part 5.
+
+\bytecode[switchcolumn]{
+  b.label("tc_parse_token_not_data16");
+  // *dst = v;
+  b.get("dst");
+  b.get("v");
+  b.store();
+}
+
+Part 5. Update the value at $S^p$ to 0, the next state after a transition from
+state 1, 2, or 4.
+
+\bytecode[switchcolumn]{
+  b.label("tc_parse_token_end");
+  // *S^p = OPCODE;
+  b.get("S^p");
+  b.cst_0();
+  b.store();
+}
+
+Return the new $dst$ value, $dst+S$ (since $S$ is the number of bytes just
+written).
+
+\bytecode[switchcolumn]{
+  // return dst + S;
+  b.get("dst");
+  b.get("S");
+  b.add();
+  b.retv();
+}
+\end{paracol}
+\end{Paragraph}
+
+We can finally implement the compiler's main function. It starts by
+initializing $src$ to $\it{src\_buffer}+4$, $src\_end$ to
+$src+\mathrm{mem32}[\it{src\_buffer}]$, $dst$ to $\it{dst\_buffer}+4$,
+the token value $v$ to 0, and the Finite State Machine state $S$ to 0, in stack
+frame slots 6, 7, 8, 9, and 10, respectively:
+
+\bigskip \rs{b.func("tc_main", &["src_buffer", "dst_buffer"], "error", &[])}
+\vspace{-0.9\baselineskip}
+\begin{TwoColumns}
+\bytecode{
+  // let src = src_buffer + 4;
+  b.get("src_buffer");
+  b.cst8(4);
+  b.add();
+  b.def("src");
+  // let end = src + *src_buffer;
+  b.get("src");
+  b.get("src_buffer");
+  b.load();
+  b.add();
+  b.def("src_end");
+  // let dst = dst_buffer + 4;
+  b.get("dst_buffer");
+  b.cst8(4);
+  b.add();
+  b.def("dst");
+  // let v = 0;
+  b.cst_0();
+  b.def("v");
+  // let S = OPCODE;
+  b.cst_0();
+  b.def("S");
+}
+\end{TwoColumns}
+
+It continues with a loop which 1) skips spaces and returns 0 if $src\_end$ is
+reached, 2) reads a token and performs the corresponding Finite State Machine
+transition, 3) returns 1 if an invalid token was found:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+Step 1. Update $src$ to the result of \verb!tc_skip_spaces!($src$, $src\_end$).
+
+\bytecode[switchcolumn]{
+  b.label("tc_main_loop");
+  // loop :
+  // src = tc_skip_spaces(src, src_end);
+  b.get("src");
+  b.get("src_end");
+  b.call("tc_skip_spaces");
+  b.set("src");
+}
+
+Step 2. If $src<src\_end$, go to step 3.
+
+\bytecode[switchcolumn]{
+  // if src >= src_end :
+  b.get("src");
+  b.get("src_end");
+  b.iflt("tc_main_ok");
+}
+
+Otherwise, \ie, if the end of the program is reached, set the value at
+$\it{dst\_buffer}$ to the number of bytes written,
+$dst-\it{dst\_buffer}-4$, and return 0 (meaning ``no error''). To simplify,
+we do not check if $S$ is 0 (if not the program ends in the middle of an
+instruction, which is an error).
+
+\bytecode[switchcolumn]{
+  // *dst_buffer = dst - dst_buffer - 4;
+  b.get("dst_buffer");
+  b.get("dst");
+  b.get("dst_buffer");
+  b.sub();
+  b.cst8(4);
+  b.sub();
+  b.store();
+  // return 0;
+  b.cst_0();
+  b.retv();
+}
+
+Step 3. Call the scanner to read a token and store its value in $v$. Update
+$src$ to the result of \verb!tc_read_token!.
+
+\bytecode[switchcolumn]{
+  b.label("tc_main_ok");
+  // src = tc_read_token(src, src_end, &v);
+  b.get("src");
+  b.get("src_end");
+  b.ptr("v");
+  b.call("tc_read_token");
+  b.set("src");
+}
+
+Step 4. Perform the Finite State Machine transition corresponding to $v$.
+Update $dst$ to the result of \verb!tc_parse_token!.
+
+\bytecode[switchcolumn]{
+  // dst = tc_parse_token(dst, v, &S);
+  b.get("dst");
+  b.get("v");
+  b.ptr("S");
+  b.call("tc_parse_token");
+  b.set("dst");
+}
+
+Step 5. If $dst \ne 0$, go to step 6.
+
+\bytecode[switchcolumn]{
+  // if dst == 0 :
+  b.get("dst");
+  b.cst_0();
+  b.ifne("tc_main_end_loop");
+}
+
+Otherwise, \ie, if an invalid token has been read, set the value at
+$\it{dst\_buffer}$ to the location of the error,
+$src-\it{src\_buffer}-4$, and return 1 (meaning ``error'').
+
+\bytecode[switchcolumn]{
+  // *dst_buffer = src - src_buffer - 4;
+  b.get("dst_buffer");
+  b.get("src");
+  b.get("src_buffer");
+  b.sub();
+  b.cst8(4);
+  b.sub();
+  b.store();
+  // return 1;
+  b.cst_1();
+  b.retv();
+}
+
+Step 6. Reinitialize $v$ to 0 for the next loop iteration, and go back to step
+1.
+
+\bytecode[switchcolumn]{
+  b.label("tc_main_end_loop");
+  // v = 0;
+  b.cst_0();
+  b.set("v");
+  b.goto("tc_main_loop");
+}
+\end{paracol}
+\end{Paragraph}
+
+In summary the full code of our initial compiler is the following:
+
+\rs{b.get_bytecode_listing(0..b.get_instruction_count() as usize, false)}
+
+\rust{
+  // generate command file to flash toyc0 with SAMBA
+  let mut commands = Vec::new();
+  commands.extend(b.boot_assistant_commands());
+  commands.push(String::from("flash#"));
+  commands.push(String::from("reset#"));
+  write_lines("website/part3", "opcodes_compiler.txt", &commands)?;
+}
+
+\rust{
+  // enter toyc0 code in RAM with memory editor
+  let display = Rc::new(RefCell::new(TextDisplay::default()));
+  context.set_display(display.clone());
+
+  context.add_memory_region("toyc0", b.memory_region());
+  context.micro_controller().borrow_mut().reset();
+  context.run_until_get_char();
+  let mut context1 = context.clone();
+
+  const COMMAND_ADDRESS: u32 = 0x20080000;
+  const BUFFER_RAM_ADDRESS: u32 = 0x20070000;
+  context.type_ascii(&b.memory_editor_commands(BUFFER_RAM_ADDRESS));
+}
+
+To store it in flash memory we must enter it in RAM first, lets say at address
+\rs{hex(BUFFER_RAM_ADDRESS)}, and then save it in flash. In the memory editor,
+type ``w\rs{hex_word_low(BUFFER_RAM_ADDRESS)}''+Enter, and then store the
+compiler size in bytes at this address by typing
+``w\rs{hex_word_low(b.bytecode_size())}''+Enter. Continue by entering each word
+of the compiler code, listed above, by typing its value followed by Enter.
+Finally, save this code in flash memory (starting at
+$page=\rs{dec(page_number(compiler_address))}$) by running the following
+function:
+
+\rust{
+  // small function to store toyc0 in flash at 'compiler_address'
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+}
+\begin{TwoColumns}
+\rs{c.func("save", &[], "", &["nolink"])}\\
+\bytecode{
+  c.cst(BUFFER_RAM_ADDRESS);
+  c.cst8(page_number(compiler_address).try_into().unwrap());
+  c.call("buffer_flash");
+  c.ret();
+}
+\end{TwoColumns}
+
+For this enter the full code of the above function in an unused RAM region, for
+instance starting at address \rs{hex(COMMAND_ADDRESS)}:
+
+\rs{c.get_bytecode_listing(0..c.get_instruction_count() as usize, false)}
+
+\rust{
+  // enter above function in RAM and execute it.
+  context.type_ascii(&c.memory_editor_commands(COMMAND_ADDRESS));
+  context.type_ascii(&format!("W{:08X}\n", COMMAND_ADDRESS));
+  context.type_ascii("R");
+
+  let boot_mode_address = context.memory_region("foundations")
+      .label_address("boot_mode_select_rom");
+}
+
+Then type ``w\rs{hex_word_low(COMMAND_ADDRESS)}'' followed by ``r'' to run it.
+Alternatively, if you don't want to enter the full compiler code manually with
+the memory editor, which is a bit tedious, you can ``cheat'' by saving it via
+an external computer, as follows. First run the \verb!boot_mode_select_rom!
+function by typing ``w\rs{hex_word_low(boot_mode_address)}''+Enter, followed by
+``r''. Then reset the Arduino and, on the host computer, run the following
+command to flash the compiler code and reset the Arduino again:
+
+\rust{
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+  let mut flash_helper1 = FlashHelper::from_file(
+      context1.micro_controller(), "website/", "part3/opcodes_compiler.txt")?;
+}
+\rs{host_log(&flash_helper1.read())}
+
+\section{Command editor}
+
+We can now write and compile our very first program in textual form. For this
+we first need to enter it in memory with the text editor. This requires calling
+the text editor, and then the compiler, with specific arguments. In turn, this
+currently requires typing a few bytecode instructions {\em in binary form} with
+the memory editor, as we did above to call {\tt buffer\_flash}. To avoid having
+to do this in the next chapters, our first program is a {\em command editor}.
+Its goal is to edit, compile and run small functions, called {\em commands},
+such as the {\tt save} function above.
+
+\subsection{User interface}
+
+A task such as writing and compiling a program requires less than a dozen
+distinct commands to edit the program, save it, compile it, save the compiled
+code, etc. However, each command must usually be run several times (if the
+compiler returns an error, the program must be edited, saved, and compiled
+again). In order to avoid having to repeatedly type the same commands, the
+command editor should be able to save up to 12 distinct commands in flash
+memory. We number them from 1 to 12. It should then be able to load an existing
+command, and to edit it if necessary. Finally, it should be able to compile and
+run a command. To fulfill these requirements we define the command editor user
+interface as follows:
+\begin{itemize}
+  \item typing a ``F$i$'' key between ``F1'' and ``F12'' included should load
+  command number $i$ and display it. This command becomes the {\em current
+  command}.
+
+  \item typing ``e'' should run the text editor to edit the current command.
+  Each command must be a function without argument, returning an integer value.
+
+  \item typing ``s'' should save the current command in flash memory.
+
+  \item typing ``r'' should compile the current command, run it, display its
+  result, and wait until Enter is pressed (and not until any key press
+  because releasing ``r'' can appear as a key press for commands using the
+  flash memory driver -- see \cref{section:flash-memory-driver-impl}). If the
+  compilation fails, the compiler result should be displayed instead.
+
+  \item typing Escape should exit the command editor.
+\end{itemize}
+
+Finally, when launched, the command editor should load and display command
+number 1. All commands are initially empty in flash memory.
+
+\subsection{Implementation}\label{subsection:command-editor-implementation}
+
+\rust{
+  const PAGE_SIZE: u32 = 256;
+
+  // Address of command editor code and source code in flash memory
+  // (sizes include buffer header).
+  const MAX_COMMAND_EDITOR_CODE_SIZE: u32 = 256;
+  const MAX_COMMAND_EDITOR_SOURCE_SIZE: u32 = 1024;
+  const COMMAND_SOURCE: u32 = 0xD0000;
+  const NUM_COMMAND_EDITOR_COMMANDS: u32 = 12;
+  const MAX_COMMAND_CODE_SIZE: u32 = PAGE_SIZE;
+  const MAX_COMMAND_SOURCE_SIZE: u32 = PAGE_SIZE;
+  let command_editor_code =
+      next_page_address(context.memory_region("toyc0").end());
+  let command_editor_source =
+      COMMAND_SOURCE + NUM_COMMAND_EDITOR_COMMANDS * MAX_COMMAND_SOURCE_SIZE;
+
+  // Address of current command source code and compiled code in RAM.
+  const RAM_START: u32 = 0x20070000;
+  const RAM_COMMAND_SOURCE: u32 = RAM_START;
+  const RAM_COMMAND_CODE: u32 = RAM_COMMAND_SOURCE + MAX_COMMAND_SOURCE_SIZE;
+
+  // Address of compiler code, backup code, and source code in flash
+  // memory (sizes include buffer header).
+  const MAX_COMPILER_CODE_KB: u32 = 12;
+  const MAX_COMPILER_CODE_SIZE: u32 = MAX_COMPILER_CODE_KB * 1024;
+  const MAX_COMPILER_SOURCE_KB: u32 = 48;
+  const MAX_COMPILER_SOURCE_SIZE: u32 = MAX_COMPILER_SOURCE_KB * 1024;
+  let compiler_code = command_editor_code + MAX_COMMAND_EDITOR_CODE_SIZE;
+  // bytecode call instructions only support of 64 KB range after 0xC0000.
+  assert!(compiler_code + MAX_COMPILER_CODE_SIZE < 0xC0000 + 65536);
+  let compiler_code_page = page_number(compiler_code);
+  let compiler_code_backup = 0xE0000;
+  let compiler_code_backup_page = page_number(compiler_code_backup);
+  let compiler_source = command_editor_source + MAX_COMMAND_EDITOR_SOURCE_SIZE;
+  let compiler_source_page = page_number(compiler_source);
+
+  // Address of compiler code and source code in RAM.
+  const RAM_COMPILER_SOURCE: u32 = RAM_COMMAND_CODE + MAX_COMMAND_CODE_SIZE;
+  const RAM_COMPILER_CODE: u32 = RAM_COMPILER_SOURCE + MAX_COMPILER_SOURCE_SIZE;
+
+  let mut compiler_labels = HashMap::<String, Label>::new();
+  compiler_labels.insert(
+      String::from("main"),
+      Label {
+          offset: 0,
+          description: String::default(),
+      },
+  );
+  context.add_memory_region(
+      "compiler_code",
+      MemoryRegion::new(
+          RegionKind::DataBuffer,
+          compiler_code,
+          MAX_COMPILER_CODE_SIZE,
+          &compiler_labels,
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+  context.add_memory_region(
+      "compiler_code_backup",
+      MemoryRegion::new(
+          RegionKind::DataBuffer,
+          compiler_code_backup,
+          MAX_COMPILER_CODE_SIZE,
+          &HashMap::default(),
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+  context.add_memory_region(
+      "compiler_source",
+      MemoryRegion::new(
+          RegionKind::DataBuffer,
+          compiler_source,
+          MAX_COMPILER_SOURCE_SIZE,
+          &HashMap::default(),
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+
+  // generate source code of command editor program
+  let mut b =
+      BytecodeAssembler::create(RegionKind::DataBuffer, command_editor_code,
+      true);
+  b.import_labels(context.memory_region("graphics_card_driver"));
+  b.import_labels(context.memory_region("keyboard_driver"));
+  b.import_labels(context.memory_region("memory_editor"));
+  b.import_labels(context.memory_region("flash_driver"));
+  b.import_labels(context.memory_region("text_editor"));
+  b.import_labels(context.memory_region("toyc0"));
+}
+
+We can now write the command editor source code. For this we assume that its
+compiled code will eventually be stored in the next page after the opcodes
+compiler, \ie, at address \rs{hex(command_editor_code)}%
+=\hexa{C0000}+\rs{dec(command_editor_code-0xC0000)}.
+
+To implement the above requirements we reserve 12 pages of flash memory, one
+for each command, starting at address \rs{hex(COMMAND_SOURCE)}. This gives
+$256-4=252$ bytes for the source code of each command, stored as a data buffer
+(see \cref{subsection:data-buffer}). We can then write a function to load
+command number $\it{command}$ (here numbered from 0 to 11) at address $\it{dst}$
+(the right column shows source code; in particular, all numbers are in decimal
+form):
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("ced_load", &["command", "dst"], "", &[])}
+
+Initialize $\it{dst}$ to an empty buffer.
+
+\bytecode[switchcolumn]{
+  // *dst = 0;
+  b.new_line();
+  b.get("dst");
+  b.cst_0();
+  b.store();
+}
+
+Compute the $\it{src}$ address of $\it{command}$. This is
+$\rs{hex(COMMAND_SOURCE)}+256*\it{command}$.
+
+\bytecode[switchcolumn]{
+  // let src = (0xD0000 as *u32) + (command << 8);
+  b.new_line();
+  b.cst(COMMAND_SOURCE);
+  b.get("command");
+  b.cst8(8);
+  b.lsl();
+  b.add();
+  b.def("src");
+}
+
+If the $\it{src}$ buffer size is greater than 252 this means that no command
+has ever been stored here (each flash memory bit is initialized to 1). Then
+return directly.
+
+\bytecode[switchcolumn]{
+  // if *src <= 252 { buffer_copy(src, dst); }
+  b.new_line();
+  b.get("src");
+  b.load();
+  b.cst8(252);
+  b.ifgt("ced_load_end");
+}
+
+Otherwise copy the $\it{src}$ buffer to $\it{dst}$ and return.
+
+\bytecode[switchcolumn]{
+  b.get("src");
+  b.get("dst");
+  b.call("buffer_copy");
+  b.new_line();
+  b.label("ced_load_end");
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+We continue with a function to display the command at $\it{src}$. For this we
+simply reuse the {\tt ted\_draw} function of the text editor:
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("ced_draw", &["src"], "", &[])}
+
+Set the color to yellow, to make it easier to distinguish the command editor
+and the text editor (which draws text in green).
+
+\bytecode[switchcolumn]{
+  // gpu_set_color(7, 7, 0);
+  b.new_line();
+  b.cst8(7);
+  b.cst8(7);
+  b.cst_0();
+  b.call("gpu_set_color");
+}
+
+Compute the $\it{begin}$ address of the text, which is 4 bytes after $\it{src}$.
+
+\bytecode[switchcolumn]{
+  // let begin = src + 4;
+  b.new_line();
+  b.get("src");
+  b.cst8(4);
+  b.add();
+  b.def("begin");
+}
+
+Compute the $\it{end}$ address of the text, which is $n$ bytes after
+$\it{begin}$ (where $n$, the $\it{src}$ buffer size, is the value at address
+$\it{src}$).
+
+\bytecode[switchcolumn]{
+  // let end = begin + *src;
+  b.new_line();
+  b.get("begin");
+  b.get("src");
+  b.load();
+  b.add();
+  b.def("end");
+}
+
+Draw the text with a zero $\it{gap}$ and a $\it{cursor}$ at the end (see
+\cref{chapter:text-editor}).
+
+\bytecode[switchcolumn]{
+  // ted_draw(begin, end, 0, end);
+  b.new_line();
+  b.get("begin");
+  b.get("end");
+  b.cst_0();
+  b.get("end");
+  b.call("ted_draw");
+  b.new_line();
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+The next function compiles the source code at $\it{src}$, writes the compiled
+code at $\it{dst}$, and runs it. It then displays the result and waits until
+Enter is pressed.
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("ced_run", &["src", "dst"], "", &[])}
+
+Compile the code. The result, noted $\it{error}$, is pushed in the $6^{th}$
+stack frame slot.
+
+\bytecode[switchcolumn]{
+  // let error = tc_main(src, dst);
+  b.new_line();
+  b.get("src");
+  b.get("dst");
+  b.call("tc_main");
+  b.def("error");
+}
+
+If the compilation is successful (\ie, if $error=0$), run the compiled code
+(which starts after the 4 bytes $\it{dst}$ header) and store its result in
+$\it{error}$. Otherwise skip this step.
+
+\bytecode[switchcolumn]{
+  // if error == 0 { error = "calld" (dst + 4); }
+  b.new_line();
+  b.get("error");
+  b.cst_0();
+  b.ifne("ced_run_end");
+  b.get("dst");
+  b.cst8(4);
+  b.add();
+  b.calld();
+  b.set("error");
+}
+
+Clear the screen, set the cursor to the top-left corner, draw $\it{error}$ in
+hexadecimal, and wait until Enter is pressed.
+
+\bytecode[switchcolumn]{
+  // gpu_clear_screen();
+  b.new_line();
+  b.label("ced_run_end");
+  b.call("gpu_clear_screen");
+  // gpu_set_cursor(0, 0);
+  b.new_line();
+  b.cst_0();
+  b.cst_0();
+  b.call("gpu_set_cursor");
+  // gpu_draw_hex_word(error);
+  b.new_line();
+  b.get("error");
+  b.call("gpu_draw_hex_word");
+  // while keyboard_get_char() != 10 {}
+  b.new_line();
+  b.label("ced_run_wait_enter");
+  b.call("keyboard_get_char");
+  b.cst8(10);
+  b.ifne("ced_run_wait_enter");
+  b.new_line();
+  b.ret();
+}
+\end{paracol}
+\end{Paragraph}
+
+We can finally write the main command editor function. This function loops
+until Escape is pressed, and performs the appropriate action for any other
+typed key. It loads the current command in the 256 bytes region starting at
+address \rs{hex(RAM_COMMAND_SOURCE)}, and compiles and runs it the next 256
+bytes.
+
+\begin{Paragraph}
+\begin{paracol}{2}
+\rs{b.func("command_editor", &[], "", &[])}
+
+Initialize $\it{src}$ to \rs{hex(RAM_COMMAND_SOURCE)}.
+
+\bytecode[switchcolumn]{
+  // let src = 0x20070000 as *u32;
+  b.new_line();
+  b.cst(RAM_COMMAND_SOURCE);
+  b.def("src");
+}
+
+Initialize $\it{command}$ to 0.
+
+\bytecode[switchcolumn]{
+  // let command = 0;
+  b.new_line();
+  b.cst_0();
+  b.def("command");
+}
+
+Initialize $c$ to ``F1'' (see \cref{table:code_tables_choices}).
+
+\bytecode[switchcolumn]{
+  // let c = 0x80;
+  b.new_line();
+  b.cst8(0x80);
+  b.def("c");
+}
+
+Step 1. If $c$ is not the Escape key go to step 2. Otherwise return.
+
+\bytecode[switchcolumn]{
+  // loop
+  b.new_line();
+  b.label("ced_loop");
+  //  if c == 0x1B { return; }
+  b.get("c");
+  b.cst8(0x1B);
+  b.ifne("ced_not_escape");
+  b.ret();
+}
+
+Step 2. If $c$ is not between ``F1'' and ``F12'' included go to step 3.
+
+\bytecode[switchcolumn]{
+  //  if c >= 0x80 && c <= 0x8B
+  b.new_line();
+  b.label("ced_not_escape");
+  b.get("c");
+  b.cst8(0x80);
+  b.iflt("ced_not_load");
+  b.get("c");
+  b.cst8(0x8B);
+  b.ifgt("ced_not_load");
+}
+
+Otherwise set $\it{command}$ to $c-$``F1''.
+
+\bytecode[switchcolumn]{
+  // command = c - 0x80;
+  b.new_line();
+  b.get("c");
+  b.cst8(128);
+  b.sub();
+  b.set("command");
+}
+
+Then load this new command and go to step 6 to display it.
+
+\bytecode[switchcolumn]{
+  // ced_load(command, src);
+  b.new_line();
+  b.get("command");
+  b.get("src");
+  b.call("ced_load");
+  b.goto("ced_redraw");
+}
+
+Step 3. If $c$ is not equal to ``e'' go to step 4.
+
+\bytecode[switchcolumn]{
+  //  else if c == 'e' { text_editor(src, 0, 252); }
+  b.new_line();
+  b.label("ced_not_load");
+  b.get("c");
+  b.cst8(b'e');
+  b.ifne("ced_not_edit");
+}
+
+Otherwise call the text editor to edit the current command (with a maximum text
+length of 252 bytes). Then go to step 6 to display it.
+
+\bytecode[switchcolumn]{
+  b.get("src");
+  b.cst_0();
+  b.cst8(252);
+  b.call("text_editor");
+  b.goto("ced_redraw");
+}
+
+Step 4. If $c$ is not equal to ``e'' go to step 5.
+
+\bytecode[switchcolumn]{
+  //  else if c == 's' { buffer_flash(src, 256 + command); }
+  b.new_line();
+  b.label("ced_not_edit");
+  b.get("c");
+  b.cst8(b's');
+  b.ifne("ced_not_save");
+}
+
+Otherwise save the current command at address
+$\rs{hex(COMMAND_SOURCE)}+256*\it{command}$, which corresponds to page
+$\rs{dec(page_number(COMMAND_SOURCE))}+\it{command}$.
+
+\bytecode[switchcolumn]{
+  b.get("src");
+  b.cst(page_number(COMMAND_SOURCE));
+  b.get("command");
+  b.add();
+  b.call("buffer_flash");
+  b.goto("ced_redraw");
+}
+
+Step 5. If $c$ is not equal to ``r'' go to step 6.
+
+\bytecode[switchcolumn]{
+  //  else if c == 'r' { ced_run(src, src + 256); }
+  b.new_line();
+  b.label("ced_not_save");
+  b.get("c");
+  b.cst8(b'r');
+  b.ifne("ced_redraw");
+}
+
+Otherwise compile and run the current command. The compiled code is written at
+$\it{dst}=\it{src}+256$. Then continue to step 6.
+
+\bytecode[switchcolumn]{
+  b.get("src");
+  b.get("src");
+  b.cst(RAM_COMMAND_CODE - RAM_COMMAND_SOURCE);
+  b.add();
+  b.call("ced_run");
+}
+
+Step 6. Draw the current command, wait for a key to be pressed, store it in
+$c$, and go back to step 1 to handle it.
+
+\bytecode[switchcolumn]{
+  b.label("ced_redraw");
+  //  ced_draw(src);
+  b.get("src");
+  b.call("ced_draw");
+  //  c = keyboard_wait_char();
+  b.new_line();
+  b.call("keyboard_wait_char");
+  b.set("c");
+  b.goto("ced_loop");
+}
+\end{paracol}
+\end{Paragraph}
+
+The command editor implementation is now complete, and is summarized below:
+
+\rs{code(&b.get_toy0_source_code())}
+
+\rust{
+  let command_editor_source_code = b.get_toy0_source_code();
+  assert!(command_editor_source_code.len() + 4 <
+      MAX_COMMAND_EDITOR_SOURCE_SIZE as usize);
+
+  let mut command_editor_labels = HashMap::new();
+  command_editor_labels.insert(
+      String::from("ram_command_source"),
+      Label {
+          offset: RAM_COMMAND_SOURCE - command_editor_source - 4,
+          description: String::from("command source code in RAM"),
+      },
+  );
+  command_editor_labels.insert(
+      String::from("ram_compiler_source"),
+      Label {
+          offset: RAM_COMPILER_SOURCE - command_editor_source - 4,
+          description: String::from("compiler source code in RAM"),
+      },
+  );
+  command_editor_labels.insert(
+      String::from("ram_compiler_code"),
+      Label {
+          offset: RAM_COMPILER_CODE - command_editor_source - 4,
+          description: String::from("compiler code in RAM"),
+      },
+  );
+  context.add_memory_region(
+      "command_editor_commands",
+      MemoryRegion::new(
+          RegionKind::DataBuffer,
+          COMMAND_SOURCE,
+          NUM_COMMAND_EDITOR_COMMANDS * MAX_COMMAND_SOURCE_SIZE,
+          &HashMap::new(),
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+  context.add_memory_region(
+      "command_editor_source",
+      MemoryRegion::new(
+          RegionKind::DataBuffer,
+          command_editor_source,
+          command_editor_source_code.len() as u32 + 4,
+          &command_editor_labels,
+          0,
+          0,
+          0,
+          Vec::default(),
+      ),
+  );
+
+  context.add_memory_region("command_editor", b.memory_region());
+}
+
+\subsection{Compilation}
+
+We now need to type this source code with the text editor, save it, compile it,
+and store the compiled code. These 4 steps are explained below.
+
+\subsubsection{Edit}
+
+\rust{
+  const MAX_SOURCE_LENGTH: u32 = 0x1000;
+  const SOURCE_ADDRESS: u32 = 0x20070000;
+  const CODE_ADDRESS: u32 = SOURCE_ADDRESS + MAX_SOURCE_LENGTH;
+
+  const MAX_COMMAND_SIZE: u32 = 0x20;
+  const EDIT_COMMAND_ADDRESS: u32 = 0x20080000;
+
+  // Temporary program to run the text editor on SOURCE_ADDRESS.
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("text_editor"));
+  c.func("temp", &[], "", &[]);
+  c.cst(SOURCE_ADDRESS);
+  c.cst_0();
+  c.cst(MAX_SOURCE_LENGTH);
+  c.call("text_editor");
+  c.ret();
+  assert!(c.bytecode_size() < MAX_COMMAND_SIZE);
+}
+
+Typing the source code requires launching the text editor first. For this, in
+the memory editor, type ``w\rs{hex_word_low(EDIT_COMMAND_ADDRESS)}''+Enter,
+followed by the code below (see \cref{section:text-editor-experiments}):
+
+\rs{c.get_bytecode_listing(0..c.get_instruction_count() as usize, false)}
+
+Then initialize an empty text buffer by typing
+``w\rs{hex_word_low(SOURCE_ADDRESS)}''+Enter, followed by ``00000000''+Enter.
+Run the text editor on this empty buffer by typing
+``\rs{hex_word_low(EDIT_COMMAND_ADDRESS)}''+Enter, followed by ``r''. Finally,
+type the command editor source code listed above, followed by Escape to return
+in the memory editor.
+
+Alternatively, if you don't want to type this source code, you can ``cheat'' by
+saving it via an external computer, as follows. First run the
+\verb!boot_mode_select_rom! function by typing
+``w\rs{hex_word_low(boot_mode_address)}''+Enter, followed by ``r''. Then reset
+the Arduino and, on the host computer, run the following command to flash the
+source code and reset the Arduino again (you can then skip the ``Save'' step
+below):
+
+\rust{
+  // Test the above instructions with a short text.
+  context.type_ascii(&c.memory_editor_commands(EDIT_COMMAND_ADDRESS));
+  // initialize empty buffer
+  context.type_ascii(&format!("W{:08X}\n", SOURCE_ADDRESS));
+  context.type_ascii("00000000\n");
+  // run text editor
+  context.type_ascii(&format!("W{:08X}\n", EDIT_COMMAND_ADDRESS));
+  context.type_ascii("R");
+  context.type_ascii("HELLO");
+  assert_eq!(display.borrow().get_text(), "hello");
+  context.type_keys(vec!["Escape"]);
+  context.type_ascii(&format!("W{:08X}\n", SOURCE_ADDRESS));
+  assert!(display.borrow().get_text().lines().next().unwrap()
+      .ends_with("6F 6C6C6568 00000005 20070000"));
+
+  // Then store the source code in RAM as if edited with the text editor.
+  context.store_text(SOURCE_ADDRESS, command_editor_source_code.as_str());
+
+  write_lines("website/part3", "command_editor.txt",
+      &flash_helper_commands(command_editor_source_code.as_str(),
+      command_editor_source))?;
+
+  context1.run_until_get_char();
+  context1.type_ascii(&format!("W{:08X}\n", boot_mode_address));
+  context1.type_ascii("R");
+  context1.micro_controller().borrow_mut().reset();
+  flash_helper1 = FlashHelper::from_file(
+      context1.micro_controller(), "website/", "part3/command_editor.txt")?;
+}
+\rs{host_log(flash_helper1.read().lines().next().unwrap())}
+
+\subsubsection{Save}
+
+\rust{
+  const SAVE_SOURCE_COMMAND_ADDRESS: u32 =
+      EDIT_COMMAND_ADDRESS + MAX_COMMAND_SIZE;
+
+  // Temporary program to flash source code of command editor.
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+}
+
+Before compiling this code we want to save it, in case something goes wrong. We
+can save it after the 12 pages reserved for the commands, at address
+\rs{hex(command_editor_source)}, which corresponds to page
+\rs{dec_hex(page_number(command_editor_source))}. This can be done with the
+following function:
+
+\begin{TwoColumns}
+\rs{c.func("save_source", &[], "", &["nolink"])}\\
+\bytecode{
+  c.cst(SOURCE_ADDRESS);
+  c.cst(page_number(command_editor_source));
+  c.call("buffer_flash");
+  c.ret();
+}
+\end{TwoColumns}
+
+Enter it in RAM after the ``edit'' function, at address
+\rs{hex(SAVE_SOURCE_COMMAND_ADDRESS)}, by typing
+``w\rs{hex_word_low(SAVE_SOURCE_COMMAND_ADDRESS)}''+Enter, followed by the full
+code of this function, listed below. Then run it by typing
+``w\rs{hex_word_low(SAVE_SOURCE_COMMAND_ADDRESS)}''+Enter, followed by ``r''.
+
+\rs{c.get_bytecode_listing(0..c.get_instruction_count() as usize, false)}
+
+\rust{
+  assert!(c.bytecode_size() < MAX_COMMAND_SIZE);
+  context.type_ascii(&c.memory_editor_commands(SAVE_SOURCE_COMMAND_ADDRESS));
+  context.type_ascii(&format!("W{:08X}\n", SAVE_SOURCE_COMMAND_ADDRESS));
+  context.type_ascii("R");
+
+  // Check that the "cheat" above stores the correct values in flash.
+  context.check_equal_buffer(&mut context1, command_editor_source);
+}
+
+\subsubsection{Compile}
+
+\rust{
+  const COMPILE_COMMAND_ADDRESS: u32 =
+      SAVE_SOURCE_COMMAND_ADDRESS + MAX_COMMAND_SIZE;
+  const COMPILE_RESULT_ADDRESS: u32 =
+      COMPILE_COMMAND_ADDRESS + MAX_COMMAND_SIZE;
+
+  // Temporary program to compile the source code.
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("toyc0"));
+}
+
+Compiling the code can be done with the following function, which writes
+the compiled code at address \rs{hex(CODE_ADDRESS)} and the compiler's result
+value at address \rs{hex(COMPILE_RESULT_ADDRESS)}:
+
+\begin{TwoColumns}
+\rs{c.func("compile_source", &[], "", &["nolink"])}\\
+\bytecode{
+  c.cst(COMPILE_RESULT_ADDRESS);
+  c.cst(command_editor_source);
+  c.cst(CODE_ADDRESS);
+  c.call("tc_main");
+  c.store();
+  c.ret();
+}
+\end{TwoColumns}
+
+Enter it in RAM after the ``save'' function, at address
+\rs{hex(COMPILE_COMMAND_ADDRESS)}, by typing
+``w\rs{hex_word_low(COMPILE_COMMAND_ADDRESS)}''+Enter, followed by the full
+code of this function, listed below. Then run it by typing
+``w\rs{hex_word_low(COMPILE_COMMAND_ADDRESS)}''+Enter, followed by ``r''.
+
+\rs{c.get_bytecode_listing(0..c.get_instruction_count() as usize, false)}
+
+\rust{
+  assert!(c.bytecode_size() < MAX_COMMAND_SIZE);
+  context.type_ascii(&c.memory_editor_commands(COMPILE_COMMAND_ADDRESS));
+  context.type_ascii(&format!("W{:08X}\n", COMPILE_COMMAND_ADDRESS));
+  context.type_ascii("R");
+  assert!(display.borrow().get_text().lines().nth(6).unwrap()
+      .ends_with("00000000 20080060"));
+
+  // Check that the compiled code is equal to b's code.
+  let words = b.bytecode_words();
+  for i in 0..b.bytecode_size() / 4 {
+    let word = context.micro_controller().borrow_mut().debug_get32(
+        CODE_ADDRESS + 4 * (i + 1));
+    assert_eq!(word, words[i as usize]);
+  }
+}
+
+If all goes well the value at address \rs{hex(COMPILE_RESULT_ADDRESS)} should
+be 0, because the compiler returns 0 if and only if the compilation is
+successful. If this is not the case, run the ``edit'' function again, double
+check the source code and fix any error found (you can also get the location of
+the error at address \rs{hex(CODE_ADDRESS)}). Then save and compile the code
+again. And repeat this until success.
+
+\subsubsection{Store}
+
+\rust{
+  const SAVE_CODE_COMMAND_ADDRESS: u32 =
+      COMPILE_RESULT_ADDRESS + MAX_COMMAND_SIZE;
+
+  // - command to flash compiled command editor code
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+}
+
+Once the compilation is successful, the compiled code can be stored in flash
+memory. The following function stores it in the next page after the compiler
+itself, \ie, at address \rs{hex(command_editor_code)}, which corresponds to
+page \rs{dec_hex(page_number(command_editor_code))}:
+
+\begin{TwoColumns}
+\rs{c.func("save_code", &[], "", &["nolink"])}\\
+\bytecode{
+  c.cst(CODE_ADDRESS);
+  c.cst8(page_number(command_editor_code).try_into().unwrap());
+  c.call("buffer_flash");
+  c.ret();
+}
+\end{TwoColumns}
+
+Enter it in RAM after the ``compile'' function, at address
+\rs{hex(SAVE_CODE_COMMAND_ADDRESS)}, by typing
+``w\rs{hex_word_low(SAVE_CODE_COMMAND_ADDRESS)}''+Enter, followed by the full
+code of this function, listed below. Then run it by typing
+``w\rs{hex_word_low(SAVE_CODE_COMMAND_ADDRESS)}''+Enter, followed by ``r''.
+
+\rs{c.get_bytecode_listing(0..c.get_instruction_count() as usize, false)}
+
+\rust{
+  context.type_ascii(&c.memory_editor_commands(SAVE_CODE_COMMAND_ADDRESS));
+  context.type_ascii(&format!("W{:08X}\n", SAVE_CODE_COMMAND_ADDRESS));
+  context.type_ascii("R");
+}
+
+\subsection{First commands}\label{subsection:first-commands}
+
+\rust{
+  let command_editor_main = context.memory_region("command_editor")
+      .label_address("command_editor");
+}
+
+We can now try our command editor. Start it by typing
+``w\rs{hex_word_low(command_editor_main)}''+Enter, followed by ``r'' (its main
+function is at address \hexa{C0000}+%
+\rs{dec(command_editor_main - 0xC0000)}=\rs{hex(command_editor_main)} -- see
+\cref{subsection:command-editor-implementation}). The screen should now be
+empty, because it displays command number 1, initially empty. Lets use this
+command to show a welcome message when the command editor starts. Type ``e'' to
+edit it, then type ``Welcome to the command editor." followed by Escape. At
+this point the message you typed should be displayed in yellow. For now it is
+only in RAM. Type ``s'' to save it in flash memory. We now want to define some
+commands to create, load, edit, save, and compile a program.
+
+\rust{
+  context.type_ascii(&format!("W{:08X}\n", command_editor_main));
+  context.type_ascii("R");
+  assert!(display.borrow().get_text().is_empty());
+
+  context.type_ascii("E");
+  context.type_keys(vec!["Shift", "W", "~Shift"]);
+  context.type_ascii("ELCOME TO THE COMMAND EDITOR.");
+  context.type_keys(vec!["Escape"]);
+  context.type_keys(vec!["S"]);
+}
+\bigskip
+
+\paragraph*{New (F2)} initializes an empty text buffer at address
+\rs{dec_hex(RAM_COMPILER_SOURCE)}, just after the memory region used by the
+command editor (see \cref{fig:command-editor-memory-map}). Type ``F2'' followed
+by ``e'' to edit it, then type its source code followed by Escape and ``s''
+(the dummy data at the end describes the command):
+
+\rust{
+  context.type_keys(vec!["F2"]);
+  let mut c = BytecodeAssembler::default();
+  c.func("new_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(RAM_COMPILER_SOURCE);
+  c.cst_0();
+  c.store();
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = format!("{}\nd NEW_SOURCE_CODE", c.get_toy0_source_code());
+  context.store_text(RAM_COMMAND_SOURCE, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\paragraph*{Load (F3)} calls \hyperlink{buffer-copy}{buffer\_copy} to load a
+program stored in flash memory at address \rs{dec_hex(compiler_source)}, just
+after the command editor source code (see
+\cref{fig:command-editor-memory-map}). Store its source code in command number
+3:
+
+\rust{
+  context.type_keys(vec!["F3"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("load_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(compiler_source);
+  c.cst(RAM_COMPILER_SOURCE);
+  c.call("buffer_copy");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = format!("{}\nd LOAD_SOURCE_CODE", c.get_toy0_source_code());
+  context.store_text(RAM_COMMAND_SOURCE, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\paragraph*{Edit (F4)} calls \hyperlink{text-editor}{text\_editor} to edit the
+text buffer at address \rs{hex(RAM_COMPILER_SOURCE)}, with the word at address
+\rs{dec_hex(RAM_COMPILER_CODE)} as initial offset, and a maximum length of
+\rs{dec(MAX_COMPILER_SOURCE_KB)}~KB (including the 4 bytes header). The initial
+offset corresponds to the header of a compiled code buffer (see
+\cref{fig:command-editor-memory-map}) which, in case of a compilation error,
+contains the error location. Hence, editing the source code after a compilation
+error opens the text editor at the location of this error. Store the following
+source code in command number 4:
+
+\rust{
+  context.type_keys(vec!["F4"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("text_editor"));
+  c.func("edit_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(RAM_COMPILER_SOURCE);
+  c.cst(RAM_COMPILER_CODE); // 1st word contains offset of error if applicable
+  c.load();
+  c.cst(MAX_COMPILER_SOURCE_SIZE - 4);
+  c.call("text_editor");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = format!("{}\nd EDIT_SOURCE_CODE", c.get_toy0_source_code());
+  context.store_text(RAM_COMMAND_SOURCE, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\paragraph*{Save (F5)} calls \hyperlink{buffer-flash}{buffer\_flash} to save
+the edited program in flash memory at address \rs{hex(compiler_source)}, which
+corresponds to page \rs{dec(compiler_source_page)}. Store it in command number
+5:
+
+\rust{
+  context.type_keys(vec!["F5"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("save_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(RAM_COMPILER_SOURCE);
+  c.cst(compiler_source_page);
+  c.call("buffer_flash");
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = format!("{}\nd SAVE_SOURCE_CODE", c.get_toy0_source_code());
+  context.store_text(RAM_COMMAND_SOURCE, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\paragraph*{Compile (F6)} calls \hyperlink{tc-main}{tc\_main} to compile the
+source code at address \rs{hex(compiler_source)}, and to write the compiled
+code at address \rs{dec_hex(RAM_COMPILER_CODE)} (just after the source code in
+RAM, see \cref{fig:command-editor-memory-map}). It returns the compiler's
+result, which is non-zero if a compilation error occurs. Store it in command
+number 6:
+
+\rust{
+  context.type_keys(vec!["F6"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("toyc0"));
+  c.func("compile_source_code", &[], "", &[]);
+  c.new_line();
+  c.cst(compiler_source); // src_buffer
+  c.cst(RAM_COMPILER_CODE); // dst_buffer
+  c.call("tc_main");
+  c.retv();
+  let c_source = format!("{}\nd COMPILE_SOURCE_CODE",
+  c.get_toy0_source_code());
+  context.store_text(RAM_COMMAND_SOURCE, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\paragraph*{Store (F7)} calls \hyperlink{buffer-flash}{buffer\_flash} to store
+the compiled code in flash memory at address \rs{dec_hex(compiler_code)}, which
+corresponds to page \rs{dec(compiler_code_page)} (after the command editor --
+see \cref{fig:command-editor-memory-map}). Before that, this command backs up
+the current compiled code by saving a copy of it at address
+\rs{dec_hex(compiler_code_backup)}, which corresponds to page
+\rs{dec(compiler_code_backup_page)}. Store it in command number 7:
+
+\rust{
+  context.type_keys(vec!["F7"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("save_compiled_code", &[], "", &[]);
+  c.new_line();
+  c.cst(compiler_code);
+  c.cst(compiler_code_backup_page);
+  c.call("buffer_flash"); // backup current compiled code
+  c.new_line();
+  c.cst(RAM_COMPILER_CODE);
+  c.cst(compiler_code_page);
+  c.call("buffer_flash"); // saved compiled code in RAM into flash
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = format!("{}\nd STORE_COMPILED_CODE", c.get_toy0_source_code());
+  context.store_text(RAM_COMMAND_SOURCE, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\paragraph*{Restore (F8)} calls \hyperlink{buffer-flash}{buffer\_flash} to
+restore the backup created by the previous command, in case something goes
+wrong. Store it in command number 8:
+
+\rust{
+  context.type_keys(vec!["F8"]);
+  let mut c = BytecodeAssembler::default();
+  c.import_labels(context.memory_region("flash_driver"));
+  c.func("restore_backup_code", &[], "", &[]);
+  c.new_line();
+  c.cst(compiler_code_backup);
+  c.cst(compiler_code_page);
+  c.call("buffer_flash"); // backup current compiled code
+  c.new_line();
+  c.cst_0();
+  c.retv();
+  let c_source = format!("{}\nd RESTORE_BACKUP_CODE",
+  c.get_toy0_source_code());
+  context.store_text(RAM_COMMAND_SOURCE, &c_source);
+  context.type_keys(vec!["S"]);
+}
+\rs{code(&c_source)}
+
+\begin{Figure}
+  \rs{define("mmapa", &hex(context.memory_region("toyc0").start))}
+  \rs{define("mmapb", &hex(command_editor_code))}
+  \rs{define("mmapc", &hex(compiler_code))}
+  \rs{define("mmapd", &hex(COMMAND_SOURCE))}
+  \rs{define("mmape", &hex(command_editor_source))}
+  \rs{define("mmapf", &hex(compiler_source))}
+  \rs{define("mmapg", &hex(compiler_code_backup))}
+  \rs{define("mmaph", &hex(RAM_COMMAND_SOURCE))}
+  \rs{define("mmapi", &hex(RAM_COMMAND_CODE))}
+  \rs{define("mmapj", &hex(RAM_COMPILER_SOURCE))}
+  \rs{define("mmapk", &hex(RAM_COMPILER_CODE))}
+  \input{figures/chapter3/command-editor-memory-map.tex}
+
+  \caption{The flash memory and RAM regions used by the command editor, and by
+  the commands defined in \cref{subsection:first-commands}. White, blue and
+  gray areas represent source code, bytecode and unused memory, respectively
+  (not to scale).}\label{fig:command-editor-memory-map}
+\end{Figure}
+
+\subsection{Tests}
+
+In order to test the above commands, type ``F2''+``r'' to create a new program,
+and press Enter to return in the command editor. Then type ``F4''+``r'' to
+edit this program, and type the following code, which contains an error on
+purpose:
+
+\rust{
+  context.type_keys(vec!["F2"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+
+  let c_source = "fn 0 cst_3 retv";
+
+  context.type_keys(vec!["F4"]);
+  context.type_ascii("R");
+  context.type_ascii("FN 0 CST");
+  context.type_keys(vec!["Shift", "-", "~Shift"]);
+  context.type_ascii("3 RETV");
+  assert_eq!(display.borrow().get_text(), c_source);
+  context.type_keys(vec!["Escape"]);
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}
+\rs{code(c_source)}
+
+\noindent Then type Escape to exit the text editor. The command's result, 0,
+should be displayed. Press Enter to return in the command editor's main loop
+(in the following we omit these ``press Enter'' instructions, for brevity).
+
+Type ``F5''+``r'' to save this program, ``F2''+``r'' to create a new one, and
+``F4''+``r'' to edit it. The screen should be empty. Type Escape to return
+in the memory editor, then type ``F3''+``r'' to load the previously saved
+program. Type ``F4''+``r'' to check that it is now loaded in RAM, and
+Escape to return in the command editor.
+
+\rust{
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  context.type_keys(vec!["F2"]);
+  context.type_ascii("R\n");
+  context.type_keys(vec!["F4"]);
+  context.type_ascii("R");
+  assert!(display.borrow().get_text().is_empty());
+  context.type_keys(vec!["Escape"]);
+  context.type_ascii("\n");
+  context.type_keys(vec!["F3"]);
+  context.type_ascii("R\n");
+  context.type_keys(vec!["F4"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), c_source);
+  context.type_keys(vec!["Escape"]);
+  context.type_ascii("\n");
+}
+
+Type ``F6''+``r'' to compile this program. The result should be 1, because {\tt
+cst\_3} is an invalid opcode. Then type ``F4''+``r'' to edit the program. The
+cursor should be just after this invalid opcode. Enter the correct code below:
+
+\rust{
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000001");
+  context.type_ascii("\n");
+
+  context.type_keys(vec!["F4"]);
+  context.type_ascii("R");
+  let c_source = "fn 0 cst8 3 retv";
+  context.type_keys(vec!["Backspace", "Backspace"]);
+  context.type_ascii("8 3");
+  assert_eq!(display.borrow().get_text(), c_source);
+}
+\rs{code(c_source)}
+
+Finally, type Escape to exit the text editor, ``F5''+``r'' to save the
+corrected code, and ``F6''+``r'' to compile it. The result should be 0 this
+time.
+
+\rust{
+  context.type_keys(vec!["Escape"]);
+  context.type_ascii("\n");
+  context.type_keys(vec!["F5"]);
+  context.type_ascii("R\n");
+  context.type_keys(vec!["F6"]);
+  context.type_ascii("R");
+  assert_eq!(display.borrow().get_text(), "00000000");
+  context.type_ascii("\n");
+}

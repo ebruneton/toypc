@@ -1,0 +1,1252 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\renewcommand{\rustfile}{chapter3}
+\setcounter{rustid}{0}
+
+\chapter{Virtual Machine}\label{chapter:virtual-machine}
+
+As we have seen in the previous chapter, writing programs in machine code is
+quite complex and error prone. The machine code instructions are complex mainly
+because the machine itself (\ie, the Cortex M3 microprocessor) is complex. The
+machine code instructions also have complex encodings. This complexity is
+manageable for very small programs, but the basic input output system we want
+to write in this part is not so small. In order to simplify its implementation,
+a solution is to use a simpler instruction set, which in turn requires a
+simpler machine. This chapter defines such a machine, and its set of
+instructions, called {\em bytecode instructions}. It is called a {\em virtual
+machine} because it is not a physical chip. Instead, we provide in this chapter
+an {\em interpreter} for this virtual machine. This small program simulates
+programs running on the virtual machine. It does this by executing, for each
+bytecode instruction, an equivalent sequence of Cortex M3 instructions.
+
+\section{Overview}
+
+The main source of complexity in the Cortex M3, and in most microprocessors,
+are the registers. They are quite complex to use because there are only a small
+number of them (16 on the Cortex M3). When they are all ``full'', some of them
+must be copied into memory (usually on the stack), so that they can store new
+values without losing the old ones. The old values copied in memory must
+usually be copied back into the registers at some point. This makes it hard to
+keep track of which value is stored where at any point in time.
+
+In order to get a simpler machine, a solution is thus to {\em remove the
+registers}. This leaves only the stack and the (rest of the) memory. This also
+means that instructions for this machine can only use the stack and the memory.
+For instance, an arithmetic instruction can no longer read its operands in
+registers, nor write the result in a register. A solution is to pop the
+operands from the stack, and to push the result on the stack. This example
+shows another advantage of removing the registers: instructions no longer need
+to encode on which registers they operate. In fact, arithmetic instructions no
+longer need to have any argument. They can be encoded with a single constant
+value. Moreover, since we no longer need some bits to encode the register
+indices, this value can be small, only one byte. Hence the name {\em byte}code
+instructions. A virtual machine for such stack-based instructions is called a
+(virtual) {\em stack machine}.
+
+Removing the registers also impacts subroutines. Subroutines usually take some
+{\em arguments} as input, and may return a result as output. For instance, a
+subroutine to draw a character could take a character and a position on the
+screen as input, and could return the position where the next character should
+be drawn. In general, these input and output values could be stored in
+registers, on the stack, or a mix of the two. But if we remove the registers,
+the virtual machine subroutines, called {\em functions}, are forced to use the
+stack. This means that, as arithmetic instructions, a function must pop its
+arguments from the stack, and push its result on the stack.
+
+The consequence is that the stack is organized into {\em stack frames} as shown
+in \cref{fig:stack-frames}. A stack frame is a contiguous part of the stack,
+corresponding to a function call. Its contains the function arguments pushed by
+the caller, optionally followed by the intermediate values pushed by the
+function's instructions executed so far. When this function calls another one,
+the arguments it pushed on the stack become the beginning of a new stack frame,
+corresponding to the callee (see \cref{fig:stack-frames}). When the callee
+returns, its entire stack frame is popped and replaced with the result value.
+
+\begin{Figure}
+  \input{figures/chapter3/stack-frames.tex}
+
+  \caption{Stack frames and function calls. Left: a stack with 3 stack frames,
+  corresponding to a function A calling a function B itself calling a function
+  C. Each stack frame contains the arguments passed to the function (\eg, arg0
+  and arg1 passed in the call from B to C), and optionally some values pushed
+  during the function's execution (\eg, v0). Right: the callee C pops its
+  arguments (arg0, arg1) from the caller's stack frame (B), and pushes its
+  result on the caller's stack frame when it returns.}\label{fig:stack-frames}
+\end{Figure}
+
+As arithmetic and logic instructions are simplified by using the stack instead
+of registers, the other instructions can be simplified by using stack frames
+instead of lower level concepts (\eg, a Link Register). For instance, we can
+define an instruction to get the $i^{th}$ argument of the top stack frame (\ie,
+of the currently executing function), and to push it on the stack. Doing this
+with Cortex M3 instructions would require several instructions dealing
+explicitly with the Stack Pointer. As another example, we can define an
+instruction to return a value from a function. As explained above, this
+requires popping the top stack frame, and pushing the return value. Doing this
+with Cortex M3 instructions would require several instructions.
+
+In summary, for all the reasons explained above, the virtual machine designed
+and implemented in this chapter is a virtual stack machine, with instructions
+using the stack, stack frames and functions instead of registers. The next
+section defines its instruction set.
+
+\section{Bytecode instructions}
+
+\subsection{Arithmetic and logic instructions}\label{subsection:alu-insns}
+
+\begin{Figure}
+  \input{figures/chapter3/sub-insn.tex}
+
+  \caption{The \insn{sub} instruction pops two values $x$ and $y$ from the
+    stack and pushes their difference $x-y$.}\label{fig:sub-insn}
+\end{Figure}
+
+\begin{Paragraph}[]
+\rs{CST_0.definition()}\\
+\rs{CST_1.definition()}\\
+\rs{CST8.definition()}\\
+\rs{CST.definition()}
+\end{Paragraph}
+
+The \insn{cst\_0} instruction, encoded with the byte \hexa{00} (also called
+{\em opcode}, for operation code), pushes the value 0 on the stack. The
+\insn{cst\_1} instruction does the same with the value 1. The \insn{cst8}
+instruction pushes an 8-bit value on the stack. It is encoded with the opcode
+\hexa{02}, followed by the byte value to push (bytes are shown, in increasing
+address order, {\em from right to left}). Finally, the \insn{cst} instruction
+pushes a 32-bit value on the stack. This value is put directly after the
+opcode, without any encoding (compare this with the \arm{MOVW} and \arm{MOVT}
+instructions). Note that \insn{cst\_0}, \insn{cst\_1} and \insn{cst8} are not
+strictly necessary (a \insn{cst} instruction can be used instead). They are
+provided to reduce the size of programs.
+
+\begin{Paragraph}
+\rs{ADD.definition()}\\
+\rs{SUB.definition()}\\
+\rs{MUL.definition()}\\
+\rs{DIV.definition()}\\
+\rs{AND.definition()}\\
+\rs{OR.definition()}\\
+\rs{LSL.definition()}\\
+\rs{LSR.definition()}
+\end{Paragraph}
+
+The arithmetic and logic instructions are direct analogues of the Cortex M3
+instructions with the same name. As discussed above, they use the stack instead
+of registers, and can thus be encoded with only one byte each. For instance,
+the \insn{sub} instruction pops a value from the stack, say $y$, then pops
+another value, say $x$, and then pushes $x-y$ on stack (and not $y-x$ -- see
+\cref{fig:sub-insn}).
+
+\subsection{Jump instructions}
+
+\begin{Paragraph}[]
+\rs{IFLT.definition()}\\
+\rs{IFEQ.definition()}\\
+\rs{IFGT.definition()}\\
+\rs{IFLE.definition()}\\
+\rs{IFNE.definition()}\\
+\rs{IFGE.definition()}
+\end{Paragraph}
+
+The ``if less than'' (\insn{iflt}) instruction pops a value $y$ from the stack,
+then pops a value $x$, and finally jumps to offset $c$ if $x<y$. The other
+instructions are similar, for equal (eq), greater than (gt), less than or equal
+(le), not equal (ne), and greater than or equal (ge) conditions. To simplify
+the encoding, the $c$ offset is always interpreted as a nonnegative value
+(compare this with the \arm{B} instruction). In return, this offset is defined
+relatively to the beginning of the currently executing function, \ie, to the
+address of its first instruction.
+
+Note that these {\em conditional jump} instructions are sufficient to make any
+other instruction or sequence of instructions conditional. Indeed, for this, it
+suffice to use a conditional jump instruction before the sequence, jumping
+after it if some condition happens. We therefore do not use an \arm{IT}-like
+instruction, nor a \arm{CMP}-like one.
+
+\begin{Paragraph}
+\rs{GOTO.definition()}
+\end{Paragraph}
+
+The \insn{goto} instruction unconditionally jumps to offset $c$, like the
+\arm{B} instruction. This offset is defined as above, \ie, as a nonnegative
+offset from the beginning of the current function.
+
+\subsection{Memory and stack instructions}
+
+\begin{Paragraph}[]
+\rs{LOAD.definition()}\\
+\rs{STORE.definition()}
+\end{Paragraph}
+
+The \insn{load} and \insn{store} instructions are direct analogues of the
+Cortex M3 \arm{LDR} and \arm{STR} instructions, using the stack instead of
+registers. More precisely, the \insn{load} instruction pops an address from the
+stack, reads a 32-bit value at this address in memory, and pushes it on the
+stack. The \insn{store} instruction pops a value, then pops an address, and
+finally stores the 32-bit value at this address in memory. To simplify the
+interpreter, we do not define similar instructions for 16 and 8-bit values.
+
+\begin{Paragraph}
+\rs{PTR.definition()}\\
+\rs{GET.definition()}\\
+\rs{SET.definition()}
+\end{Paragraph}
+
+The \insn{ptr} instruction pushes a {\em pointer} on the stack, namely the
+address of the $i^{th}$ word in the top stack frame (counting from 0). The
+\insn{get} instruction reads the $i^{th}$ word in the top stack frame, and
+pushes it on the stack. The \insn{set} instruction pops a value from the stack,
+and stores it in the $i^{th}$ word in the top stack frame (see
+\cref{fig:ptr-get-set-insns}). These instructions can be used to access the
+arguments of the currently executing function, but also the values it has
+pushed on the stack during its execution.
+
+\begin{Figure}
+  \input{figures/chapter3/ptr-get-set-insns.tex}
+
+  \caption{The stack frame instructions. The \insn{ptr} $i$ instruction (left)
+  pushes the address of the $i^{th}$ value in the top stack frame (in light
+  gray), counting from 0. The \insn{get} $i$ instruction (middle) pushes the
+  $i^{th}$ value itself. Finally, the \insn{set} $i$ instruction (right)
+  replaces the $i ^{th}$ value with a new value popped from the
+  stack.}\label{fig:ptr-get-set-insns}
+\end{Figure}
+
+\begin{Paragraph}
+\rs{POPI.definition()}
+\end{Paragraph}
+
+Finally, the \insn{pop} instruction simply pops a value from the stack, and
+discards it.
+
+\subsection{Function instructions}\label{subsection:fn-instructions}
+
+\begin{Paragraph}[]
+\rs{FN.definition()}
+\end{Paragraph}
+
+The \insn{fn} instruction starts a function with $n$ arguments. It must be the
+first instruction of any function. Its role is to define a new stack frame,
+using the top $n$ values on the stack (see \cref{fig:fn-ret-retv-insns}). This
+is needed for the \insn{ptr}, \insn{get} and \insn{set} instructions presented
+above to ``know'' where the top stack frame begins in the stack.
+
+\begin{Paragraph}
+\rs{CALL.definition()}\\
+\rs{CALLR.definition()}\\
+\rs{CALLD.definition()}
+\end{Paragraph}
+
+The \insn{call} instruction calls a function at an offset $c$ from the start of
+the Flash1 memory bank, \hexa{C0000} (the instruction at this address must be a
+\insn{fn}). This gives a very simple encoding (compare this with the \arm{BL}
+instruction), but restricted to a fixed 64kB address range. To support more
+addresses, we also define \insn{callr} and \insn{calld} instructions. The
+former calls a function at an offset $-c$ from its own address, noted $a$. The
+latter pops a value from the stack, interpreted as an address, and calls the
+function at this address.
+
+\begin{Paragraph}
+\rs{RETURN.definition()}\\
+\rs{RETURN_VALUE.definition()}
+\end{Paragraph}
+
+The return (\insn{ret}) instruction returns from a function without output
+value. It pops the top stack frame, and resumes execution in the caller. The
+return value (\insn{retv}) instruction returns from a function with a result
+value. It pops this result from the stack, pops the top stack frame, and
+finally pushes back the result value (see \cref{fig:fn-ret-retv-insns}). It
+then resumes execution in the callee.
+
+\begin{Figure}
+  \input{figures/chapter3/fn-ret-retv-insns.tex}
+
+  \caption{The function instructions. The \insn{fn} $n$ instruction (left)
+  creates a new top stack frame (light gray) with the top $n$ values of the
+  previous top stack frame (gray). The \insn{ret} instruction (middle) pops
+  the top stack frame. The \insn{retv} instruction (right) pops a value from the
+  stack, pops the top stack frame (light gray), and then pushes this value on
+  the new top stack frame (gray).}\label{fig:fn-ret-retv-insns}
+\end{Figure}
+
+\begin{Paragraph}
+\rs{BLX.definition()}
+\end{Paragraph}
+
+Finally, the \insn{blx} instruction calls a Cortex M3 subroutine at an
+interworking address popped from the stack, with a \arm{BLX} instruction. It
+can be used to execute Cortex M3 instructions without an equivalent bytecode
+instruction.
+
+\section{Interpreter}
+
+We can now implement an {\em interpreter} for the virtual machine and the
+instruction set defined above. A bytecode interpreter executes bytecode
+instructions given as input, like a microprocessor executes machine code
+instructions. A simple method to do this is to read a bytecode instruction,
+execute an equivalent sequence of machine code instructions, read another
+bytecode instruction, execute the equivalent machine instructions, and so on.
+In our case, this gives the following overall algorithm:
+
+\begin{Algorithm}[ht]
+\caption{The overall virtual machine algorithm.}\label{alg:vm}
+\begin{algorithmic}[1]
+  \State read the first byte of the current bytecode instruction,
+
+  \State if it is an undefined opcode (\ie, strictly larger than 32), trigger an
+  exception,
+
+  \State if it is 0 (\insn{cst\_0}), execute a sequence of Cortex M3
+  instructions to push a 0 on the stack, advance to the next instruction, and
+  go back to step 1,
+
+  \State if it is 1 (\insn{cst\_1}), execute a sequence of Cortex M3
+  instructions to push a 1 on the stack, advance to the next instruction, and
+  go back to step 1,
+
+  \State if it is 2 (\insn{cst8}), read the next byte of the current
+  instruction, execute a sequence of Cortex M3 instructions to push this byte
+  on the stack, advance to the next instruction, and go back to step 1,
+
+  \State ... and so on for the remaining 29 instructions ...
+\end{algorithmic}
+\end{Algorithm}
+
+\subsection{Registers}
+
+In order to implement this algorithm we need to use some registers. Indeed,
+although the bytecode instructions do not use registers directly, their
+interpreter is made of machine code instructions, which do use registers. We
+can deduce the registers we need from the above algorithm and from the
+instruction definitions:
+\begin{itemize}
+  \item For each step above we need a register holding the address of the
+  current bytecode instruction. We call it the Instruction Counter (IC), by
+  analogy with the Cortex M3 Program Counter.
+
+  \item For the arithmetic and logic instructions we need two registers to
+  store the operands and the operation result. We can use the R0 and R1 Cortex
+  M3 registers for this. We also need a stack pointer, to know where to pop the
+  operands from, and where to push the result. The simplest is to use the
+  Cortex M3 Stack Pointer (SP) for this, to take advantage of the \arm{PUSH}
+  and \arm{POP} instructions.
+
+  \item For the jump instructions we need a register containing the address of
+  the first instruction of the currently executing function. Indeed, the
+  offset used by these instructions is defined relatively to this address. We
+  call this register the Function Address (FA).
+
+  \item For the stack frame instructions we need a register storing the address
+  of the top stack frame, \ie, the address of its $0^{th}$ value. Indeed, this
+  is necessary to compute the address of an $i^{th}$ value. This register is
+  usually called the Frame Pointer (FP).
+
+  \item For the function instructions, in particular the \insn{ret} and
+  \insn{retv} instructions, we need a register pointing to the caller's
+  instruction to return to, similar to the Link Register. We call it the Return
+  Address (RA).
+\end{itemize}
+
+Finally, at each function call, we need to save the registers containing
+information about the caller, so that we can update them with data about the
+callee instead. This is the case of the Function Address, the Return Address,
+and the Frame Pointer. We can save them by pushing them on {\em some} stack
+(see below), and pop them when the callee returns. This requires another stack
+pointer, and thus one last register. We call it the Backup Pointer (BP). In
+summary, besides the Stack Pointer, we need a total of 7 registers. We map them
+to the R0 to R6 registers as shown in \cref{table:interpreter-registers}
+
+\begin{Table}
+  \begin{tabular}{|l|l|l|l|}
+    \hline \makecell{\thead{Index}} & \thead{Symbol} & \thead{Name} &
+    \thead{Pointer target} \\ \hline
+
+    \makecell{R0} & R0 & -- & -- \\
+    \makecell{R1} & R1 & -- & -- \\
+    \makecell{R2} & IC & Instruction Counter & Current instruction \\
+    \makecell{R3} & RA & Return Address & Instruction to return to \\
+    \makecell{R4} & FA & Function Address & $0^{th}$ instruction of current
+    function \\
+    \makecell{R5} & FP & Frame Pointer & $0^{th}$ value of top stack frame \\
+    \makecell{R6} & BP & Backup Pointer & Last saved register value \\ \hline
+  \end{tabular}
+  \caption{The registers used by our
+  interpreter.}\label{table:interpreter-registers}
+\end{Table}
+
+\subsection{Stack frame layout}
+
+As discussed above, we need a stack to save and restore the RA, FA, and FP
+registers. Using a custom stack requires deciding where to store it in memory,
+and how much memory to reserve for it. To avoid these issues, we use the same
+stack as the one used for stack frames, \ie, the one managed with the SP. The
+consequence is that stack frames contain saved registers between\footnote{We
+could also put the saved registers between the caller and callee stack frames,
+but this is more complex to implement.} the callee's arguments, and values
+pushed by the callee (see \cref{fig:stack-frame-layout}). This is not ideal
+since bytecode programs become dependent on implementation details of the
+interpreter. For instance, if the interpreter is updated to save an additional
+register, the indices used in \insn{ptr}, \insn{get} and \insn{set}
+instructions must be updated as well. But we don't plan to change the
+interpreter, so this is not really an issue.
+
+Another consequence of saving the registers on the same stack as stack frames
+is that the Backup Pointer must be saved on the stack as well. This register
+contains the address of the last saved register value in memory. If a separate
+stack was used to save the registers, we could just increment or decrement it
+by $12=3*4$ since we would push and pop registers by groups of 3 (RA, FA, FP).
+But when registers are saved on the same stack as stack frames, the offset
+between each group of saved registers varies (see
+\cref{fig:stack-frame-layout}). By saving the BP inside each group we get in
+each group the previous BP value, pointing to the previously saved group. The
+result is a {\em linked list} data structure, called this way because each list
+element has a link (a pointer) to the next element (see
+\cref{fig:stack-frame-layout}).
+
+\begin{Figure}
+  \input{figures/chapter3/stack-frame-layout.tex}
+
+  \caption{The stack frame layout. Each stack frame (here for a function A
+  calling B, itself calling C) contains, in this order, the callee's arguments
+  (arg0, etc), the saved caller's registers (blue), and values pushed by the
+  callee (v0, etc). The Frame Pointer FP points to the bottom of the top stack
+  frame. The Backup Pointer BP points to the last saved register. Values noted
+  $+x$ are offsets from the Stack Pointer SP.}\label{fig:stack-frame-layout}
+\end{Figure}
+
+\subsection{Initialization}\label{sec:interpreter-init}
+
+In order to facilitate its use from {\em native programs}, \ie, programs
+written in machine code, the microprocessor's native language, we propose to
+implement the interpreter as a subroutine. This allows a native program P to
+call the interpreter with some bytecode program Q to interpret, which returns
+to P when it is done. More precisely, we define the following interface:
+\begin{itemize}
+  \item P saves the registers it uses if necessary (the interpreter might
+  override them).
+
+  \item P optionally pushes some arguments on the stack, for Q.
+
+  \item P stores the address of Q's first instruction in R2, the Instruction
+  Counter.
+
+  \item P calls the interpreter subroutine with a \arm{BL} or \arm{BLX}
+  instruction.
+
+  \item The interpreter executes Q, and finally returns to P.
+\end{itemize}
+
+For this the interpreter must be able to detect when a bytecode program ends.
+To this end, we assume that bytecode programs always start with a \insn{fn}
+instruction\footnote{We could add machine code to check this during the
+initialization step but we don't, to simplify.}. The end of the program is then
+defined as the point where this function, called the {\em main} function,
+returns. We can then detect the end of the program as follows:
+\begin{itemize}
+  \item Initialize the Backup Pointer to 0, an invalid stack address (the stack
+  is restricted to the RAM region, which does not contain this address).
+
+  \item The end of the program is reached if and only if the Backup Pointer is
+  0 when a function returns.
+\end{itemize}
+Indeed, if the BP is 0 this means that the current function was not called by
+another function, \ie, is the main function. Otherwise the BP would contain a
+valid stack address, pointing to saved registers.
+
+In order to implement the above interface, we need to add an initialization
+step before \cref{alg:vm}. This step only needs to initialize the Backup
+Pointer to 0 (the initial value of R0, R1, RA, FA, and FP is never used, and
+IC is set by the caller):
+
+\rust{
+  const VM_ADDRESS: u32 = 0xC0000;
+  let mut a = Assembler::new(VM_ADDRESS);
+
+  const R0: u32 = 0;
+  const R1: u32 = 1;
+  const IC: u32 = 2; // "Instruction Counter"
+  const RA: u32 = 3; // "Return Address"
+  const FA: u32 = 4; // "Function Address"
+  const FP: u32 = 5; // "Frame Pointer"
+  const BP: u32 = 6; // "Backup Pointer"
+  const SP: u32 = 13;
+  const LR: u32 = 14;
+
+  a.mov_rd_imm8(BP, 0); // special value to detect return from main function.
+
+  a.label("loop");
+  a.ldrb_rt_rn_imm5(R0, IC, 0); // ra = mem8[bc]
+  a.add_rdn_imm8(IC, 1);
+  a.cmp_rn_imm8(R0, 31);
+  a.if_then(Condition::GT, &[]);
+  a.udf(0);
+  a.label("tbb");
+  a.tbb_rm_labels(
+      R0,
+      &["cst_0", "cst_1", "cst8", "cst32", "add", "sub", "mul", "div", "and",
+        "or", "lsl", "lsr", "iflt", "ifeq", "ifgt", "ifle", "ifne", "ifge",
+        "goto", "load", "store", "ptr", "get", "set", "pop", "fn", "call",
+        "callr", "calld", "ret", "retv", "blx",
+      ],
+  );
+
+  // bytecode 0
+  a.label("cst_0");
+  a.mov_rd_imm8(R0, 0); // r0 = 0
+  a.push_list(&[R0], false);
+  a.b_imm11("loop");
+
+  // bytecode 1
+  a.label("cst_1");
+  a.mov_rd_imm8(R0, 1); // r0 = 1
+  a.push_list(&[R0], false);
+  a.b_imm11("loop");
+
+  // bytecode 2
+  a.label("cst8");
+  a.ldrb_rt_rn_imm5(R0, IC, 0); // r0 = mem8[ic]
+  a.push_list(&[R0], false);
+  a.add_rdn_imm8(IC, 1); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 3
+  a.label("cst32");
+  a.ldr_rt_rn_imm5(R0, IC, 0); // r0 = mem32[ic]
+  a.push_list(&[R0], false);
+  a.add_rdn_imm8(IC, 4); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 4
+  a.label("add");
+  a.pop_list(&[R1, R0], false);
+  a.add_rd_rn_rm(R1, R1, R0);
+  a.push_list(&[R1], false);
+  a.b_imm11("loop");
+
+  // bytecode 5
+  a.label("sub");
+  a.pop_list(&[R1, R0], false);
+  a.sub_rd_rn_rm(R1, R1, R0);
+  a.push_list(&[R1], false);
+  a.b_imm11("loop");
+
+  // bytecode 6
+  a.label("mul");
+  a.pop_list(&[R1, R0], false);
+  a.mul_rdm_rn(R1, R0);
+  a.push_list(&[R1], false);
+  a.b_imm11("loop");
+
+  // bytecode 7
+  a.label("div");
+  a.pop_list(&[R1, R0], false);
+  a.udiv_rd_rn_rm(R1, R1, R0);
+  a.push_list(&[R1], false);
+  a.b_imm11("loop");
+
+  // bytecode 8
+  a.label("and");
+  a.pop_list(&[R1, R0], false);
+  a.and_rdn_rm(R1, R0);
+  a.push_list(&[R1], false);
+  a.b_imm11("loop");
+
+  // bytecode 9
+  a.label("or");
+  a.pop_list(&[R1, R0], false);
+  a.orr_rdn_rm(R1, R0);
+  a.push_list(&[R1], false);
+  a.b_imm11("loop");
+
+  // bytecode 10
+  a.label("lsl");
+  a.pop_list(&[R1, R0], false);
+  a.lsl_rdn_rm(R1, R0);
+  a.push_list(&[R1], false);
+  a.b_imm11("loop");
+
+  // bytecode 11
+  a.label("lsr");
+  a.pop_list(&[R1, R0], false);
+  a.lsr_rdn_rm(R1, R0);
+  a.push_list(&[R1], false);
+  a.b_imm11("loop");
+
+  // bytecode 12
+  a.label("iflt");
+  a.pop_list(&[R1, R0], false);
+  a.cmp_rn_rm(R1, R0);
+  a.if_then(Condition::LT, &[ThenElse::Then, ThenElse::Else]);
+  a.ldrh_rt_rn_imm5(R0, IC, 0); // r0 = mem16[ic]
+  a.add_rd_rn_rm(IC, FA, R0); // ic = fa + mem16[ic]
+  a.add_rdn_imm8(IC, 2); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 13
+  a.label("ifeq");
+  a.pop_list(&[R1, R0], false);
+  a.cmp_rn_rm(R1, R0);
+  a.if_then(Condition::EQ, &[ThenElse::Then, ThenElse::Else]);
+  a.ldrh_rt_rn_imm5(R0, IC, 0); // r0 = mem16[ic]
+  a.add_rd_rn_rm(IC, FA, R0); // ic = fa + mem16[ic]
+  a.add_rdn_imm8(IC, 2); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 14
+  a.label("ifgt");
+  a.pop_list(&[R1, R0], false);
+  a.cmp_rn_rm(R1, R0);
+  a.if_then(Condition::GT, &[ThenElse::Then, ThenElse::Else]);
+  a.ldrh_rt_rn_imm5(R0, IC, 0); // r0 = mem16[ic]
+  a.add_rd_rn_rm(IC, FA, R0); // ic = fa + mem16[ic]
+  a.add_rdn_imm8(IC, 2); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 15
+  a.label("ifle");
+  a.pop_list(&[R1, R0], false);
+  a.cmp_rn_rm(R1, R0);
+  a.if_then(Condition::LE, &[ThenElse::Then, ThenElse::Else]);
+  a.ldrh_rt_rn_imm5(R0, IC, 0); // r0 = mem16[ic]
+  a.add_rd_rn_rm(IC, FA, R0); // ic = fa + mem16[ic]
+  a.add_rdn_imm8(IC, 2); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 16
+  a.label("ifne");
+  a.pop_list(&[R1, R0], false);
+  a.cmp_rn_rm(R1, R0);
+  a.if_then(Condition::NE, &[ThenElse::Then, ThenElse::Else]);
+  a.ldrh_rt_rn_imm5(R0, IC, 0); // r0 = mem16[ic]
+  a.add_rd_rn_rm(IC, FA, R0); // ic = fa + mem16[ic]
+  a.add_rdn_imm8(IC, 2); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 17
+  a.label("ifge");
+  a.pop_list(&[R1, R0], false);
+  a.cmp_rn_rm(R1, R0);
+  a.if_then(Condition::GE, &[ThenElse::Then, ThenElse::Else]);
+  a.ldrh_rt_rn_imm5(R0, IC, 0); // r0 = mem16[ic]
+  a.add_rd_rn_rm(IC, FA, R0); // ic = fa + mem16[ic]
+  a.add_rdn_imm8(IC, 2); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 18
+  a.label("goto");
+  a.ldrh_rt_rn_imm5(R0, IC, 0); // r0 = mem16[bc]
+  a.add_rd_rn_rm(IC, FA, R0); // ic = fa + mem16[bc]
+  a.b_imm11("loop");
+
+  // bytecode 19
+  a.label("load");
+  a.pop_list(&[R1], false);
+  a.ldr_rt_rn_imm5(R0, R1, 0); // r0 = mem32[r0]
+  a.push_list(&[R0], false);
+  a.b_imm11("loop");
+
+  // bytecode 20
+  a.label("store");
+  a.pop_list(&[R1, R0], false);
+  a.str_rt_rn_imm5(R0, R1, 0); // mem32[r1] = r0
+  a.b_imm11("loop");
+
+  // bytecode 21
+  a.label("ptr");
+  a.ldrb_rt_rn_imm5(R0, IC, 0); // r0 = mem8[ic]
+  a.lsl_rd_rm_imm5(R0, R0, 2); // r0 = mem8[ic] * 4
+  a.sub_rd_rn_rm(R0, FP, R0); // r0 = fp - (mem8[ic] * 4)
+  a.push_list(&[R0], false);
+  a.add_rdn_imm8(IC, 1); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 22
+  a.label("get");
+  a.ldrb_rt_rn_imm5(R0, IC, 0); // r0 = mem8[ic]
+  a.lsl_rd_rm_imm5(R0, R0, 2); // r0 = mem8[ic] * 4
+  a.sub_rd_rn_rm(R0, FP, R0); // r0 = fp - (mem8[ic] * 4)
+  a.ldr_rt_rn_imm5(R1, R0, 0); // r1 = mem32[fp - (mem8[ic] * 4)]
+  a.push_list(&[R1], false);
+  a.add_rdn_imm8(IC, 1); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 23
+  a.label("set");
+  a.ldrb_rt_rn_imm5(R0, IC, 0); // r0 = mem8[ic]
+  a.lsl_rd_rm_imm5(R0, R0, 2); // r0 = mem8[ic] * 4
+  a.sub_rd_rn_rm(R0, FP, R0); // r0 = fp - (mem8[ic] * 4)
+  a.pop_list(&[R1], false);
+  a.str_rt_rn_imm5(R1, R0, 0); // mem32[fp - (mem8[ic] * 4)] = r1
+  a.add_rdn_imm8(IC, 1); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 24
+  a.label("pop");
+  a.pop_list(&[R0], false);
+  a.b_imm11("loop");
+
+  // bytecode 25
+  a.label("fn");
+  a.push_list(&[RA, FA, FP, BP], false);
+  a.mov_rd_rm(BP, SP);
+  a.mov_rd_rm(FA, IC); // fa = ic
+  a.sub_rdn_imm8(FA, 1); // fa = ic - 1 = ic at start of func insn
+  a.ldrb_rt_rn_imm5(R0, IC, 0); // r0 = mem8[ic]
+  a.lsl_rd_rm_imm5(R0, R0, 2); // r0 = mem8[ic] * 4
+  a.add_rdn_imm8(R0, 12); // r0 = mem8[ic] * 4 + 12
+  a.add_rd_rn_rm(FP, BP, R0);
+  a.add_rdn_imm8(IC, 1); // skip insn argument
+  a.b_imm11("loop");
+
+  // bytecode 26
+  a.label("call");
+  a.mov_rd_rm(RA, IC);
+  a.add_rdn_imm8(RA, 2);
+  a.ldrh_rt_rn_imm5(IC, IC, 0); // ic = mem16[ic]
+  a.movt_rd_imm16(IC, 0xC); // ic = (0xC << 16) | mem16[ic]
+  a.b_imm11("loop");
+
+  // bytecode 27
+  a.label("callr");
+  a.mov_rd_rm(RA, IC);
+  a.add_rdn_imm8(RA, 2);
+  a.ldrh_rt_rn_imm5(R0, IC, 0); // r0 = mem16[ic]
+  a.sub_rdn_imm8(IC, 1);
+  a.sub_rd_rn_rm(IC, IC, R0); // ic = ic - 1 - mem16[bc]
+  a.b_imm11("loop");
+
+  // bytecode 28
+  a.label("calld");
+  a.mov_rd_rm(RA, IC);
+  a.pop_list(&[IC], false); // ic = pop()
+  a.b_imm11("loop");
+
+  // bytecode 29
+  a.label("ret");
+  a.mov_rd_rm(R0, FP);
+  a.add_rdn_imm8(R0, 4);
+  a.mov_rd_rm(SP, BP);
+  a.pop_list(&[IC, FA, FP, BP], false);
+  a.mov_rd_rm(SP, R0);
+  // If return from main function, return to native caller.
+  a.cmp_rn_imm8(BP, 0);
+  a.if_then(Condition::EQ, &[]);
+  a.bx_rm(LR);
+  a.b_imm11("loop");
+
+  // bytecode 30
+  a.label("retv");
+  a.pop_list(&[R1], false); // get return value on top of current stack
+  a.mov_rd_rm(R0, FP);
+  a.add_rdn_imm8(R0, 4);
+  a.mov_rd_rm(SP, BP);
+  a.pop_list(&[IC, FA, FP, BP], false);
+  a.mov_rd_rm(SP, R0);
+  a.push_list(&[R1], false); // store return value on top of new stack
+  a.b_imm11("loop");
+
+  // bytecode 31
+  a.label("blx");
+  a.pop_list(&[R0], false);
+  a.mov_rd_rm(R1, LR);
+  a.blx_rm(R0);
+  a.mov_rd_rm(LR, R1);
+  a.b_imm11("loop");
+}
+\rs{Assembler::get_listing_header()}
+
+\rs{a.get_listing(0..1)}
+
+\subsection{Instruction dispatch}
+
+We can now implement step 1 of \cref{alg:vm}. This step reads a byte at the
+address stored in the Instruction Counter, and stores it in R0. It then
+increments the IC by 1 to prepare reading the instruction's arguments, or the
+next instruction:
+
+\rs{a.get_listing(1..3)}
+
+Step 2 must trigger an exception if the opcode in R0 is undefined, \ie, if it
+is strictly larger than 31. If this happens, execution will then jump to the
+Hard Fault handler (\cf \cref{section:vector-table}). If it is a blink LED
+subroutine for instance, as we did in \cref{subsection:blink-led-flash}, the
+LED will blink when an undefined opcode is found. The Cortex M3 has an
+instruction which is precisely done for this case. It is called ``Permanently
+Undefined'' (UDF), and triggers an Undefined Instruction exception. It is
+encoded as \rs{UDF.bit_pattern()}, where $c$ is ignored. This gives the
+following instructions for step 2:
+
+\rs{a.get_listing(3..6)}
+
+The rest of the interpreter's code can be divided into 32 subprograms (\ie, 32
+sequences of instructions), one for each bytecode instruction. These
+subprograms can be put one after the other, in increasing order of opcodes.
+First the subprogram for \insn{cst\_0}, then the one for \insn{cst\_1}, etc up
+to the subprogram for \insn{blx} (see \cref{fig:vm-code-structure}). The
+$i^{th}$ subprogram could test if the opcode in R0 is equal to $i$. If it is,
+it would execute its sequence of instructions. Otherwise, it would jump to the
+next subprogram, which would test if the opcode is equal to $i+1$, and so on.
+But doing so would be quite inefficient. Indeed, for a \insn{blx} instruction
+for instance, we would need to do 32 comparisons to finally find which
+subprogram to execute. A shorter and more efficient method is to use a
+\arm{TBB} instruction:
+
+\rs{a.get_listing(6..7)}
+
+Indeed, this instruction jumps by an offset which is twice the $i^{th}$ byte
+after the instruction itself, with $i=\mathrm{R0}$. For instance, if this
+instruction is followed by the bytes $[42, 13, 17, 21, \ldots]$, then it jumps
+by an offset $2*42$ if R0 is $0$, by an offset $2*13$ if it is $1$, $2*17$ if
+it is $2$, and so on. We can thus add a table with 32 bytes after this
+instruction, corresponding to the offsets between this instruction and each of
+the 32 subprograms. We don't have the subprograms yet, so we can't compute
+these offsets for now. Instead, we leave space for them (32 bytes) and start
+implementing the subprograms.
+
+\begin{Figure}
+  \input{figures/chapter3/vm-code-structure.tex}
+
+  \caption{The interpreter code structure. After the initialization code
+    (white) and the code for step 1 and 2 of \cref{alg:vm} (light gray), a
+    \arm{TBB} instruction uses a table of 32 offsets (blue) to jump to the
+    subprogram (dark gray) corresponding to the current instruction. Each of the
+    32 subprograms then jumps back to step 1.}\label{fig:vm-code-structure}
+\end{Figure}
+
+\subsection{Arithmetic and logic instructions}
+
+\paragraph{cst\_0} The \insn{cst\_0} subprogram, at offset
+\rs{hex(a.label_offset("cst_0"))} (32 bytes after the \arm{TBB} instruction),
+just needs to push 0 on the stack. This is easy to do with \arm{MOV} and
+\arm{PUSH} instructions. It must then go back to step 1 of \cref{alg:vm}, \ie,
+at offset \rs{hex(a.label_offset("loop"))}. This can be done with a \arm{B}
+instruction using the negative offset $\rs{hex(a.label_offset("loop"))} -
+(\rs{hex(a.label_offset("cst_0")+4)}+4)=
+-\rs{dec(a.label_offset("cst_0") + 8 - a.label_offset("loop"))}$:
+
+\rs{a.get_listing(39..42)}
+
+\paragraph{cst\_1} The \insn{cst\_1} subprogram is similar:
+
+\rs{a.get_listing(42..45)}
+
+\paragraph{cst8} This subprogram needs to push the 8-bit value following the
+instruction's opcode. This can be done by replacing the \arm{MOV} instruction
+with a \arm{LDRB} instruction, to read the byte at the address given by the IC
+(remember that IC was incremented in step 1, for this purpose). Finally, before
+going back to step 1, it must increment the IC again, to point to the next
+bytecode instruction:
+
+\rs{a.get_listing(45..49)}
+
+\paragraph{cst} This subprogram is similar, but reads a word instead of a byte:
+
+\rs{a.get_listing(49..53)}
+
+\paragraph{add} This subprogram pops two values, adds them, and pushes the
+result:
+
+\rs{a.get_listing(53..57)}
+
+\paragraph{sub} This subprogram is similar, but the order in which the
+registers are subtracted is important. If the top two stack values are $x$ and
+$y$, as in \cref{fig:sub-insn}, popping them in R0 and R1 stores $y$ in R0 and
+$x$ in R1 (\cf \cref{subsection:load-store-insns}). Hence, R0 must be
+subtracted from R1 to get the desired result $x-y$:
+
+\rs{a.get_listing(57..61)}
+
+\paragraph{mul, div, and, or, lsl, lsr} These subprograms are similar, with the
+\arm{SUB} instruction replaced with \arm{MUL}, \arm{UDIV}, \arm{ORR},
+\arm{LSL}, and \arm{LSR}, respectively. Here we just give the result of their
+encoding:
+
+\rs{a.get_machine_code_listing(61..85)}
+
+\subsection{Jump instructions}
+
+\paragraph{iflt} This subprogram must first pop two values $x$ and $y$ and
+compare them (the order in which the registers are compared is important):
+
+\rs{a.get_listing(85..87)}
+
+\noindent Then there are two cases. If $x<y$ it needs to jump, \ie, to update
+the IC to the Function Address (in R4), plus the 16-bit offset stored just
+after the instruction opcode. This offset can be read with a \arm{LDRH}
+instruction, and then added to the FA to get the new IC. If $x \ge y$, it just
+needs to increment the IC by 2 to skip the offset and go to the next
+instruction. All this can be done with an IT instruction making the 3 following
+instructions conditional on $x<y$, $x<y$, and $x \ge y$, respectively:
+
+\rs{a.get_listing(87..92)}
+
+\paragraph{ifeq, ifgt, ifle, ifne, ifge} These subprograms are similar, with
+only the IT instruction changing (and the offset of the \arm{B} instruction).
+We just give the result of their encoding:
+
+\rs{a.get_machine_code_listing(92..127)}
+
+\paragraph{goto} This subprogram is simpler since it does an unconditional jump:
+
+\rs{a.get_listing(127..130)}
+
+\subsection{Memory and stack instructions}
+
+\paragraph{load} This subprogram pops an address, reads the memory at this
+address, and pushes the value read:
+
+\rs{a.get_listing(130..134)}
+
+\paragraph{store} This subprogram pops an address and a value, and stores the
+value at this address (as above, the order in which the registers are popped is
+important):
+
+\rs{a.get_listing(134..137)}
+
+\paragraph{ptr} This subprogram must read the byte after the instruction's
+opcode, containing an index $i$. It must then subtract $4*i=i \ll 2$ from the
+Frame Pointer (in R5), to get the address of the $i^{th}$ 32-bit value in the
+top stack frame:
+
+\rs{a.get_listing(137..140)}
+
+\noindent Finally, it must push this address $a$ on the stack, and increment
+the IC to go the next instruction:
+
+\rs{a.get_listing(140..143)}
+
+\paragraph{get} This subprogram starts with the exact same \arm{LDRB},
+\arm{LSL}, and \arm{SUB} instructions (not shown), but then reads the memory at
+$a$ and pushes the value read, instead of pushing $a$:
+
+\rs{a.get_listing(146..150)}
+
+\paragraph{set} This subprogram also starts with the exact same \arm{LDRB},
+\arm{LSL}, and \arm{SUB} instructions (not shown), but then pops a value and
+stores it at address $a$:
+
+\rs{a.get_listing(153..157)}
+
+\paragraph{pop} This subprogram just pops a value and discards it:
+
+\rs{a.get_listing(157..159)}
+
+\subsection{Function instructions}
+
+\paragraph{fn} This subprogram starts by saving the RA, FA, FP and BP
+registers. It then updates the Backup Pointer to point to this new group of
+saved registers:
+
+\rs{a.get_listing(159..161)}
+
+\noindent The FA and FP can then be updated too. The FA must be set to the
+\insn{fn} instruction's address, IC - 1 (since IC was incremented in step 1):
+
+\rs{a.get_listing(161..163)}
+
+\noindent The FP must be set to the bottom of the stack frame, initially at
+offset $4*(n-1)$ from the SP (just copied in the BP), but now at offset
+$4*(n-1)+16=n \ll 2 + 12$ since 4 values were just pushed (where $n$ is the
+byte just after the \insn{fn} opcode):
+
+\rs{a.get_listing(163..167)}
+
+\noindent Finally, the \insn{fn} subprogram increments the IC to the
+beginning of the next instruction, and jumps back to step 1:
+
+\rs{a.get_listing(167..169)}
+
+\paragraph{call} This subprogram must update the IC to the 16-bit offset after
+this opcode, added to \hexa{C0000} (which can be done with a \arm{MOVT}).
+Before this, it needs to set the Return Address (in R3) to the address of the
+next instruction, IC + 2:
+
+\rs{a.get_listing(169..174)}
+
+\paragraph{callr} This subprogram is similar, with the MOVT replaced with two
+SUB instructions, to update the IC to the instruction's address (IC - 1), minus
+its 16-bit offset argument:
+
+\rs{a.get_listing(174..180)}
+
+\paragraph{calld} This subprogram is simpler since the Return Address is just
+the IC, and the new IC value is just popped from the stack:
+
+\rs{a.get_listing(180..183)}
+
+\paragraph{ret} This subprogram must pop the top stack frame, \ie, set the SP
+to FP + 4. It must also restore the saved registers by popping them, {\em
+after} FP + 4 has been computed (otherwise the {\em caller's} FP would be used
+to update the SP, which is incorrect). To this end, the subprogram first
+computes FP + 4 in R0, then pops the saved registers (which requires setting
+the SP to the BP first), and finally sets the SP to R0:
+
+\rs{a.get_listing(183..188)}
+
+\noindent Note that the POP instruction pops the saved Return Address in the
+Instruction Counter (in R2). Everything is thus ready at this point to back to
+step 1. Before this, however, the subprogram tests if the BP is 0 and, if so,
+returns from the interpreter (as explained in \cref{sec:interpreter-init}), by
+moving the LR into the PC:
+
+\rs{a.get_listing(188..192)}
+
+\paragraph{retv} This subprogram is similar, but pops the return value (in R1)
+and pushes it again before and after doing the same 5 instructions as the
+\insn{retv} subprogram. The next chapters don't need a main function returning
+a value from the interpreter. This subprogram thus goes back to step 1 without
+checking if BP is 0\footnote{This could be done without additional
+instructions, by jumping to \insn{ret}'s CMP instruction instead.}:
+
+\rs{a.get_listing(192..200)}
+
+\paragraph{blx} Finally, the last subprogram does a Branch with Link and
+Exchange to an address popped from the stack. Since the BLX instruction updates
+the LR, which we need to return from the interpreter, we save it first and
+restore it upon return (the callee is responsible for saving and restoring the
+interpreter registers):
+
+\rs{a.get_listing(200..205)}
+\rust{
+  assert_eq!(a.get_instruction_count(), 205);
+}
+
+\subsection{Final code}\label{subsection:interpreter-code}
+
+The last step to finish the interpreter is to compute the 32 values for the
+TBB table. Each value is half the difference between the address of the first
+instruction of a subprogram and the start of the table,
+\rs{hex(a.label_offset("tbb")+4)}. For
+instance, for the \insn{blx} subprogram starting at
+\rs{hex(a.label_offset("blx"))}, we get
+\rs{hex((a.label_offset("blx")-(a.label_offset("tbb")+4))/2)}. By doing this
+for the 31 other subprograms we get:
+
+\rs{a.get_machine_code_listing(7..39)}
+
+\noindent By putting everything together, we finally get the full
+interpreter code:
+
+\rs{a.get_machine_code_listing(0..205)}
+\rust{
+  {
+    let mut commands = a.boot_assistant_commands();
+    commands.push(String::from("flash#"));
+    write_lines("website/part2", "interpreter.txt", &commands)?;
+  }
+}
+
+Lets store it in the $2^{nd}$ flash memory bank, at address
+\rs{hex(VM_ADDRESS)}. For this we can use the \code{flash\_helper.py} program
+and its \code{flash\#} command, presented in \cref{subsection:blink-led-flash}.
+To avoid typing the \rs{dec(a.machine_code().len() as u32)} necessary \code{W}
+commands, we provide them in \code{part2/interpreter.txt} (you should have this
+file in the same directory as the \code{flash\_helper.py} program if you
+downloaded \toypcurl{scripts.zip}). Connect the Arduino to your computer and
+open a terminal. Then run the commands in this file as follows (the \code{<}
+operator makes \code{flash\_helper.py} read and execute all the commands in the
+specified file; in this mode these commands are not printed):
+
+\rust{
+  context.add_memory_region("interpreter", a.memory_region());
+  let mut flash_helper = FlashHelper::from_file(
+      context.micro_controller(), "website/", "part2/interpreter.txt")?;
+}
+\rs{host_log(&flash_helper.read())}
+
+\section{Example program}\label{section:blink-led-bytecode}
+
+We can now program the Arduino with bytecode instructions, which should be
+easier than with Cortex M3 machine code. To verify this, we can reimplement the
+program to blink a LED from \cref{section:blink-led}, but in bytecode. We can
+use the same structure, with a function to wait for some time, and a main
+function calling it. Lets start with the waiting function, which just counts to
+some large value. Here it is a bit easier to count down to 0, as follows:
+\begin{enumerate}
+  \item push a large value on the stack,
+  \item subtract 1 from the top stack value,
+  \item if it is not 0, go back to step 2,
+  \item return to the caller.
+\end{enumerate}
+
+This translates directly to bytecode instructions. We start the function with a
+\insn{fn} 0 instruction (this function does not have any argument), and then
+push 100000=\rs{hex(100000u32)} with a \insn{cst} instruction (the right column
+is the offset from the current function's start or, for \insn{fn} instructions,
+from the program's start):
+
+\rs{BytecodeAssembler::get_detailed_listing_header()}
+
+\bytecode[details]{
+  const BLINK_START: u32 = 0x20071000;
+  const WAIT_CYCLES: u32 = 100000;
+  const TEST_WAIT_CYCLES: u32 = 10;
+  let mut b = BytecodeAssembler::new(RegionKind::Default, BLINK_START);
+  b.func("wait", &[], "", &[]);
+  b.label("wait_cycles");
+  b.cst(WAIT_CYCLES);
+  b.def("counter");
+}
+
+Step 2 can done by pushing 1 on the stack and then subtracting the top two
+stack values (which at this point are the counter and 1):
+
+\bytecode[details]{
+  b.label("loop");
+  b.cst_1();
+  b.sub();
+}
+
+For step 3, to compare the counter with 0 and optionally jump back to step 2
+(\ie, at offset 7), we could push a 0 and use an \insn{ifne} instruction. But
+this would pop our counter from the stack, which would then be lost. To avoid
+this we need to push a copy of it before pushing 0. The counter is the $4^{th}$
+value on the function's stack frame, counting from 0 (because there are no
+function arguments but 4 saved registers below it). We can thus push a copy of
+it with a \insn{get} 4 instruction:
+
+\bytecode[details]{
+  b.get("counter");
+  b.cst_0();
+  b.ifne("loop");
+}
+
+Finally, the last step is trivial:
+
+\bytecode[details]{
+  b.ret();
+}
+
+This function should probably look simpler to you compared with the equivalent
+machine code in \cref{section:blink-led}. In particular for the encoding of
+instructions. The main function is even simpler. Recall that it must first
+write the value $2^{27}$ in the PIO B Enable Register (\rs{hex(PIOB_PER)}),
+Output Enable Register (\rs{hex(PIOB_OER)}), and Pull-up Disable Register
+(\rs{hex(PIOB_PUDR)}). This is trivial to do with \insn{cst} and \insn{store}
+instructions:
+
+\bytecode[details]{
+  b.func("main", &[], "", &[]);
+  let blink_main = b.label_offset("main");
+  b.cst(PIOB_PER);
+  b.cst(1 << 27);
+  b.store();
+  b.cst(PIOB_OER);
+  b.cst(1 << 27);
+  b.store();
+  b.cst(PIOB_PUDR);
+  b.cst(1 << 27);
+  b.store();
+}
+
+\noindent After that the main function must turn the LED on by writing the same
+value in the Set Output Data Register (\rs{hex(PIOB_SODR)}), call the waiting
+function, turn the LED off by writing $2^{27}$ in the Clear Output Data
+Register \rs{hex(PIOB_CODR)}, call the waiting function again, and finally go
+back to the beginning. Again, this translates directly to bytecode instructions
+which are easy to encode (we assume that the waiting function is stored at
+address \rs{hex(BLINK_START)}):
+
+\bytecode[details]{
+  b.label("main_loop");
+  b.cst(PIOB_SODR);
+  b.cst(1 << 27);
+  b.store();
+  b.cst(BLINK_START);
+  b.calld();
+  b.cst(PIOB_CODR);
+  b.cst(1 << 27);
+  b.store();
+  b.cst(BLINK_START);
+  b.calld();
+  b.goto("main_loop");
+}
+
+This gives the final bytecode of our new LED blinking program:
+
+\rs{b.get_bytecode_listing(0..b.get_instruction_count() as usize, true)}
+
+\rust{
+  {
+    let commands = b.boot_assistant_commands();
+    write_lines("website/part2", "interpreter_blink_led.txt", &commands)?;
+  }
+  let mut flash_helper = FlashHelper::from_file(
+    context.micro_controller(),
+    "website/",
+    "part2/interpreter_blink_led.txt",
+  )?;
+}
+
+Lets store it in RAM in order to test it with the boot assistant. The commands
+to do this are provided in \code{part2/interpreter\_blink\_led.txt}. Run them
+as follows:
+
+\rs{host_log(&flash_helper.read())}
+
+To run our program we need to write a bit more machine code. Indeed, we need to
+load the address of the main function's first instruction
+(\rs{hex(BLINK_START)}+ \rs{hex(b.label_offset("main"))}) in the Instruction
+Counter (R2), and then call the interpreter subroutine. The former can be done
+with a \arm{LDR} instruction. The latter can be done with a \arm{LDR}
+instruction to load the interpreter's interworking address
+(\rs{hex(VM_ADDRESS)}+1) in R0, followed by a \arm{BX} R0. Assuming these
+instructions start at an address which is a multiple of 4, we get:
+
+\rust{
+  flash_helper.write(&format!(
+    "W{:X},{:X}#",
+    BLINK_START + b.label_offset("wait_cycles") + 1,
+    TEST_WAIT_CYCLES
+  ));
+
+  const START: u32 = BLINK_START + 256;
+  let mut boot = Assembler::new(START);
+  boot.ldr_rt_pc_imm8(2, "bytecode handler program");
+  boot.ldr_rt_pc_imm8(0, "interpreter");
+  boot.bx_rm(0);
+  boot.u16_data(0, "padding, unused");
+  boot.label("bytecode handler program");
+  boot.u32_data(BLINK_START + blink_main,
+    "address of main function's $1^{st}$ instruction");
+  boot.label("interpreter");
+  boot.u32_data(VM_ADDRESS + 1, "interworking address of interpreter");
+}
+\rs{boot.get_listing(0..6)}
+
+We can store these instructions at \rs{hex(START)} and finally call them with
+a \code{G}$a$\code{\#} command (recall that \code{G}$a$\code{\#} jumps to the
+interworking address stored at $a+4$):
+
+\rust{
+  let mut lines = Vec::<String>::new();
+  lines.extend(boot.boot_assistant_commands());
+  context.add_program("reset_handler", boot);
+
+  const GO: u32 = BLINK_START + 512;
+  lines.push(String::from(&format!("W{:08X},{:08X}#", GO+4, START+1)));
+  lines.push(String::from(&format!("G{:08X}#", GO)));
+
+  let blink_counter = Rc::new(RefCell::new(BlinkLedCounter::default()));
+  let micro_controller = context.micro_controller();
+  micro_controller.borrow_mut().set_pio_device(blink_counter.clone());
+  micro_controller.borrow_mut().set_max_boot_program_go_cycles(20000);
+  let mut flash_helper = BootHelper::new(micro_controller);
+  for line in &lines {
+    flash_helper.write(line);
+  }
+  assert!(blink_counter.borrow().blink_count >= 8);
+}
+\rs{host_log(&flash_helper.read())}
+
+At this point you should normally see the LED blinking! Note that it blinks at
+about the same speed as the machine code version running from the boot
+assistant. Yet it counts to 100000 instead of counting to 1 million between
+each step. This shows that our bytecode program is about 10 times slower than
+the equivalent machine code version! This is not an issue here because our
+interpreter is only a temporary program, similar to a scaffolding, to help us
+build our toy computer. Indeed, we discard it at the end of
+\cref{chapter:shell}.

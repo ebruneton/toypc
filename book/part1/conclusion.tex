@@ -1,0 +1,78 @@
+% This work is licensed under the Creative Commons Attribution NonCommercial
+% ShareAlike 4.0 International License. To view a copy of the license, visit
+% https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+\chapter*{Conclusion}
+\addcontentsline{toc}{chapter}{Conclusion}
+
+Microprocessors are made of electrically controlled switches, assembled into
+logic gates, themselves assembled into arithmetic and logic circuits,
+registers, memories, and control circuits. Most of them use the architecture
+presented in this part, made of a control unit, a processing unit, input and
+output mechanisms, and a memory containing data and instructions. It is called
+the von Neumann architecture because it was first published by John von Neumann
+in 1945.
+
+The toy microprocessor presented in the previous chapter is extremely limited,
+especially because it can only address 32 bytes of memory. To solve this
+problem, most modern microprocessors use a 32 or 64-bit architecture. A 32-bit
+architecture is based on 32-bit registers, buses, and Arithmetic and Logic
+Units. A 32-bit microprocessor generally use 32-bit addresses, and can thus use
+up to $2^{32} =$ 4~GB of memory. It can also perform computations on 32-bit
+values, called {\em words}\footnote{A word is a 32-bit value in a 32-bit
+microprocessor, a 64-bit value in a 64-bit microprocessor, etc.}. However, even
+with more memory, microprocessors can only do computations on numbers. But then
+how can computers create or edit text, music or videos?
+
+\subsubsection{Data representation}
+
+The answer is that text, sound, images, videos, or in fact any information, can
+be represented with numbers. And doing some computations on these numbers can
+edit this information.
+
+For instance, one could represent letters from ``a'' to ``z'' with numbers from
+$0$ to $26$ (excluded), letters from ``A'' to ``Z'' with numbers from $26$ to
+$52$ (excluded), a space with $52$, a dot with $53$, etc. Then, for instance, a
+program reading bytes and adding $26$ to those smaller than $26$ can
+capitalize text. A program can also edit text based on keys typed by the user,
+as shown in \cref{chapter:text-editor}. Or transform text into program
+instructions which, as explained in \cref{section:toy-insn-set}, can also be
+represented with numbers (see \cref{part:compiler}).
+
+Similarly, one can {\em digitize} sound, which is a pressure wave, by measuring
+the pressure many times per second, and by storing each measurement in one byte
+(or more). Then, for instance, a program reading pairs of bytes, and computing
+their average, can mix two sound samples to produce a new one.
+
+Likewise, one can digitize an image by decomposing it in a grid of {\em pixels}
+(for ``picture element''), and by representing the luminosity of each pixel
+with one byte (from $0$ for black to $255$ for white). These values can then be
+stored in memory one after the other, for example from left to right and from
+top to bottom. Then, for instance, a program reading bytes and subtracting them
+from $255$ can compute the negative of an image. A color image can be
+represented in a similar way, with 3 values per pixel (for the intensity of the
+red, green, and blue components). And a video can be represented as a sequence
+of images (typically 24 or 25 per second).
+
+\subsubsection{Further readings}
+
+The design of our toy microprocessor, although sufficient to explain the main
+ideas, is not fully representative of real ones. For instance, real
+microprocessors do not wait for input values. Instead, when a new input value
+is available, it interrupts the microprocessor (like a notification or a phone
+call interrupts what you are doing). To learn more about the design and
+architecture of real microprocessors, you can read the following books:
+\begin{itemize}
+  \item ``Digital Design and Computer Architecture, RISC-V Edition''
+  \cite{DigitalDesignAndComputerArchitecture}. This book presents the CMOS
+  technology (the most frequently used to build real microprocessors), gives
+  more details about logical operations (negation, conjunctions, disjonctions,
+  etc), explains how programs can be used to design complex circuits, and
+  presents some advanced microprocessor architectures used to improve
+  performance.
+
+  \item ``Computer Architecture'' \cite{ComputerArchitecture}. This book gives
+  a historic perspective on computer design, gives more details about number
+  systems, data representation, input and output mechanisms, etc. It also
+  presents several microprocessor architecture styles.
+\end{itemize}

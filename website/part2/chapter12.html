@@ -1,0 +1,46 @@
+<html>
+
+<head>
+  <title>Chapter 12. Memory Editor</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel='stylesheet' type='text/css'
+    href='https://framework.web.cern.ch/framework/2.0/fonts/PTSansWeb/PTSansWeb.css' />
+  <link rel="stylesheet" type="text/css" href="../style.css" />
+  </meta>
+</head>
+
+<body>
+  <div class="column">
+    <h1>Chapter 12. Memory Editor</h1>
+
+    <p>You can follow the instructions in this chapter without doing those of the previous ones. For this, before doing
+      them:
+    <ul>
+      <li>with the Arduino:
+        <ul>
+          <li>assemble the toy computer components as explained in the <a href="../assembly.html">assembly
+              instructions</a>.</li>
+          <li>connect the Arduino to your computer. Press the ERASE button for a few seconds, then press
+            the RESET button. In a terminal on the host computer, type
+            <code>python3 flash_helper.py &lt; backups/memory_editor.txt</code> (in the directory where you unzipped
+            <a href="../scripts.zip">scripts.zip</a>).
+          </li>
+        </ul>
+      </li>
+      <li>with the emulator: open <a href="../emulator.html?script=backups/memory_editor.txt">this page</a>.</li>
+    </ul>
+
+    <h2>12.6 Experiments</h2>
+
+    <p><b>Note:</b> if you use the emulator, the 'type "w00200000"' instruction should give an "Unsupported address"
+      error message instead of blinking the LED. This is because, in case of errors, the emulator shows a message
+      instead of executing the Hard Fault handler. You then need to reload the emulator page and to redo the previous
+      instructions.
+
+    <p><b>Note:</b> if you use the emulator, for the last experiment, after typing "w000c02b4", click on the RESET
+      button instead of "unplugging" the Arduino from the power outlet (which is not possible with the emulator).
+
+  </div>
+</body>
+
+</html>
