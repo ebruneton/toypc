@@ -69,6 +69,37 @@
         followed by Enter. You should get a version number, such as "v1.1 Dec 15 2010 19:25:04". Finally, type
         <code>exit#</code> to quit the boot helper program.
 
+    <h2>Mac</h2>
+
+    <h3>pyserial</h3>
+
+    <p>Python3 should be installed by default on your computer. To install the <code>pyserial</code> package, first
+        install <a href="https://pip.pypa.io/en/stable/">pip</a> if it is not already installed. Then install the
+        <code>pyserial</code> package with
+
+    <blockquote>
+        pip install pyserial
+    </blockquote>
+
+    <h3>serial port</h3>
+
+    <p>Connect the Arduino's USB <em>native</em> port (see Figure 6.1 in the book) to your computer, and type
+
+    <blockquote>
+        ls /dev/tty.*
+    </blockquote>
+
+    <p>in a terminal. You should get a result such as <code>/dev/tty.usbmodem1101</code>. The number at the end might
+        differ. Then edit <code>boot_helper.py</code> with a text editor and replace <code>/dev/ttyACM0</code> (on
+        line 18) with the result you got. Finally, type
+
+    <blockquote>
+        python3 boot_helper.py
+    </blockquote>
+
+    <p>to test the connection to the Arduino. You should get a version number, such as "v1.1 Dec 15 2010 19:25:04".
+        Finally, type <code>exit#</code> to quit the boot helper program.
+
     <h2>Windows</h2>
 
     <h3>Python3</h3>
