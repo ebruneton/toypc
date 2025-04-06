@@ -1,6 +1,10 @@
 ## Synopsis
 
-This repository contains the source code of the book ["Programming a toy computer from scratch"](https://ebruneton.github.io/toypc/toypc.pdf).
+This repository contains the source code of the book ["Programming a toy computer from scratch"](https://ebruneton.github.io/toypc/toypc.pdf), and of the associated ["website"](https://ebruneton.github.io/toypc/) and ["ToyPC emulator"](https://ebruneton.github.io/toypc/emulator.html). 
+
+## Demo
+
+Use the online ["demo"](https://ebruneton.github.io/toypc/emulator.html?script=backups/final.txt) of the fully assembled and programmed toy computer to see what it can do. For instance, type `snake` to launch its snake game, or `edit src/snake/snake.toy` to view the source code of this program.
 
 ## Build
 
