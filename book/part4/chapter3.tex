@@ -850,12 +850,12 @@ fn supervisor_call_handler() \{
 We then compute the address $f$ of the function which can handle this system
 call, and the address of its arguments. For this we compute the address of the
 {\tt kernel} field which contains $f$ (the {\tt spawn}, {\tt exit}, or {\tt
-draw\_char} field, for ID=0, 1, or 2, respectively), and get the value at this
-address:
+draw\_char} field, for ID=0, 1, or 2, respectively), but we do not get the value
+at this address yet (it might be invalid if {\tt id} is invalid):
 
 \toy{
   let id = context.r0;
-  let function = *(&kernel.spawn + (id << 2));
+  let function_p = &kernel.spawn + (id << 2);
   let args = context.r1 as &CallArguments;
 }%toy
 
@@ -872,7 +872,7 @@ current process):
     if process == null ||
         process_contains_buffer(process, args as &u32, args_size) == TRUE {
       result = call(args.arg0, args.arg1, args.arg2, args.arg3,
-          args.arg4, args.arg5, function + 1);
+          args.arg4, args.arg5, *function_p + 1);
     }
   }
 }%toy

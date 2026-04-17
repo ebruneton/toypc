@@ -296,7 +296,7 @@ def convert_style(element, remove_fill=False):
             angle = 180
             styles.append(f'rotate=180')
         else:
-            angle = -int(re.search('rotate\((-?\d*)\)', transform).group(1))
+            angle = -int(re.search(r'rotate\((-?\d*)\)', transform).group(1))
             styles.append(f'rotate={angle}')
     if stroke := element.get('stroke'):
         styles.append(f'draw={convert_color(stroke)}')

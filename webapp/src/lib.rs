@@ -277,7 +277,7 @@ impl Arduino {
         self.input_buffer.clear();
     }
 
-    fn new_boot_helper(&mut self) -> *const BootHelper {
+    fn new_boot_helper(&mut self) -> *const BootHelper<'_> {
         self.input_buffer.clear();
         let mut boot_helper = Box::new(BootHelper::create(&self.micro_controller, true));
         let ok = boot_helper.write("T#");
@@ -302,7 +302,7 @@ impl Arduino {
         false
     }
 
-    fn new_flash_helper(&mut self) -> *const FlashHelper {
+    fn new_flash_helper(&mut self) -> *const FlashHelper<'_> {
         self.input_buffer.clear();
         let filename = serial::receive();
         let mut flash_helper = Box::new(if filename.is_empty() {
@@ -333,13 +333,11 @@ impl Arduino {
     }
 }
 
-fn panic_hook(panic: &core::panic::PanicInfo<'_>) {
-    panic::log(&panic.to_string());
-}
-
 #[no_mangle]
 pub extern "C" fn initialize() {
-    std::panic::set_hook(Box::new(panic_hook));
+    std::panic::set_hook(Box::new(|panic| {
+        panic::log(&panic.to_string());
+    }));
 }
 
 #[no_mangle]
